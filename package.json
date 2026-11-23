@@ -1,7 +1,7 @@
 {
   "name": "cleancode",
   "productName": "CleanCode",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "CleanCode — análise de uso do disco e desinstalador de apps para Windows e macOS",
   "main": "dist-electron/main.js",
   "author": "CleanCode",
@@ -118,6 +118,7 @@
         "dist-electron/**/*",
         "build/trayTemplate.png",
         "build/trayTemplate@2x.png",
+        "build/icon-mac.png",
         "package.json",
         "!node_modules/koffi/**/*",
         "!node_modules/@koromix/**/*"

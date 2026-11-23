@@ -5,6 +5,15 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.3', date: '2026-11-23', headline: 'Assistente de Acesso Total ao Disco mais claro',
+    groups: [
+      { title: 'Mac', icon: 'panel', items: [
+        'A janelinha para arrastar o CleanCode até o Acesso Total ao Disco agora mostra o ícone, está maior e indica cada passo.',
+        'No macOS 27 os Ajustes abrem em Privacidade e Segurança (a Apple não permite abrir direto no item): é só clicar em Acesso Total ao Disco.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.2', date: '2026-11-23', headline: 'Liberar memória com um clique',
     groups: [
       { title: 'Memória', icon: 'wrench', items: [

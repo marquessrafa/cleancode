@@ -78,7 +78,13 @@ const darwin: SystemApi = {
     return true;
   },
   openFullDiskAccessSettings() {
-    shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles');
+    // macOS 13+ (Ajustes do Sistema): link novo. No macOS 27 a Apple ignora o atalho para Acesso Total ao Disco
+    // (os outros itens de Privacidade abrem direto) e para em Privacidade e Segurança: o assistente avisa para
+    // clicar no item. macOS 12 (Preferências do Sistema): link antigo.
+    const darwinMajor = parseInt(os.release(), 10) || 0;
+    shell.openExternal(darwinMajor >= 22
+      ? 'x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_AllFiles'
+      : 'x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles');
   },
 
   showProperties(p) {

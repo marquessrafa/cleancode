@@ -8,7 +8,7 @@ import { app, BrowserWindow, ipcMain, nativeImage, screen } from 'electron';
 import path from 'path';
 import { system } from './platform';
 
-const W = 340, H = 236;
+const W = 460, H = 360;
 let helper: BrowserWindow | null = null;
 let timer: ReturnType<typeof setInterval> | null = null;
 let iconCache: Electron.NativeImage | null = null;
@@ -21,7 +21,8 @@ async function appIcon(): Promise<Electron.NativeImage> {
   if (iconCache) return iconCache;
   // (app.getFileIcon derruba o processo no macOS 27: lê o ícone direto do pacote)
   const b = bundle();
-  const candidates = [b && path.join(b, 'Contents', 'Resources', 'icon.icns'), path.join(app.getAppPath(), 'build', 'icon-mac.png')].filter(Boolean) as string[];
+  // (o nativeImage do Electron não lê .icns no macOS 27: o PNG do ícone vai empacotado em build/icon-mac.png)
+  const candidates = [path.join(app.getAppPath(), 'build', 'icon-mac.png'), b && path.join(b, 'Contents', 'Resources', 'icon.icns')].filter(Boolean) as string[];
   for (const c of candidates) { const img = nativeImage.createFromPath(c); if (!img.isEmpty()) { iconCache = img.resize({ width: 256, height: 256 }); return iconCache; } }
   iconCache = nativeImage.createEmpty();
   return iconCache;
@@ -38,10 +39,10 @@ export function setupFdaAssistant(opts: { isDev: boolean; mainWindow: () => Brow
   function openHelper() {
     void appIcon();
     if (helper && !helper.isDestroyed()) { helper.showInactive(); return; }
-    // embaixo, no centro da tela: os Ajustes do Sistema abrem no meio e a lista fica visível acima
+    // à direita da tela, na altura do meio: os Ajustes do Sistema abrem no centro e a lista fica livre à esquerda
     const area = screen.getPrimaryDisplay().workArea;
     helper = new BrowserWindow({
-      width: W, height: H, x: Math.round(area.x + (area.width - W) / 2), y: Math.round(area.y + area.height - H - 24),
+      width: W, height: H, x: Math.round(area.x + area.width - W - 24), y: Math.round(area.y + (area.height - H) / 2),
       frame: false, transparent: true, resizable: false, minimizable: false, maximizable: false, fullscreenable: false,
       skipTaskbar: true, alwaysOnTop: true, hasShadow: false, show: false, backgroundColor: '#00000000',
       webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true },
