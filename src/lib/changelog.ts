@@ -5,6 +5,26 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.0', date: '2026-11-23', headline: 'Monitor de hardware em 3D, nível AIDA64',
+    groups: [
+      { title: 'Modelos 3D de verdade', icon: 'chip', items: [
+        'Placa de vídeo, processador, memória RAM, placa-mãe, SSD e energia em 3D com luz, reflexos e LEDs neon (three.js).',
+        'A visão geral mostra o seu computador: PC em gabinete de vidro com water cooler, MacBook ou notebook Windows.',
+        'Ventoinhas giram com o uso, os LEDs acompanham a cor de destaque, a RAM aparece nos slots e o water cooler mostra a temperatura.',
+      ] },
+      { title: 'Monitoramento completo', icon: 'sparkles', items: [
+        'Cada componente com tabela de sensores: valor atual, mínimo, máximo, média e minigráfico.',
+        'Windows: LibreHardwareMonitor integrado. Ative o monitoramento avançado para ler temperatura e frequência por núcleo, tensões, ventoinhas da placa-mãe, consumo e SMART.',
+        'Mac: frequência dos núcleos de eficiência e de desempenho, frequência e consumo da GPU, sem pedir senha.',
+      ] },
+      { title: 'Novas abas', icon: 'download', items: [
+        'Armazenamento: cada disco com modelo, firmware, interface, saúde, temperatura, horas ligado, dados gravados e partições.',
+        'Energia: fluxo animado da fonte (PC) ou da bateria (notebook), consumo, tensões e carregador.',
+        'Sensores: mapa térmico de todos os componentes e exportação dos dados em CSV.',
+      ] },
+    ],
+  },
+  {
     version: '1.3.2', date: '2026-11-23', headline: 'Buscar atualização a qualquer momento',
     groups: [
       { title: 'Atualizações', icon: 'download', items: [

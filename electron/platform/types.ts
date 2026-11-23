@@ -218,6 +218,18 @@ export interface MetricsApi {
   hardware(): Promise<HardwareInfo>;
   /** leituras ao vivo de GPU, energia, frequência e ventoinhas */
   hwLive(): Promise<HwLive>;
+  /** ativa/desativa o monitoramento avançado (só Windows; no Mac já é automático) */
+  advancedActivate?(): Promise<{ ok: boolean; message: string }>;
+  advancedDeactivate?(): Promise<{ ok: boolean; message: string }>;
+  /** discos físicos com detalhes (modelo, firmware, saúde, SMART) */
+  disks(): Promise<DiskDetail[]>;
+}
+
+export interface DiskDetail {
+  id: string; name: string; model?: string; firmware?: string; serialHidden?: boolean; bus?: string; media?: string; size?: number;
+  link?: string; trim?: boolean; health?: string; healthPct?: number; temp?: number; powerOnHours?: number; powerCycles?: number;
+  written?: number; read?: number; unsafeShutdowns?: number; mediaErrors?: number; spare?: number; partitions?: { name: string; size: number; fs?: string; mount?: string }[];
+  needsAdmin?: boolean;
 }
 
 export interface HardwareInfo {
@@ -233,7 +245,9 @@ export interface HwLive {
   cpuMHz?: number;
   fans: { name: string; rpm: number }[];
   /** todos os sensores de temperatura disponíveis (um por disco, por GPU, zonas térmicas…) */
-  sensors?: { kind: 'cpu' | 'gpu' | 'disk' | 'battery' | 'board'; name: string; value: number }[];
+  sensors?: { kind: 'cpu' | 'gpu' | 'disk' | 'battery' | 'board' | 'ram' | 'psu'; group?: string; hw?: string; name: string; value: number; min?: number; max?: number; unit?: string }[];
+  /** monitoramento avançado (Windows: LibreHardwareMonitor + driver PawnIO; Mac: IOReport) */
+  advanced?: { available: boolean; active: boolean; source?: string };
   /** o que só aparece com o app aberto como administrador */
   needsAdmin?: string;
 }

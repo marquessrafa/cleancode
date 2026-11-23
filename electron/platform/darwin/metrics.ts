@@ -5,7 +5,7 @@ import { execFile } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import type { MetricsApi, MemoryInfo, BatteryInfo, Temperatures, NetCounters, ConnectedDevice, MemoryDetail, BatteryHealth, NetworkInfo, HardwareInfo, HwLive } from '../types';
+import type { MetricsApi, MemoryInfo, BatteryInfo, Temperatures, NetCounters, ConnectedDevice, MemoryDetail, BatteryHealth, NetworkInfo, HardwareInfo, HwLive, DiskDetail } from '../types';
 
 function run(cmd: string, args: string[], timeout = 8000): Promise<string> {
   return new Promise((resolve) => execFile(cmd, args, { encoding: 'utf8', timeout, maxBuffer: 16 * 1024 * 1024 }, (_e, out) => resolve(out || '')));
@@ -205,8 +205,25 @@ async function hardware(): Promise<HardwareInfo> {
   if (hwCache.gpus[0] && !hwCache.gpus[0].cores) { const c = /"gpu-core-count"\s*=\s*(\d+)/.exec(await run('/usr/sbin/ioreg', ['-r', '-d', '1', '-c', 'IOAccelerator'], 5000))?.[1]; if (c) hwCache.gpus[0].cores = +c; }
   return hwCache;
 }
+// helper cc-power (IOReport): uma linha JSON por segundo com frequência e consumo
+let power: { gpuW?: number; cpuW?: number; aneW?: number; dramW?: number; clusters?: { name: string; mhz: number; active: number }[]; gpuMhz?: number; gpuActive?: number } | null = null;
+let powerProc: import('child_process').ChildProcess | null = null;
+function startPower() {
+  if (powerProc || process.arch !== 'arm64') return;
+  const bin = sensorsPath()?.replace(/cc-sensors$/, 'cc-power');
+  if (!bin || !fs.existsSync(bin)) return;
+  const { spawn } = require('child_process') as typeof import('child_process');
+  powerProc = spawn(bin, [], { stdio: ['ignore', 'pipe', 'ignore'] });
+  let buf = '';
+  powerProc.stdout!.setEncoding('utf8');
+  powerProc.stdout!.on('data', (d: string) => { buf += d; let i: number; while ((i = buf.indexOf('\n')) >= 0) { const l = buf.slice(0, i); buf = buf.slice(i + 1); try { const j = JSON.parse(l); if (!j.error) power = j; } catch { /* */ } } });
+  powerProc.on('exit', () => { powerProc = null; });
+  process.once('exit', () => powerProc?.kill());
+}
+
 let liveCache: { at: number; value: HwLive } | null = null;
 async function hwLive(): Promise<HwLive> {
+  startPower();
   if (liveCache && Date.now() - liveCache.at < 1500) return liveCache.value;
   const [acc, bat, temps] = await Promise.all([run('/usr/sbin/ioreg', ['-r', '-d', '1', '-c', 'IOAccelerator'], 4000), run('/usr/sbin/ioreg', ['-rn', 'AppleSmartBattery'], 4000), temperatures()]);
   const stat = (k: string) => { const m = new RegExp(`"${k}"=(\\d+)`).exec(acc); return m ? +m[1] : undefined; };
@@ -219,9 +236,22 @@ async function hwLive(): Promise<HwLive> {
   const value: HwLive = {
     gpu: { util: stat('Device Utilization %'), memUsed: stat('In use system memory'), memTotal: os.totalmem(), temp: temps.gpu },
     power: { systemW: sysLoad ? +sysLoad / 1000 : undefined, adapterW: adapterW ? +adapterW : undefined, voltage: volt ? volt / 1000 : undefined, current: amp !== undefined ? amp / 1000 : undefined, batteryW: volt && amp !== undefined ? (volt * amp) / 1e6 : undefined },
-    cpuMHz: undefined,
+    cpuMHz: (() => { const p = power?.clusters?.find((c) => c.name === 'PCPU'), e = power?.clusters?.find((c) => c.name === 'ECPU'); const c = p && p.active > 0.05 ? p : e; return c && c.mhz ? Math.round(c.mhz) : undefined; })(),
     fans: [],
+    advanced: { available: process.arch === 'arm64', active: !!power, source: 'IOReport' },
     sensors: [
+      ...((power?.clusters || []).filter((c) => /^(E|P)CPU\d*$/.test(c.name)).flatMap((c) => {
+        const label = c.name.startsWith('E') ? 'Núcleos de eficiência' : 'Núcleos de desempenho';
+        const suffix = /\d$/.test(c.name) ? ` ${Number(c.name.replace(/\D/g, '')) + 1}` : '';
+        return [{ kind: 'cpu' as const, group: 'clock', name: label + suffix, value: Math.round(c.active > 0.01 ? c.mhz : 0), unit: 'MHz' }, { kind: 'cpu' as const, group: 'load', name: `${label}${suffix} (ativo)`, value: Math.round(c.active * 100), unit: '%' }];
+      })),
+      ...(power?.gpuMhz !== undefined ? [{ kind: 'gpu' as const, group: 'clock', name: 'GPU', value: Math.round((power.gpuActive || 0) > 0.01 ? power.gpuMhz : 0), unit: 'MHz' }, { kind: 'gpu' as const, group: 'load', name: 'GPU (ativa)', value: Math.round((power.gpuActive || 0) * 100), unit: '%' }] : []),
+      ...(power?.gpuW !== undefined ? [{ kind: 'gpu' as const, group: 'power', name: 'GPU', value: Math.round(power.gpuW * 100) / 100, unit: 'W' }] : []),
+      ...(power?.cpuW ? [{ kind: 'cpu' as const, group: 'power', name: 'CPU', value: Math.round(power.cpuW * 100) / 100, unit: 'W' }] : []),
+      ...(power?.aneW ? [{ kind: 'cpu' as const, group: 'power', name: 'Neural Engine', value: Math.round(power.aneW * 100) / 100, unit: 'W' }] : []),
+      ...(sysLoad ? [{ kind: 'psu' as const, group: 'power', name: 'Sistema', value: Math.round(+sysLoad / 10) / 100, unit: 'W' }] : []),
+      ...(volt ? [{ kind: 'battery' as const, group: 'volt', name: 'Bateria', value: volt / 1000, unit: 'V' }] : []),
+      ...(amp !== undefined ? [{ kind: 'battery' as const, group: 'current', name: 'Bateria', value: amp / 1000, unit: 'A' }] : []),
       ...(temps.cpu !== undefined ? [{ kind: 'cpu' as const, name: 'Processador', value: temps.cpu }] : []),
       ...(temps.gpu !== undefined ? [{ kind: 'gpu' as const, name: 'GPU', value: temps.gpu }] : []),
       ...(temps.ssd !== undefined ? [{ kind: 'disk' as const, name: 'SSD interno', value: temps.ssd }] : []),
@@ -232,4 +262,25 @@ async function hwLive(): Promise<HwLive> {
   return value;
 }
 
-export const metrics: MetricsApi = { machineName, memory, battery, temperatures, network, devices, memoryDetail, batteryHealth, networkInfo, eject, hardware, hwLive };
+// ---------- discos físicos ----------
+async function disks(): Promise<DiskDetail[]> {
+  let sp: any = {};
+  try { sp = JSON.parse(await run('/usr/sbin/system_profiler', ['SPNVMeDataType', 'SPSerialATADataType', 'SPUSBDataType', '-json'], 30000)); } catch { /* */ }
+  const temps = await temperatures().catch((): Temperatures => ({}));
+  const out: DiskDetail[] = [];
+  const vols = (it: any) => (it.volumes || []).map((v: any) => ({ name: v._name, size: Number(v.size_in_bytes) || 0, fs: v.file_system, mount: v.mount_point }));
+  for (const ctl of sp.SPNVMeDataType || []) for (const d of ctl._items || []) out.push({
+    id: d.bsd_name || d._name, name: d._name, model: d.device_model, firmware: d.device_revision, bus: 'NVMe', media: 'SSD', size: Number(d.size_in_bytes) || undefined,
+    link: [d.spnvme_linkspeed, d.spnvme_linkwidth].filter(Boolean).join(' · ') || undefined, trim: /yes/i.test(d.spnvme_trim_support || ''),
+    health: /verified/i.test(d.smart_status || '') ? 'Saudável' : d.smart_status, temp: d.removable_media === 'yes' ? undefined : temps.ssd, partitions: vols(d),
+  });
+  for (const ctl of sp.SPSerialATADataType || []) for (const d of ctl._items || []) out.push({
+    id: d.bsd_name || d._name, name: d._name, model: d.device_model, firmware: d.device_revision, bus: 'SATA', media: /solid/i.test(d.spsata_medium_type || '') ? 'SSD' : 'HD',
+    size: Number(d.size_in_bytes) || undefined, trim: /yes/i.test(d.spsata_trim_support || ''), health: /verified/i.test(d.smart_status || '') ? 'Saudável' : d.smart_status, partitions: vols(d),
+  });
+  const walk = (items: any[]) => { for (const it of items || []) { if (it.Media) for (const m of it.Media) out.push({ id: m.bsd_name || m._name, name: m._name || it._name, model: it._name, bus: 'USB', media: 'Externo', size: Number(m.size_in_bytes) || undefined, partitions: vols(m) }); walk(it._items); } };
+  for (const bus of sp.SPUSBDataType || []) walk(bus._items);
+  return out;
+}
+
+export const metrics: MetricsApi = { machineName, memory, battery, temperatures, network, devices, memoryDetail, batteryHealth, networkInfo, eject, hardware, hwLive, disks };

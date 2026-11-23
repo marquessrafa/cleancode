@@ -42,4 +42,11 @@ if (process.platform === 'darwin') {
     'native/macos/cc-sensors.c', '-o', 'dist-electron/cc-sensors',
   ], { stdio: 'inherit' });
   console.log('dist-electron/cc-sensors gerado');
+  // consumo e frequência (IOReport, sem senha)
+  execFileSync('clang', [
+    '-arch', 'arm64', '-arch', 'x86_64', '-mmacosx-version-min=12.0', '-O2', '-Wall',
+    '-framework', 'IOKit', '-framework', 'CoreFoundation', '-lIOReport',
+    'native/macos/cc-power.c', '-o', 'dist-electron/cc-power',
+  ], { stdio: 'inherit' });
+  console.log('dist-electron/cc-power gerado');
 }

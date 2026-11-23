@@ -174,6 +174,11 @@ ipcMain.handle('metrics:details', (_e, kind: string) => metricsDetails(kind));
 ipcMain.handle('metrics:eject', (_e, root: string) => ejectDrive(root));
 ipcMain.handle('hardware:info', () => hardwareInfo());
 ipcMain.handle('hardware:live', () => hardwareLive());
+ipcMain.handle('hardware:disks', () => system.metrics.disks().catch(() => []));
+ipcMain.handle('hardware:advanced', async (_e, on: boolean) => {
+  const f = on ? system.metrics.advancedActivate : system.metrics.advancedDeactivate;
+  return f ? f() : { ok: false, message: 'No Mac o monitoramento avançado já é automático' };
+});
 // ---------- limpeza ----------
 const activityFile = path.join(userDir, 'activity.json');
 ipcMain.handle('cleanup:categories', () => Cleanup.categories());

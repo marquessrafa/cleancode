@@ -4,3 +4,5 @@ dist-electron/
 release/
 release-build/
 .DS_Store
+native/windows/cc-lhm/bin/
+native/windows/cc-lhm/obj/

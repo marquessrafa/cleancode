@@ -3,7 +3,8 @@
 // temperatura: zona térmica ACPI (costuma exigir administrador; sem leitura, fica vazia).
 import { execFile } from 'child_process';
 import os from 'os';
-import type { MetricsApi, MemoryInfo, BatteryInfo, Temperatures, NetCounters, ConnectedDevice, MemoryDetail, BatteryHealth, NetworkInfo, HardwareInfo, HwLive } from '../types';
+import * as Lhm from './lhm';
+import type { DiskDetail, MetricsApi, MemoryInfo, BatteryInfo, Temperatures, NetCounters, ConnectedDevice, MemoryDetail, BatteryHealth, NetworkInfo, HardwareInfo, HwLive } from '../types';
 
 function run(cmd: string, args: string[], timeout = 15000): Promise<string> {
   return new Promise((resolve) => execFile(cmd, args, { encoding: 'utf8', timeout, windowsHide: true, maxBuffer: 8 * 1024 * 1024 }, (_e, out) => resolve(out || '')));
@@ -211,17 +212,54 @@ async function hwLive(): Promise<HwLive> {
       ...(!gpus.some((g) => g.temp !== undefined) && j.temp ? [{ kind: 'gpu' as const, name: hw?.gpus[0]?.name || 'GPU', value: Number(j.temp) }] : []),
       ...disks.filter((d) => d.temp !== undefined).map((d) => ({ kind: 'disk' as const, name: `${d.name}${d.bus ? ` (${d.bus})` : ''}`, value: d.temp! })),
     ];
+    // LibreHardwareMonitor (helper incluído): sensores completos, nível AIDA quando o driver está ativo
+    const lsnap = await Lhm.snapshot().catch(() => null);
+    const flat = Lhm.flatten(lsnap);
+    const lhmActive = await Lhm.advancedActive().catch(() => false);
+    const pick = (kind: string, group: string, re: RegExp) => flat.find((x) => x.kind === kind && x.group === group && re.test(x.name));
+    const cpuClocks = flat.filter((x) => x.kind === 'cpu' && x.group === 'clock' && /^(Core|P-Core|E-Core|CPU Core) ?#?\d+/i.test(x.name)).map((x) => x.value).filter((v) => v > 0);
+    const cpuPkgW = pick('cpu', 'power', /Package|CPU Package/i)?.value;
+    const gpuW = pick('gpu', 'power', /GPU (Package|Power|Board)|Total/i)?.value;
     const value: HwLive = {
-      sensors,
-      needsAdmin: !admin && disks.length > 0 && disks.every((d) => d.temp === undefined) ? `A temperatura de ${disks.length === 1 ? 'o disco' : `cada um dos ${disks.length} discos`} só é informada pelo Windows com o app aberto como administrador.` : undefined,
-      gpu: { util: typeof j.util === 'number' ? Math.round(j.util) : undefined, memUsed: j.mem || undefined, memTotal: hw?.gpus[0]?.vram, temp: gpuTemp, procs: (Array.isArray(j.procs) ? j.procs : j.procs ? [j.procs] : []).map((p: any) => ({ name: p.name || `PID ${p.pid}`, pid: p.pid, util: p.util })) },
-      power: { batteryW: rate ? rate / 1000 : undefined, voltage: b.Voltage ? b.Voltage / 1000 : undefined, plan: /\(([^)]+)\)\s*$/.exec(String(j.plan || '').trim())?.[1] },
-      cpuMHz: j.perf && hw?.cpu.baseMHz ? Math.round((j.perf / 100) * hw.cpu.baseMHz) : undefined,
-      fans: gpus.filter((g) => g.fanRPM).map((g) => ({ name: `Ventoinha da ${g.name}`, rpm: g.fanRPM! })),
+      advanced: { available: !!Lhm.helperPath(), active: lhmActive, source: 'LibreHardwareMonitor' },
+      sensors: flat.length ? flat.map((x) => ({ kind: x.kind as any, group: x.group, hw: x.hw, name: x.name, value: x.value, min: x.min, max: x.max, unit: x.unit })) : sensors,
+      needsAdmin: !lhmActive && !admin && disks.length > 0 && disks.every((d) => d.temp === undefined) && !flat.some((x) => x.kind === 'disk' && x.group === 'temp') ? `A temperatura de ${disks.length === 1 ? 'o disco' : `cada um dos ${disks.length} discos`} só é informada pelo Windows com o app aberto como administrador.` : undefined,
+      gpu: { util: pick('gpu', 'load', /GPU Core|^D3D 3D/i)?.value !== undefined ? Math.round(pick('gpu', 'load', /GPU Core|^D3D 3D/i)!.value) : typeof j.util === 'number' ? Math.round(j.util) : undefined, memUsed: (pick('gpu', 'data', /Memory Used|GPU Memory Used/i)?.value ?? 0) * 1048576 || j.mem || undefined, memTotal: (pick('gpu', 'data', /Memory Total/i)?.value ?? 0) * 1048576 || hw?.gpus[0]?.vram, temp: pick('gpu', 'temp', /GPU Core|GPU Temperature|^GPU$/i)?.value ?? gpuTemp, procs: (Array.isArray(j.procs) ? j.procs : j.procs ? [j.procs] : []).map((p: any) => ({ name: p.name || `PID ${p.pid}`, pid: p.pid, util: p.util })) },
+      power: { systemW: cpuPkgW !== undefined ? cpuPkgW + (gpuW || 0) : undefined, batteryW: rate ? rate / 1000 : undefined, voltage: b.Voltage ? b.Voltage / 1000 : undefined, plan: /\(([^)]+)\)\s*$/.exec(String(j.plan || '').trim())?.[1] },
+      cpuMHz: cpuClocks.length ? Math.round(cpuClocks.reduce((a, b) => a + b, 0) / cpuClocks.length) : j.perf && hw?.cpu.baseMHz ? Math.round((j.perf / 100) * hw.cpu.baseMHz) : undefined,
+      fans: flat.some((x) => x.group === 'fan') ? flat.filter((x) => x.group === 'fan' && x.value > 0).map((x) => ({ name: `${x.name} · ${x.hw}`, rpm: Math.round(x.value) })) : gpus.filter((g) => g.fanRPM).map((g) => ({ name: `Ventoinha da ${g.name}`, rpm: g.fanRPM! })),
     };
     liveCache = { at: Date.now(), value };
     return value;
   })().finally(() => { liveRunning = null; }));
 }
 
-export const metrics: MetricsApi = { machineName, memory, battery, temperatures, network, devices, memoryDetail, batteryHealth, networkInfo, eject, hardware, hwLive };
+// ---------- discos físicos ----------
+const DISKINFO = String.raw`$ErrorActionPreference='SilentlyContinue'
+@(Get-PhysicalDisk | ForEach-Object { $d=$_; $r=$d | Get-StorageReliabilityCounter
+  $parts=@(Get-Partition -DiskNumber $d.DeviceId | ForEach-Object { $v=$_ | Get-Volume; [pscustomobject]@{name=$(if($_.DriveLetter){"$($_.DriveLetter):"}else{$_.Type});size=[int64]$_.Size;fs=$v.FileSystem;mount=$v.FileSystemLabel} })
+  [pscustomobject]@{id=[string]$d.DeviceId;name=$d.FriendlyName;model=$d.Model;fw=$d.FirmwareVersion;bus=[string]$d.BusType;media=[string]$d.MediaType;size=[int64]$d.Size;health=[string]$d.HealthStatus;spindle=$d.SpindleSpeed;
+    temp=$r.Temperature;hours=$r.PowerOnHours;cycles=$r.StartStopCycleCount;wear=$r.Wear;rerr=$r.ReadErrorsTotal;werr=$r.WriteErrorsTotal;parts=$parts} }) | ConvertTo-Json -Depth 4 -Compress`;
+async function disks(): Promise<DiskDetail[]> {
+  let j: any = []; try { j = JSON.parse((await ps(DISKINFO)).trim() || '[]'); } catch { /* */ }
+  const list: any[] = Array.isArray(j) ? j : j ? [j] : [];
+  const flat = Lhm.flatten(await Lhm.snapshot().catch(() => null)).filter((x) => x.kind === 'disk');
+  return list.map((d) => {
+    const mine = flat.filter((x) => d.name && (x.hw.includes(d.name) || d.name.includes(x.hw)));
+    const f = (re: RegExp, g?: string) => mine.find((x) => re.test(x.name) && (!g || x.group === g))?.value;
+    const lifeLeft = f(/Remaining Life|Percentage Used|Life/i, 'level');
+    return {
+      id: d.id, name: d.name || d.model || `Disco ${d.id}`, model: d.model, firmware: d.fw, bus: d.bus, media: d.media === 'Unspecified' ? undefined : d.media, size: d.size,
+      health: d.health === 'Healthy' ? 'Saudável' : d.health === 'Warning' ? 'Atenção' : d.health === 'Unhealthy' ? 'Falhando' : d.health || undefined,
+      healthPct: lifeLeft !== undefined ? Math.round(lifeLeft) : typeof d.wear === 'number' ? 100 - d.wear : undefined,
+      temp: f(/Temperature/i, 'temp') ?? (d.temp > 0 ? d.temp : undefined), powerOnHours: f(/Power.?On Hours/i) ?? (d.hours || undefined), powerCycles: f(/Power Cycle/i) ?? (d.cycles || undefined),
+      written: (f(/Data Written|Total Bytes Written|Host Writes/i, 'data') ?? 0) * 1073741824 || undefined, read: (f(/Data Read|Total Bytes Read|Host Reads/i, 'data') ?? 0) * 1073741824 || undefined,
+      unsafeShutdowns: f(/Unsafe Shutdown/i), mediaErrors: f(/Media Errors/i), spare: f(/Available Spare$/i),
+      partitions: (Array.isArray(d.parts) ? d.parts : d.parts ? [d.parts] : []).map((p: any) => ({ name: p.name, size: p.size, fs: p.fs || undefined, mount: p.mount || undefined })),
+      needsAdmin: d.temp == null && !mine.length,
+    };
+  });
+}
+
+export const metrics: MetricsApi = { machineName, memory, battery, temperatures, network, devices, memoryDetail, batteryHealth, networkInfo, eject, hardware, hwLive, disks,
+  advancedActivate: () => Lhm.activate(), advancedDeactivate: () => Lhm.deactivate() };

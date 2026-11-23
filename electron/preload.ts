@@ -47,6 +47,8 @@ contextBridge.exposeInMainWorld('cc', {
   whatsNew: () => inv('app:whatsNew'),
   hardwareInfo: () => inv('hardware:info'),
   hardwareLive: () => inv('hardware:live'),
+  hardwareDisks: () => inv('hardware:disks'),
+  hardwareAdvanced: (on: boolean) => inv('hardware:advanced', on),
   whatsNewSeen: () => inv('app:whatsNewSeen'),
   clutterScan: () => inv('clutter:scan'),
   clutterCancel: () => inv('clutter:cancel'),

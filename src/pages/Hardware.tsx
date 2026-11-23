@@ -1,432 +1,351 @@
-// Monitor de hardware: ficha técnica e leituras ao vivo de processador, placa de vídeo, memória,
-// placa-mãe, energia e sensores, com cenas 3D (CSS 3D + SVG) que reagem aos dados reais:
-// núcleos acendem com a carga, ventoinhas giram com o uso da GPU, pentes de RAM enchem,
-// a energia corre do carregador para a placa e as trilhas aceleram com a atividade.
+// Monitor de hardware: modelos 3D (three.js) de cada componente e monitoramento no estilo AIDA64,
+// com valor atual, mínimo, máximo, média e minigráfico de cada sensor desde que a tela foi aberta.
+// Windows: LibreHardwareMonitor (com o driver PawnIO, quando ativado). Mac: IOReport + sensores do chip.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Cpu, Gpu, MemoryStick, CircuitBoard, Zap, Thermometer, LayoutGrid, Fan, HardDrive, Monitor } from 'lucide-react';
-import { cc, isMac, HardwareInfo, HardwareLive } from '../lib/api';
+import { Cpu, Gpu, MemoryStick, CircuitBoard, Zap, Thermometer, LayoutGrid, HardDrive, Download, ShieldCheck, Loader2, Activity, Fan } from 'lucide-react';
+import { cc, isMac, HardwareInfo, HardwareLive, DiskDetail } from '../lib/api';
 import { fmtSize } from '../lib/format';
 import { cx } from '../components/ui';
+import { useApp } from '../lib/store';
 import { PageBody } from './common';
+import Viewer3D, { LiveInput } from '../hw3d/Viewer';
+import { gpuModel, cpuModel, ramModel, boardModel, ssdModel, powerModel, pcModel, laptopModel } from '../hw3d/models';
 
-type Tab = 'overview' | 'cpu' | 'gpu' | 'ram' | 'board' | 'power' | 'sensors';
+type Tab = 'overview' | 'cpu' | 'gpu' | 'ram' | 'board' | 'storage' | 'power' | 'sensors';
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'overview', label: 'Visão geral', icon: <LayoutGrid size={15} /> },
   { id: 'cpu', label: 'Processador', icon: <Cpu size={15} /> },
   { id: 'gpu', label: 'Placa de vídeo', icon: <Gpu size={15} /> },
-  { id: 'ram', label: 'Memória RAM', icon: <MemoryStick size={15} /> },
+  { id: 'ram', label: 'Memória', icon: <MemoryStick size={15} /> },
   { id: 'board', label: isMac ? 'Placa lógica' : 'Placa-mãe', icon: <CircuitBoard size={15} /> },
+  { id: 'storage', label: 'Armazenamento', icon: <HardDrive size={15} /> },
   { id: 'power', label: 'Energia', icon: <Zap size={15} /> },
   { id: 'sensors', label: 'Sensores', icon: <Thermometer size={15} /> },
 ];
-const C = { cpu: 'oklch(from var(--accent) .74 .17 calc(h + 220))', gpu: 'oklch(from var(--accent) .72 .19 calc(h + 300))', ram: 'oklch(from var(--accent) .8 .15 calc(h + 150))', pwr: 'oklch(from var(--accent) .82 .16 calc(h + 70))', acc: 'var(--accent)' };
-const n1 = (v?: number, d = 1) => (v === undefined || isNaN(v) ? '—' : v.toLocaleString('pt-BR', { maximumFractionDigits: d }));
-const ghz = (mhz?: number) => (mhz ? `${(mhz / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} GHz` : '—');
+const GROUP_LABEL: Record<string, string> = { temp: 'Temperaturas', volt: 'Tensões', current: 'Correntes', power: 'Consumo', clock: 'Frequências', load: 'Uso', fan: 'Ventoinhas', control: 'Controle das ventoinhas', level: 'Níveis', data: 'Dados', throughput: 'Transferência', energy: 'Energia', factor: 'Fatores', time: 'Tempo' };
+const GROUP_ORDER = ['temp', 'power', 'volt', 'current', 'clock', 'load', 'fan', 'control', 'level', 'data', 'throughput', 'energy', 'factor', 'time'];
+const KIND_LABEL: Record<string, string> = { cpu: 'Processador', gpu: 'Placa de vídeo', ram: 'Memória', board: isMac ? 'Placa lógica' : 'Placa-mãe', disk: 'Armazenamento', battery: 'Bateria', psu: 'Energia' };
+const n = (v?: number, d = 1) => (v === undefined || v === null || isNaN(v) ? '—' : v.toLocaleString('pt-BR', { maximumFractionDigits: d }));
+const fmtVal = (v: number | undefined, unit = '') => {
+  if (v === undefined) return '—';
+  if (unit === 'B/s') return `${fmtSize(v, 'auto', 1)}/s`;
+  if (unit === 'MHz' && v >= 1000) return `${n(v / 1000, 2)} GHz`;
+  const d = unit === 'V' || unit === 'A' ? 3 : unit === 'W' ? 1 : unit === '°C' ? 0 : 1;
+  return `${n(v, d)}${unit ? ` ${unit}` : ''}`;
+};
+const C = { cpu: 'oklch(from var(--accent) .74 .17 calc(h + 220))', gpu: 'oklch(from var(--accent) .72 .19 calc(h + 300))', ram: 'oklch(from var(--accent) .8 .15 calc(h + 150))', pwr: 'oklch(from var(--accent) .82 .16 calc(h + 70))' };
 
-// ---------- 3D ----------
-/** Cena com perspectiva; o plano inclina seguindo o mouse. */
-function Scene({ children, height = 420, rx = 56, rz = -36, scale = 1 }: { children: React.ReactNode; height?: number; rx?: number; rz?: number; scale?: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [t, setT] = useState({ x: 0, y: 0 });
-  return (
-    <div ref={ref} className="hw-scene relative overflow-hidden rounded-2xl border border-[var(--line)]" style={{ height, background: 'radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%), var(--surface)' }}
-      onMouseMove={(e) => { const r = ref.current!.getBoundingClientRect(); setT({ x: (e.clientX - r.left) / r.width - 0.5, y: (e.clientY - r.top) / r.height - 0.5 }); }}
-      onMouseLeave={() => setT({ x: 0, y: 0 })}>
-      <div className="hw-grid absolute inset-0 opacity-40" />
-      <div className="absolute left-1/2 top-1/2" style={{ transformStyle: 'preserve-3d', transform: `translate(-50%,-50%) scale(${scale}) rotateX(${rx - t.y * 10}deg) rotateZ(${rz + t.x * 12}deg)`, transition: 'transform .25s ease-out' }}>
-        {children}
-      </div>
-    </div>
-  );
+// ---------- dados ao vivo + estatísticas da sessão ----------
+interface Stat { min: number; max: number; sum: number; count: number; hist: number[] }
+function useHardware(active: boolean) {
+  const [info, setInfo] = useState<HardwareInfo | null>(null);
+  const [live, setLive] = useState<HardwareLive | null>(null);
+  const stats = useRef(new Map<string, Stat>());
+  const hist = useRef<{ cpu: number[]; gpu: number[]; mem: number[]; pwr: number[] }>({ cpu: [], gpu: [], mem: [], pwr: [] });
+  useEffect(() => { cc.hardwareInfo().then(setInfo).catch(() => null); }, []);
+  useEffect(() => {
+    if (!active) return;
+    let alive = true, t: ReturnType<typeof setTimeout>;
+    const tick = async () => {
+      try {
+        const l = await cc.hardwareLive(); if (!alive) return;
+        for (const s of l.live?.sensors || []) {
+          const k = `${s.kind}|${s.hw || ''}|${s.group || 'temp'}|${s.name}`;
+          const st = stats.current.get(k) || { min: s.value, max: s.value, sum: 0, count: 0, hist: [] };
+          st.min = Math.min(st.min, s.value); st.max = Math.max(st.max, s.value); st.sum += s.value; st.count++; st.hist = [...st.hist.slice(-59), s.value];
+          stats.current.set(k, st);
+        }
+        const h = hist.current; const pw = l.live?.power.systemW ?? (l.live?.power.batteryW !== undefined ? Math.abs(l.live.power.batteryW) : undefined);
+        h.cpu = [...h.cpu.slice(-59), l.load]; if (l.live?.gpu.util !== undefined) h.gpu = [...h.gpu.slice(-59), l.live.gpu.util]; h.mem = [...h.mem.slice(-59), l.memory.pressure]; if (pw !== undefined) h.pwr = [...h.pwr.slice(-59), pw];
+        setLive(l);
+      } catch { /* próxima */ }
+      if (alive) t = setTimeout(tick, 1500);
+    };
+    tick();
+    return () => { alive = false; clearTimeout(t); };
+  }, [active]);
+  return { info, live, stats: stats.current, hist: hist.current };
 }
-/** Caixa 3D sobre o plano (topo + frente + lateral). */
-function Box({ x, y, w, h, d, color, top, children, onClick, title, glow, className }: { x: number; y: number; w: number; h: number; d: number; color: string; top?: string; children?: React.ReactNode; onClick?: () => void; title?: string; glow?: number; className?: string }) {
-  const side = `color-mix(in srgb, ${color} 55%, #000)`, front = `color-mix(in srgb, ${color} 70%, #000)`;
-  return (
-    <div onClick={onClick} title={title} className={cx('hw-box absolute', onClick && 'cursor-pointer', className)} style={{ left: x, top: y, width: w, height: h }}>
-      {glow ? <div className="absolute -inset-3 rounded-xl blur-xl" style={{ background: color, opacity: 0.25 + glow * 0.55 }} /> : null}
-      <div className="absolute inset-x-0 overflow-hidden" style={{ top: h, height: d, background: front, transformOrigin: 'top', transform: 'rotateX(90deg)' }} />
-      <div className="absolute inset-y-0" style={{ left: w, width: d, background: side, transformOrigin: 'left', transform: 'rotateY(-90deg)' }} />
-      <div className="absolute inset-0 overflow-hidden rounded-[3px]" style={{ transform: `translateZ(${d}px)`, background: top || color, boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color} 60%, #fff3)` }}>{children}</div>
-    </div>
-  );
-}
-function Fan3D({ size, speed, color }: { size: number; speed: number; color: string }) {
-  return (
-    <div className="relative rounded-full" style={{ width: size, height: size, background: '#0b0c10', boxShadow: `inset 0 0 0 3px color-mix(in srgb, ${color} 50%, #222)` }}>
-      <div className="hw-spin absolute inset-[6%] rounded-full" style={{ animationDuration: `${speed}s`, background: `conic-gradient(from 0deg, ${color} 0 9%, transparent 9% 14%, ${color} 14% 23%, transparent 23% 28%, ${color} 28% 37%, transparent 37% 42%, ${color} 42% 51%, transparent 51% 56%, ${color} 56% 65%, transparent 65% 70%, ${color} 70% 79%, transparent 79% 84%, ${color} 84% 93%, transparent 93% 100%)`, opacity: 0.85, maskImage: 'radial-gradient(circle, transparent 18%, #000 20%)' }} />
-      <div className="absolute inset-[38%] rounded-full" style={{ background: `radial-gradient(circle, color-mix(in srgb, ${color} 70%, #fff), #111)` }} />
-    </div>
-  );
-}
-/** Trilhas animadas com pacotes de dados correndo (velocidade conforme a atividade). */
-function Traces({ paths, color, activity, w, h }: { paths: string[]; color: string; activity: number; w: number; h: number }) {
-  const dur = Math.max(0.6, 3.2 - activity * 2.6);
-  return (
-    <svg width={w} height={h} className="absolute left-0 top-0" style={{ overflow: 'visible' }}>
-      {paths.map((p, i) => (
-        <g key={i}>
-          <path d={p} fill="none" stroke={color} strokeOpacity=".22" strokeWidth="2" />
-          <path d={p} fill="none" stroke={color} strokeWidth="2" className="hw-trace" style={{ animationDuration: `${dur * 1.4}s` }} />
-          <circle r="3" fill={color} style={{ filter: `drop-shadow(0 0 4px ${color})` }}><animateMotion dur={`${dur + (i % 3) * 0.4}s`} repeatCount="indefinite" path={p} /></circle>
-        </g>
-      ))}
-    </svg>
-  );
-}
+const toLive = (live: HardwareLive | null): LiveInput => {
+  const L = live?.live;
+  return {
+    load: (live?.load ?? 0) / 100, cores: (live?.cores || []).map((c) => c / 100), gpu: (L?.gpu.util ?? 0) / 100, fanRpm: L?.fans?.[0]?.rpm, mem: (live?.memory.pressure ?? 0) / 100,
+    watts: L?.power.systemW ?? (L?.power.batteryW !== undefined ? Math.abs(L.power.batteryW) : undefined), battery: live?.battery ? live.battery.percent / 100 : undefined, charging: live?.battery?.charging,
+    temps: { cpu: live?.temps.cpu ?? L?.sensors?.find((s) => s.kind === 'cpu' && (s.group || 'temp') === 'temp')?.value ?? 0, gpu: L?.gpu.temp ?? 0 },
+  };
+};
 
-// ---------- gráficos ----------
-function Spark({ data, color, h = 54, max }: { data: number[]; color: string; h?: number; max?: number }) {
-  const w = 300, top = max ?? Math.max(1, ...data) * 1.15;
-  if (data.length < 2) return <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: h }} />;
-  const pts = data.slice(-60).map((v, i, a) => `${(i / (a.length - 1)) * w},${h - (Math.min(v, top) / top) * (h - 4) - 2}`);
-  const id = `g${color.length}${h}`;
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="w-full" style={{ height: h }}>
-      <defs><linearGradient id={id} x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={color} stopOpacity=".35" /><stop offset="1" stopColor={color} stopOpacity="0" /></linearGradient></defs>
-      <path d={`M${pts.join(' L')} L${w},${h} L0,${h} Z`} fill={`url(#${id})`} />
-      <path d={`M${pts.join(' L')}`} fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
+// ---------- peças ----------
+function Spark({ data, color = 'var(--accent)', h = 28 }: { data: number[]; color?: string; h?: number }) {
+  if (data.length < 2) return <svg className="w-full" style={{ height: h }} />;
+  const w = 120, top = Math.max(...data), bot = Math.min(...data), span = top - bot || 1;
+  const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - ((v - bot) / span) * (h - 4) - 2}`).join(' L');
+  return <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="w-full" style={{ height: h }}><path d={`M${pts}`} fill="none" stroke={color} strokeWidth="1.6" vectorEffect="non-scaling-stroke" /></svg>;
 }
-function Gauge({ value, max = 100, label, unit, color, warn = 75, danger = 90 }: { value?: number; max?: number; label: string; unit: string; color: string; warn?: number; danger?: number }) {
-  const r = 46, c = 2 * Math.PI * r * 0.75, v = Math.max(0, Math.min(1, (value ?? 0) / max));
-  const tone = value === undefined ? 'var(--line)' : value >= danger ? 'var(--danger)' : value >= warn ? 'var(--warn)' : color;
+function Metric({ label, value, sub, data, color = 'var(--accent)' }: { label: string; value: React.ReactNode; sub?: React.ReactNode; data?: number[]; color?: string }) {
   return (
-    <div className="flex flex-col items-center">
-      <svg width="120" height="104" viewBox="0 0 120 104">
-        <circle cx="60" cy="60" r={r} fill="none" stroke="var(--surface-2)" strokeWidth="10" strokeDasharray={`${c} 400`} transform="rotate(135 60 60)" strokeLinecap="round" />
-        <circle cx="60" cy="60" r={r} fill="none" stroke={tone} strokeWidth="10" strokeDasharray={`${c * v} 400`} transform="rotate(135 60 60)" strokeLinecap="round" style={{ transition: 'stroke-dasharray .8s cubic-bezier(.2,.8,.2,1)', filter: `drop-shadow(0 0 6px ${tone})` }} />
-        <text x="60" y="62" textAnchor="middle" className="fill-current text-[22px] font-semibold">{value === undefined ? '—' : Math.round(value)}</text>
-        <text x="60" y="80" textAnchor="middle" className="fill-[var(--muted)] text-[11px]">{unit}</text>
-      </svg>
-      <div className="-mt-2 text-[12px] font-medium text-muted">{label}</div>
-    </div>
-  );
-}
-function Spec({ rows }: { rows: [string, React.ReactNode][] }) {
-  return (
-    <div className="divide-y divide-[var(--line)] rounded-xl border border-[var(--line)] bg-[var(--surface)]">
-      {rows.filter(([, v]) => v !== undefined && v !== null && v !== '' && v !== '—').map(([k, v]) => <div key={k} className="flex items-baseline justify-between gap-4 px-4 py-2.5 text-[13px]"><span className="text-muted">{k}</span><span className="text-right font-medium tabular-nums">{v}</span></div>)}
-    </div>
-  );
-}
-function Metric({ label, value, color, children }: { label: string; value: React.ReactNode; color: string; children?: React.ReactNode }) {
-  return (
-    <div className="anim-rise rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
+    <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3.5">
       <div className="flex items-center gap-2 text-[12px] text-muted"><span className="h-2 w-2 rounded-full" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />{label}</div>
-      <div className="mt-1 text-[26px] font-semibold tabular-nums tracking-tight">{value}</div>
-      {children}
+      <div className="mt-1 text-[22px] font-semibold tabular-nums tracking-tight">{value}</div>
+      {sub && <div className="text-[11.5px] text-muted">{sub}</div>}
+      {data && <div className="mt-1.5"><Spark data={data} color={color} /></div>}
+    </div>
+  );
+}
+function Spec({ title, rows }: { title?: string; rows: [string, React.ReactNode][] }) {
+  const r = rows.filter(([, v]) => v !== undefined && v !== null && v !== '' && v !== '—');
+  if (!r.length) return null;
+  return (
+    <div className="overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface)]">
+      {title && <div className="border-b border-[var(--line)] px-4 py-2.5 text-[13px] font-semibold">{title}</div>}
+      <div className="divide-y divide-[var(--line)]">{r.map(([k, v]) => <div key={k} className="flex items-baseline justify-between gap-4 px-4 py-2 text-[13px]"><span className="text-muted">{k}</span><span className="text-right font-medium tabular-nums">{v}</span></div>)}</div>
+    </div>
+  );
+}
+/** Tabela de sensores no estilo AIDA64: agrupada, com atual/mín/máx/média e minigráfico. */
+function SensorTable({ live, stats, kinds, title = 'Sensores' }: { live: HardwareLive | null; stats: Map<string, Stat>; kinds?: string[]; title?: string }) {
+  const list = (live?.live?.sensors || []).filter((s) => !kinds || kinds.includes(s.kind));
+  const groups = useMemo(() => {
+    const g = new Map<string, typeof list>();
+    for (const s of list) { const k = s.group || 'temp'; const a = g.get(k); a ? a.push(s) : g.set(k, [s]); }
+    return [...g.entries()].sort((a, b) => GROUP_ORDER.indexOf(a[0]) - GROUP_ORDER.indexOf(b[0]));
+  }, [list]);
+  if (!list.length) return <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-5 text-center text-[13px] text-muted">Nenhum sensor disponível para este componente{!isMac ? ' sem o monitoramento avançado' : ''}.</div>;
+  return (
+    <div className="overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface)]">
+      <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-2.5"><span className="text-[13px] font-semibold">{title}</span><span className="text-[11px] text-muted">desde que a tela foi aberta</span></div>
+      <table className="w-full table-fixed text-[12.5px]">
+        <thead><tr className="text-left text-[11px] uppercase tracking-wider text-muted"><th className="px-4 py-1.5 font-medium">Sensor</th><th className="w-[92px] px-2 text-right font-medium">Atual</th><th className="w-[84px] px-2 text-right font-medium">Mín.</th><th className="w-[84px] px-2 text-right font-medium">Máx.</th><th className="w-[84px] px-2 text-right font-medium">Média</th><th className="w-[130px] px-4 font-medium">Histórico</th></tr></thead>
+        <tbody>
+          {groups.map(([g, rows]) => (
+            <React.Fragment key={g}>
+              <tr><td colSpan={6} className="bg-[var(--surface-2)] px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--accent)]">{GROUP_LABEL[g] || g}</td></tr>
+              {rows.map((s) => {
+                const st = stats.get(`${s.kind}|${s.hw || ''}|${s.group || 'temp'}|${s.name}`);
+                const unit = s.unit ?? '°C';
+                const hot = (s.group || 'temp') === 'temp' && s.value >= 85;
+                return (
+                  <tr key={`${s.hw}|${s.name}|${g}`} className="border-t border-[var(--line)] hover:bg-[var(--hover)]">
+                    <td className="px-4 py-1.5"><div className="truncate font-medium">{s.name}</div>{s.hw && <div className="truncate text-[11px] text-muted">{s.hw}</div>}</td>
+                    <td className={cx('px-2 text-right font-semibold tabular-nums', hot && 'text-[var(--danger)]')}>{fmtVal(s.value, unit)}</td>
+                    <td className="px-2 text-right tabular-nums text-muted">{fmtVal(st?.min ?? s.min, unit)}</td>
+                    <td className="px-2 text-right tabular-nums text-muted">{fmtVal(st?.max ?? s.max, unit)}</td>
+                    <td className="px-2 text-right tabular-nums text-muted">{fmtVal(st ? st.sum / st.count : undefined, unit)}</td>
+                    <td className="px-4"><Spark data={st?.hist || []} color={hot ? 'var(--danger)' : 'var(--accent)'} h={22} /></td>
+                  </tr>
+                );
+              })}
+            </React.Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+function AdvancedBanner({ live }: { live: HardwareLive | null }) {
+  const { toast } = useApp();
+  const [busy, setBusy] = useState(false);
+  const adv = live?.live?.advanced;
+  if (isMac || !adv || adv.active) return null;
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-[color-mix(in_srgb,var(--accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] p-4">
+      <ShieldCheck size={22} className="shrink-0 text-[var(--accent)]" />
+      <div className="min-w-0 flex-1 text-[13px]"><div className="font-semibold">Ative o monitoramento avançado</div><div className="text-muted">Lê temperatura e frequência de cada núcleo, tensões, ventoinhas da placa-mãe, consumo e SMART dos discos (LibreHardwareMonitor + driver PawnIO, assinado). O Windows pede permissão uma vez.</div></div>
+      <button disabled={busy || !adv.available} onClick={async () => { setBusy(true); const r = await cc.hardwareAdvanced(true); toast(r.message, r.ok ? 'ok' : 'error'); setBusy(false); }}
+        className="flex shrink-0 items-center gap-2 rounded-lg bg-[var(--accent)] px-3.5 py-2 text-[13px] font-semibold text-white disabled:opacity-60">{busy && <Loader2 size={14} className="animate-spin" />}{adv.available ? 'Ativar' : 'Componente ausente'}</button>
+    </div>
+  );
+}
+function Stage({ build, buildKey, live, height = 400, children }: { build: () => any; buildKey: string; live: LiveInput; height?: number; children?: React.ReactNode }) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-[var(--line)]" style={{ background: 'radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 60%), radial-gradient(90% 70% at 50% 100%, rgba(120,60,255,.12), transparent 70%), var(--surface)' }}>
+      <div className="hw-grid pointer-events-none absolute inset-0 opacity-30" />
+      <Viewer3D build={build} buildKey={buildKey} live={live} height={height} />
+      {children && <div className="pointer-events-none absolute left-4 top-3">{children}</div>}
+      <div className="pointer-events-none absolute bottom-2.5 right-3 text-[11px] text-muted">arraste para girar</div>
     </div>
   );
 }
 
 // ---------- página ----------
 export default function Hardware() {
+  const { page } = useApp();
   const [tab, setTab] = useState<Tab>('overview');
-  const [info, setInfo] = useState<HardwareInfo | null>(null);
-  const [live, setLive] = useState<HardwareLive | null>(null);
-  const [hist, setHist] = useState<{ cpu: number[]; gpu: number[]; pwr: number[]; mem: number[]; temp: number[] }>({ cpu: [], gpu: [], pwr: [], mem: [], temp: [] });
-  useEffect(() => { cc.hardwareInfo().then(setInfo).catch(() => null); }, []);
-  useEffect(() => {
-    let alive = true, t: ReturnType<typeof setTimeout>;
-    const tick = async () => {
-      try {
-        const l = await cc.hardwareLive();
-        if (!alive) return;
-        setLive(l);
-        const pw = l.live?.power.systemW ?? (l.live?.power.batteryW !== undefined ? Math.abs(l.live.power.batteryW) : undefined);
-        setHist((h) => ({ cpu: [...h.cpu.slice(-59), l.load], gpu: l.live?.gpu.util !== undefined ? [...h.gpu.slice(-59), l.live.gpu.util] : h.gpu, pwr: pw !== undefined ? [...h.pwr.slice(-59), pw] : h.pwr, mem: [...h.mem.slice(-59), l.memory.pressure], temp: l.temps.cpu !== undefined ? [...h.temp.slice(-59), l.temps.cpu] : h.temp }));
-      } catch { /* */ }
-      if (alive) t = setTimeout(tick, 1500);
-    };
-    tick();
-    return () => { alive = false; clearTimeout(t); };
-  }, []);
-
+  const { info, live, stats, hist } = useHardware(page === 'hardware');
   const L = live?.live;
-  const watts = L?.power.systemW ?? (L?.power.batteryW !== undefined ? Math.abs(L.power.batteryW) : undefined);
+  const lv = toLive(live);
+  const laptop = !!live?.battery;
+  const watts = lv.watts;
+  const cpuShort = (info?.cpu.name || 'Processador').replace(/\(R\)|\(TM\)|CPU|@.*$/gi, '').replace(/\s+/g, ' ').trim();
   return (
     <PageBody>
       <div className="flex items-center gap-4">
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent)]"><CircuitBoard size={22} /></div>
         <div className="min-w-0 flex-1">
           <h1 className="text-xl font-semibold">Monitor de hardware</h1>
-          <p className="truncate text-[13px] text-muted">{info ? [info.board.system || info.board.model, info.cpu.name, fmtSize(info.memory.total, 'auto', 0) + ' de RAM'].filter(Boolean).join(' · ') : 'Lendo o hardware…'}</p>
+          <p className="truncate text-[13px] text-muted">{info ? [info.board.system || info.board.model, cpuShort, fmtSize(info.memory.total, 'auto', 0) + ' de RAM', info.gpus[0]?.name].filter(Boolean).join(' · ') : 'Lendo o hardware…'}</p>
         </div>
+        {L?.advanced?.active && <span className="flex items-center gap-1.5 rounded-full bg-[var(--accent-soft)] px-3 py-1 text-[12px] font-semibold text-[var(--accent)]"><Activity size={13} />{L.advanced.source}</span>}
       </div>
       <div className="mt-4 flex flex-wrap gap-1.5">
         {TABS.map((t) => <button key={t.id} onClick={() => setTab(t.id)} className={cx('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors', tab === t.id ? 'bg-[var(--accent)] text-white' : 'text-muted hover:bg-[var(--hover)] hover:text-[var(--fg)]')}>{t.icon}{t.label}</button>)}
       </div>
-      <div key={tab} className="anim-fade-in mt-4">
-        {tab === 'overview' && <Overview info={info} live={live} watts={watts} go={setTab} hist={hist} />}
-        {tab === 'cpu' && <CpuTab info={info} live={live} hist={hist} />}
-        {tab === 'gpu' && <GpuTab info={info} live={live} hist={hist} />}
-        {tab === 'ram' && <RamTab info={info} live={live} hist={hist} />}
-        {tab === 'board' && <BoardTab info={info} live={live} />}
-        {tab === 'power' && <PowerTab live={live} watts={watts} hist={hist} />}
-        {tab === 'sensors' && <SensorsTab live={live} hist={hist} />}
+      <div className="mt-4"><AdvancedBanner live={live} /></div>
+      <div key={tab} className="anim-fade-in mt-4 space-y-4">
+        {tab === 'overview' && (
+          <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
+            <Stage build={() => (isMac ? laptopModel({ mac: true }) : laptop ? laptopModel({}) : pcModel({ sticks: info?.memory.modules.length || 2 }))} buildKey={`dev-${isMac}-${laptop}-${info?.memory.modules.length || 0}`} live={lv} height={520}>
+              <div className="text-[12px] font-semibold uppercase tracking-wider text-muted">{isMac ? info?.board.system || 'Mac' : laptop ? 'Notebook' : 'Computador'}</div>
+              <div className="text-[18px] font-semibold">{info?.board.model || ''}</div>
+            </Stage>
+            <div className="space-y-3">
+              <Metric label="Processador" value={`${live?.load ?? '—'} %`} sub={[L?.cpuMHz ? fmtVal(L.cpuMHz, 'MHz') : '', live?.temps.cpu !== undefined ? `${Math.round(live.temps.cpu)} °C` : ''].filter(Boolean).join(' · ')} data={hist.cpu} color={C.cpu} />
+              <Metric label="Placa de vídeo" value={L?.gpu.util !== undefined ? `${L.gpu.util} %` : '—'} sub={L?.gpu.temp !== undefined ? `${Math.round(L.gpu.temp)} °C` : info?.gpus[0]?.name} data={hist.gpu} color={C.gpu} />
+              <Metric label="Memória" value={`${live?.memory.pressure ?? '—'} %`} sub={live ? `${fmtSize(live.memory.used, 'auto', 1)} de ${fmtSize(live.memory.total, 'auto', 0)}` : ''} data={hist.mem} color={C.ram} />
+              <Metric label="Energia" value={watts !== undefined ? `${n(watts)} W` : '—'} sub={live?.battery ? `Bateria ${live.battery.percent}%${live.battery.charging ? ' · carregando' : ''}` : 'Na tomada'} data={hist.pwr} color={C.pwr} />
+            </div>
+          </div>
+        )}
+        {tab === 'cpu' && (
+          <>
+            <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
+              <Stage build={() => cpuModel({ name: cpuShort, sub: info?.cpu.arch, cores: info?.cpu.cores })} buildKey={`cpu-${cpuShort}`} live={lv} />
+              <div className="space-y-3">
+                <Metric label="Carga total" value={`${live?.load ?? '—'} %`} sub={live ? `Usuário ${live.split.user}% · Sistema ${live.split.system}%` : ''} data={hist.cpu} color={C.cpu} />
+                <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3.5">
+                  <div className="mb-2 text-[12px] text-muted">Carga por núcleo</div>
+                  <div className="grid grid-cols-4 gap-1.5">{(live?.cores || []).map((c, i) => <div key={i} className="rounded-md p-1.5 text-center" style={{ background: `color-mix(in srgb, var(--accent) ${8 + c * 0.8}%, var(--surface-2))` }}><div className="text-[10px] text-muted">{info?.cpu.pCores ? (i >= (info.cpu.eCores || 0) ? 'P' : 'E') : 'N'}{i}</div><div className="text-[12px] font-semibold tabular-nums">{c}%</div></div>)}</div>
+                </div>
+              </div>
+            </div>
+            <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
+              <Spec title="Especificações" rows={[['Modelo', info?.cpu.name], ['Arquitetura', info?.cpu.arch], ['Núcleos / threads', info ? `${info.cpu.cores} / ${info.cpu.threads}` : undefined], ['Núcleos de desempenho', info?.cpu.pCores], ['Núcleos de eficiência', info?.cpu.eCores], ['Frequência atual', L?.cpuMHz ? fmtVal(L.cpuMHz, 'MHz') : undefined], ['Frequência máxima', info?.cpu.maxMHz ? fmtVal(info.cpu.maxMHz, 'MHz') : undefined], ['Cache L2', info?.cpu.l2 ? fmtSize(info.cpu.l2, 'auto', 0) : undefined], ['Cache L3', info?.cpu.l3 ? fmtSize(info.cpu.l3, 'auto', 0) : undefined], ['Ligado há', live ? `${Math.floor(live.uptime / 86400)} d ${Math.floor((live.uptime % 86400) / 3600)} h` : undefined]]} />
+              <SensorTable live={live} stats={stats} kinds={['cpu']} title="Sensores do processador" />
+            </div>
+          </>
+        )}
+        {tab === 'gpu' && (
+          <>
+            <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
+              <Stage build={() => gpuModel()} buildKey="gpu" live={lv} />
+              <div className="space-y-3">
+                <Metric label="Uso da GPU" value={L?.gpu.util !== undefined ? `${L.gpu.util} %` : '—'} sub={L?.gpu.temp !== undefined ? `${Math.round(L.gpu.temp)} °C` : undefined} data={hist.gpu} color={C.gpu} />
+                <Metric label="Memória de vídeo em uso" value={L?.gpu.memUsed ? fmtSize(L.gpu.memUsed, 'auto', 1) : '—'} sub={L?.gpu.memTotal ? `de ${fmtSize(L.gpu.memTotal, 'auto', 0)}` : undefined} />
+                {L?.gpu.procs?.length ? <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3.5"><div className="mb-1.5 text-[12px] text-muted">Mais usam a GPU</div>{L.gpu.procs.map((p) => <div key={p.pid} className="flex justify-between py-0.5 text-[13px]"><span className="truncate">{p.name}</span><span className="tabular-nums text-muted">{n(p.util)} %</span></div>)}</div> : null}
+              </div>
+            </div>
+            <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
+              <Spec title="Especificações" rows={[...((info?.gpus || []).flatMap((g, i) => [[`GPU ${i + 1}`, g.name], ['Fabricante', g.vendor], ['Núcleos', g.cores], [isMac ? 'Gráficos' : 'API', g.api], ['Driver', g.driver], ['Memória de vídeo', g.vram ? fmtSize(g.vram, 'auto', 0) : isMac ? 'unificada com a RAM' : undefined]] as [string, any][])), ...((info?.displays || []).map((d, i) => [`Tela ${i + 1}`, `${d.name}${d.resolution ? ` · ${d.resolution}` : ''}`] as [string, string]))]} />
+              <SensorTable live={live} stats={stats} kinds={['gpu']} title="Sensores da placa de vídeo" />
+            </div>
+          </>
+        )}
+        {tab === 'ram' && (
+          <>
+            <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
+              <Stage build={() => ramModel({ count: isMac ? 2 : Math.max(1, info?.memory.modules.length || 2) })} buildKey={`ram-${info?.memory.modules.length || 0}`} live={lv} />
+              <div className="space-y-3">
+                <Metric label="Em uso" value={live ? `${fmtSize(live.memory.used, 'auto', 1)}` : '—'} sub={live ? `de ${fmtSize(live.memory.total, 'auto', 0)} · pressão ${live.memory.pressure}%` : ''} data={hist.mem} color={C.ram} />
+                {live?.memoryDetail && <Spec rows={[['Apps (ativa)', fmtSize(live.memoryDetail.active, 'auto', 1)], ['Fixa', fmtSize(live.memoryDetail.wired, 'auto', 1)], ['Comprimida', live.memoryDetail.compressed ? fmtSize(live.memoryDetail.compressed, 'auto', 1) : undefined], ['Disponível', fmtSize(live.memoryDetail.available, 'auto', 1)], ['Swap', live.memoryDetail.swapTotal ? `${fmtSize(live.memoryDetail.swapUsed, 'auto', 1)} de ${fmtSize(live.memoryDetail.swapTotal, 'auto', 1)}` : undefined]]} />}
+              </div>
+            </div>
+            <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
+              <Spec title="Módulos" rows={[['Tipo', info?.memory.type], ['Velocidade', info?.memory.speed ? `${info.memory.speed} MT/s` : undefined], ['Fabricante', info?.memory.manufacturer], ['Slots', info ? (isMac ? 'memória unificada no chip' : `${info.memory.modules.length}${info.memory.slots ? ` de ${info.memory.slots}` : ''} ocupados`) : undefined], ...(!isMac ? (info?.memory.modules || []).map((m, i) => [m.slot || `Slot ${i + 1}`, `${fmtSize(m.size, 'auto', 0)}${m.speed ? ` · ${m.speed} MT/s` : ''}${m.manufacturer ? ` · ${m.manufacturer}` : ''}${m.part ? ` · ${m.part}` : ''}`] as [string, string]) : [])]} />
+              <SensorTable live={live} stats={stats} kinds={['ram']} title="Sensores da memória" />
+            </div>
+          </>
+        )}
+        {tab === 'board' && (
+          <>
+            <Stage build={() => boardModel({ sticks: isMac ? 2 : info?.memory.modules.length || 2, dimms: Math.max(2, info?.memory.slots || 4) })} buildKey={`board-${info?.memory.modules.length || 0}-${info?.memory.slots || 0}`} live={lv} height={460} />
+            <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
+              <Spec title="Placa" rows={[['Computador', info?.board.system], ['Fabricante', info?.board.manufacturer], [isMac ? 'Identificador do modelo' : 'Modelo da placa', info?.board.model], [isMac ? 'Número do modelo' : 'Revisão', info?.board.version], [isMac ? 'Chip' : 'Processador', info?.board.chip || info?.cpu.name], [isMac ? 'Firmware (iBoot)' : 'BIOS', info?.board.firmware], ['Data do firmware', info?.board.firmwareDate], ['Memória', info ? `${fmtSize(info.memory.total, 'auto', 0)}${info.memory.type ? ` ${info.memory.type}` : ''}` : undefined], ['Slots de memória', !isMac && info?.memory.slots ? info.memory.slots : undefined]]} />
+              <SensorTable live={live} stats={stats} kinds={['board']} title={isMac ? 'Sensores da placa' : 'Sensores da placa-mãe (tensões e ventoinhas)'} />
+            </div>
+          </>
+        )}
+        {tab === 'storage' && <StorageTab live={live} stats={stats} />}
+        {tab === 'power' && (
+          <>
+            <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
+              <Stage build={() => powerModel({ laptop })} buildKey={`power-${laptop}`} live={lv} />
+              <div className="space-y-3">
+                <Metric label={L?.power.systemW !== undefined ? 'Consumo do sistema' : 'Potência da bateria'} value={watts !== undefined ? `${n(watts)} W` : '—'} data={hist.pwr} color={C.pwr} />
+                <Spec rows={[['Carregador', L?.power.adapterW ? `${L.power.adapterW} W` : live?.battery ? (live.battery.plugged ? 'conectado' : 'desconectado') : 'fonte de alimentação'], [L?.power.batteryW !== undefined && L.power.batteryW < 0 ? 'Saindo da bateria' : 'Entrando na bateria', L?.power.batteryW !== undefined ? `${n(Math.abs(L.power.batteryW))} W` : undefined], ['Tensão da bateria', L?.power.voltage ? `${n(L.power.voltage, 2)} V` : undefined], ['Corrente', L?.power.current !== undefined ? `${n(L.power.current, 2)} A` : undefined], ['Carga', live?.battery ? `${live.battery.percent}%` : undefined], ['Capacidade máxima', live?.batteryHealth?.maxCapacity !== undefined ? `${live.batteryHealth.maxCapacity}%` : undefined], ['Ciclos', live?.batteryHealth?.cycles], ['Plano de energia', L?.power.plan]]} />
+              </div>
+            </div>
+            <SensorTable live={live} stats={stats} kinds={['psu', 'battery', 'cpu', 'gpu']} title="Consumo, tensões e correntes" />
+          </>
+        )}
+        {tab === 'sensors' && <SensorsTab live={live} stats={stats} />}
       </div>
     </PageBody>
   );
 }
 
-type P = { info: HardwareInfo | null; live: HardwareLive | null; hist: { cpu: number[]; gpu: number[]; pwr: number[]; mem: number[]; temp: number[] } };
-
-function Overview({ info, live, watts, go, hist }: P & { watts?: number; go: (t: Tab) => void }) {
-  const load = (live?.load ?? 0) / 100, gpu = (live?.live?.gpu.util ?? 0) / 100, mem = (live?.memory.pressure ?? 0) / 100;
-  const sticks = Math.min(4, Math.max(2, info?.memory.modules.length || 2));
-  const W = 560, H = 380;
+function StorageTab({ live, stats }: { live: HardwareLive | null; stats: Map<string, Stat> }) {
+  const [disks, setDisks] = useState<DiskDetail[] | null>(null);
+  const [sel, setSel] = useState(0);
+  useEffect(() => { let alive = true; const load = () => cc.hardwareDisks().then((d) => alive && setDisks(d)).catch(() => alive && setDisks([])); load(); const t = setInterval(load, 15000); return () => { alive = false; clearInterval(t); }; }, []);
+  const d = disks?.[sel];
+  const kind = !d ? 'nvme' : d.bus === 'USB' ? 'usb' : d.media === 'HD' || d.media === 'HDD' ? 'hdd' : d.bus === 'NVMe' ? 'nvme' : 'sata';
+  if (!disks) return <div className="flex justify-center py-10"><Loader2 className="animate-spin text-muted" /></div>;
+  if (!disks.length) return <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-6 text-center text-[13px] text-muted">Nenhum disco encontrado.</div>;
   return (
-    <div className="grid gap-4 xl:grid-cols-[1fr_300px]">
-      <Scene height={470}>
-        <div className="relative rounded-xl" style={{ width: W, height: H, transformStyle: 'preserve-3d', background: 'linear-gradient(135deg, #0d1a17, #0a0f14)', boxShadow: `0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent), 0 40px 80px -20px #000` }}>
-          <div className="hw-pcb absolute inset-0 rounded-xl opacity-60" />
-          <Traces w={W} h={H} activity={Math.max(load, gpu)} color={C.acc} paths={[
-            'M200,150 L120,150 L120,60 L60,60', 'M300,150 L380,150 L380,70 L470,70', 'M250,230 L250,280 L180,280', 'M300,200 L420,200 L420,140', 'M200,200 L90,200 L90,300', 'M260,120 L260,40 L330,40',
-          ]} />
-          <Box x={190} y={110} w={130} h={120} d={14} color="#2a2f3a" title="Processador" onClick={() => go('cpu')} glow={load}>
-            <div className="absolute inset-3 rounded-md" style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${C.cpu} 55%, #ccc), #6b7280)` }}>
-              <div className="flex h-full flex-col items-center justify-center text-center text-[10px] font-bold text-black/70"><Cpu size={20} />{(info?.cpu.name || 'CPU').replace(/\(R\)|\(TM\)|CPU|@.*$/gi, '').trim().slice(0, 18)}</div>
-            </div>
-          </Box>
-          {Array.from({ length: sticks }, (_, i) => (
-            <Box key={i} x={370 + i * 26} y={95} w={14} h={150} d={30} color="#1f2937" title="Memória RAM" onClick={() => go('ram')} glow={mem * 0.6}>
-              <div className="absolute inset-x-0 bottom-0 transition-[height] duration-700" style={{ height: `${Math.max(8, mem * 100)}%`, background: `linear-gradient(to top, ${C.ram}, transparent)` }} />
-            </Box>
-          ))}
-          <Box x={80} y={262} w={300} h={70} d={26} color="#161a22" title="Placa de vídeo" onClick={() => go('gpu')} glow={gpu}>
-            <div className="flex h-full items-center justify-around px-4"><Fan3D size={52} speed={Math.max(0.25, 2.4 - gpu * 2.1)} color={C.gpu} /><Fan3D size={52} speed={Math.max(0.25, 2.4 - gpu * 2.1)} color={C.gpu} /><span className="text-[10px] font-bold tracking-widest" style={{ color: C.gpu }}>GPU</span></div>
-          </Box>
-          <Box x={40} y={40} w={70} h={46} d={18} color="#3b2f12" title="Energia" onClick={() => go('power')} glow={Math.min(1, (watts || 0) / 60)}>
-            <div className="flex h-full items-center justify-center gap-1" style={{ color: C.pwr }}><Zap size={18} className="hw-glow" /><span className="text-[11px] font-bold">{watts !== undefined ? `${Math.round(watts)} W` : 'PWR'}</span></div>
-          </Box>
-          <Box x={410} y={290} w={110} h={34} d={6} color="#20262f" title="Armazenamento">
-            <div className="flex h-full items-center justify-center gap-1 text-[10px] font-bold text-white/60"><HardDrive size={13} />SSD</div>
-          </Box>
-          <Box x={300} y={24} w={60} h={40} d={10} color="#1d2430" title={isMac ? 'Placa lógica' : 'Chipset'} onClick={() => go('board')}>
-            <div className="flex h-full items-center justify-center text-[9px] font-bold text-white/50">{isMac ? 'SoC' : 'CHIPSET'}</div>
-          </Box>
+    <>
+      <div className="flex flex-wrap gap-2">{disks.map((x, i) => <button key={x.id + i} onClick={() => setSel(i)} className={cx('flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-[13px]', i === sel ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-[var(--line)] bg-[var(--surface)] hover:bg-[var(--hover)]')}><HardDrive size={15} /><span><span className="block font-medium">{x.name}</span><span className="block text-[11px] text-muted">{[x.bus, x.size ? fmtSize(x.size, 'auto', 0) : ''].filter(Boolean).join(' · ')}</span></span></button>)}</div>
+      <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
+        <Stage build={() => ssdModel({ kind, label: d?.model || d?.name })} buildKey={`ssd-${sel}-${kind}`} live={{ disk: 0.4 }} />
+        <div className="space-y-3">
+          <Metric label="Saúde" value={d?.healthPct !== undefined ? `${d.healthPct} %` : d?.health || '—'} sub={d?.health && d.healthPct !== undefined ? d.health : undefined} />
+          <Metric label="Temperatura" value={d?.temp !== undefined ? `${Math.round(d.temp)} °C` : '—'} sub={d?.needsAdmin && !isMac ? 'Ative o monitoramento avançado para ler o SMART' : undefined} />
         </div>
-      </Scene>
-      <div className="space-y-3">
-        <Metric label="Processador" value={`${live?.load ?? '—'} %`} color={C.cpu}><Spark data={hist.cpu} color={C.cpu} max={100} h={36} /></Metric>
-        <Metric label="Placa de vídeo" value={live?.live?.gpu.util !== undefined ? `${live.live.gpu.util} %` : '—'} color={C.gpu}><Spark data={hist.gpu} color={C.gpu} max={100} h={36} /></Metric>
-        <Metric label="Memória" value={`${live?.memory.pressure ?? '—'} %`} color={C.ram}><Spark data={hist.mem} color={C.ram} max={100} h={36} /></Metric>
-        <Metric label="Energia" value={watts !== undefined ? `${n1(watts)} W` : '—'} color={C.pwr}><Spark data={hist.pwr} color={C.pwr} h={36} /></Metric>
       </div>
-    </div>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Spec title="Unidade" rows={[['Modelo', d?.model], ['Firmware', d?.firmware], ['Interface', d?.bus], ['Tipo', d?.media], ['Capacidade', d?.size ? fmtSize(d.size, 'auto', 1) : undefined], ['Link', d?.link], ['TRIM', d?.trim === undefined ? undefined : d.trim ? 'Ativado' : 'Desativado']]} />
+        <Spec title="SMART" rows={[['Estado', d?.health], ['Vida útil restante', d?.healthPct !== undefined ? `${d.healthPct}%` : undefined], ['Horas ligado', d?.powerOnHours !== undefined ? `${n(d.powerOnHours, 0)} h` : undefined], ['Ciclos de energia', d?.powerCycles], ['Dados gravados', d?.written ? fmtSize(d.written, 'auto', 1) : undefined], ['Dados lidos', d?.read ? fmtSize(d.read, 'auto', 1) : undefined], ['Desligamentos inesperados', d?.unsafeShutdowns], ['Erros de mídia', d?.mediaErrors], ['Reserva disponível', d?.spare !== undefined ? `${d.spare}%` : undefined]]} />
+      </div>
+      {d?.partitions?.length ? <Spec title="Partições e volumes" rows={d.partitions.map((p) => [`${p.name}${p.mount && !p.mount.startsWith('/') ? ` · ${p.mount}` : ''}`, `${fmtSize(p.size, 'auto', 1)}${p.fs ? ` · ${p.fs}` : ''}${p.mount?.startsWith('/') ? ` · ${p.mount}` : ''}`] as [string, string])} /> : null}
+      <SensorTable live={live} stats={stats} kinds={['disk']} title="Sensores dos discos" />
+    </>
   );
 }
 
-function CpuTab({ info, live, hist }: P) {
-  const cores = live?.cores || [];
-  const p = info?.cpu.pCores || 0;
-  const cols = Math.ceil(Math.sqrt(cores.length || 8));
-  const S = 300, cell = (S - 40) / cols;
-  return (
-    <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
-      <div>
-        <Scene height={400} rx={52} rz={-30}>
-          <div className="relative" style={{ width: S + 80, height: S + 80, transformStyle: 'preserve-3d' }}>
-            <Box x={0} y={0} w={S + 80} h={S + 80} d={8} color="#0f1a17" top="linear-gradient(135deg,#10201c,#0b1210)">
-              <div className="hw-pcb absolute inset-0 opacity-70" />
-              {Array.from({ length: 22 }, (_, i) => <div key={i} className="absolute h-[3px] w-6 rounded bg-yellow-600/60" style={{ left: -2, top: 30 + i * 14 }} />)}
-            </Box>
-            <Box x={40} y={40} w={S} h={S} d={22} color="#3a3f4a" top="linear-gradient(135deg,#6b7280,#3f444f)" glow={(live?.load ?? 0) / 100}>
-              <div className="absolute grid gap-1.5" style={{ left: 20, top: 20, gridTemplateColumns: `repeat(${cols}, ${cell - 6}px)` }}>
-                {(cores.length ? cores : Array(8).fill(0)).map((v, i) => {
-                  const col = p && i >= p ? C.ram : C.cpu;
-                  return <div key={i} className="relative rounded-[4px] transition-all duration-500" style={{ height: cell - 6, background: `color-mix(in srgb, ${col} ${15 + v * 0.85}%, #1a1d24)`, boxShadow: v > 30 ? `0 0 ${v / 4}px ${col}` : 'none' }}><span className="absolute bottom-0.5 right-1 text-[9px] font-bold text-white/70">{v}%</span></div>;
-                })}
-              </div>
-            </Box>
-          </div>
-        </Scene>
-        <div className="mt-2 flex justify-center gap-4 text-[12px] text-muted">{p ? <><span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: C.cpu }} />Desempenho ({p})</span><span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: C.ram }} />Eficiência ({info?.cpu.eCores})</span></> : <span>Cada célula é um núcleo lógico</span>}</div>
-      </div>
-      <div className="space-y-3">
-        <Metric label="Carga total" value={`${live?.load ?? '—'} %`} color={C.cpu}><Spark data={hist.cpu} color={C.cpu} max={100} /></Metric>
-        <div className="grid grid-cols-2 gap-3">
-          <Metric label="Usuário" value={`${live?.split.user ?? '—'} %`} color={C.cpu} />
-          <Metric label="Sistema" value={`${live?.split.system ?? '—'} %`} color={C.gpu} />
-        </div>
-        <Spec rows={[
-          ['Modelo', info?.cpu.name], ['Arquitetura', info?.cpu.arch], ['Núcleos / threads', info ? `${info.cpu.cores} / ${info.cpu.threads}` : undefined],
-          ['Núcleos de desempenho', info?.cpu.pCores], ['Núcleos de eficiência', info?.cpu.eCores],
-          ['Frequência atual', live?.live?.cpuMHz ? ghz(live.live.cpuMHz) : undefined], ['Frequência máxima', info?.cpu.maxMHz ? ghz(info.cpu.maxMHz) : isMac ? 'definida pelo macOS' : undefined],
-          ['Cache L2', info?.cpu.l2 ? fmtSize(info.cpu.l2, 'auto', 0) : undefined], ['Cache L3', info?.cpu.l3 ? fmtSize(info.cpu.l3, 'auto', 0) : undefined],
-          ['Temperatura', live?.temps.cpu !== undefined ? `${Math.round(live.temps.cpu)} °C` : undefined],
-        ]} />
-      </div>
-    </div>
-  );
-}
-
-function GpuTab({ info, live, hist }: P) {
-  const g = info?.gpus[0], L = live?.live?.gpu;
-  const u = (L?.util ?? 0) / 100, speed = Math.max(0.2, 2.6 - u * 2.3);
-  return (
-    <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
-      <Scene height={400} rx={58} rz={-24}>
-        <div className="relative" style={{ width: 520, height: 200, transformStyle: 'preserve-3d' }}>
-          <Box x={0} y={0} w={520} h={200} d={6} color="#0e3b2e" top="linear-gradient(135deg,#0f3d30,#0a261f)"><div className="hw-pcb absolute inset-0 opacity-70" /></Box>
-          <div className="absolute" style={{ left: 30, top: 200, width: 300, height: 14, transform: 'translateZ(3px)', background: 'repeating-linear-gradient(90deg,#c9a227 0 6px,transparent 6px 9px)' }} />
-          <Box x={14} y={14} w={492} h={172} d={34} color="#1b1f27" top="linear-gradient(160deg,#2a2f3a,#14171d)" glow={u}>
-            <div className="flex h-full items-center justify-around px-6">
-              <Fan3D size={120} speed={speed} color={C.gpu} />
-              <Fan3D size={120} speed={speed} color={C.gpu} />
-              <Fan3D size={120} speed={speed} color={C.gpu} />
-            </div>
-            <div className="absolute inset-x-6 bottom-2 h-1 rounded-full transition-all duration-700" style={{ background: C.gpu, opacity: 0.3 + u * 0.7, boxShadow: `0 0 ${8 + u * 20}px ${C.gpu}` }} />
-          </Box>
-        </div>
-      </Scene>
-      <div className="space-y-3">
-        <Metric label="Uso da GPU" value={L?.util !== undefined ? `${L.util} %` : '—'} color={C.gpu}><Spark data={hist.gpu} color={C.gpu} max={100} /></Metric>
-        <Spec rows={[
-          ['Modelo', g?.name], ['Fabricante', g?.vendor], ['Núcleos', g?.cores], [isMac ? 'Gráficos' : 'API', g?.api], ['Driver', g?.driver],
-          ['Memória de vídeo', g?.vram ? fmtSize(g.vram, 'auto', 0) : isMac ? 'unificada com a RAM' : undefined],
-          ['Memória em uso', L?.memUsed ? fmtSize(L.memUsed, 'auto', 1) : undefined], ['Temperatura', L?.temp !== undefined ? `${Math.round(L.temp)} °C` : undefined],
-          ...((info?.displays || []).map((d, i) => [`Tela ${i + 1}`, `${d.name}${d.resolution ? ` · ${d.resolution}` : ''}`] as [string, string])),
-        ]} />
-        {L?.procs?.length ? <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4"><div className="mb-2 text-[13px] font-semibold">Mais usam a GPU</div>{L.procs.map((p) => <div key={p.pid} className="flex justify-between py-0.5 text-[13px]"><span className="truncate">{p.name}</span><span className="tabular-nums text-muted">{n1(p.util)} %</span></div>)}</div> : null}
-      </div>
-    </div>
-  );
-}
-
-function RamTab({ info, live, hist }: P) {
-  const mods = info?.memory.modules.length ? info.memory.modules : [{ size: info?.memory.total || 0 } as any];
-  const used = live?.memory.used ?? 0, total = live?.memory.total || info?.memory.total || 1;
-  const fill = used / total;
-  const d = live?.memoryDetail;
-  return (
-    <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
-      <Scene height={400} rx={60} rz={-32}>
-        <div className="relative" style={{ width: 120 + mods.length * 90, height: 300, transformStyle: 'preserve-3d' }}>
-          <Box x={0} y={0} w={120 + mods.length * 90} h={300} d={6} color="#0f1a17" top="linear-gradient(135deg,#10201c,#0b1210)"><div className="hw-pcb absolute inset-0 opacity-60" /></Box>
-          {mods.map((m, i) => (
-            <Box key={i} x={60 + i * 90} y={30} w={28} h={240} d={70} color="#1f2a37" top="linear-gradient(180deg,#263241,#151c26)" glow={fill * 0.7}>
-              {Array.from({ length: 6 }, (_, k) => <div key={k} className="absolute inset-x-1 h-7 rounded-sm bg-black/60" style={{ top: 12 + k * 37 }} />)}
-              <div className="absolute inset-x-0 bottom-0 transition-[height] duration-700" style={{ height: `${fill * 100}%`, background: `linear-gradient(to top, color-mix(in srgb, ${C.ram} 70%, transparent), transparent)` }} />
-              <div className="hw-scan absolute inset-x-0 h-6" style={{ background: `linear-gradient(to bottom, transparent, ${C.ram}, transparent)`, opacity: 0.5 }} />
-            </Box>
-          ))}
-        </div>
-      </Scene>
-      <div className="space-y-3">
-        <Metric label="Em uso" value={`${fmtSize(used, 'auto', 1)} de ${fmtSize(total, 'auto', 0)}`} color={C.ram}><Spark data={hist.mem} color={C.ram} max={100} /></Metric>
-        <Spec rows={[
-          ['Tipo', info?.memory.type], ['Velocidade', info?.memory.speed ? `${info.memory.speed} MT/s` : undefined], ['Fabricante', info?.memory.manufacturer],
-          ['Pentes', info ? (isMac ? 'memória unificada no chip' : `${info.memory.modules.length}${info.memory.slots ? ` de ${info.memory.slots} slots` : ''}`) : undefined],
-          ['Pressão', live ? `${live.memory.pressure} %` : undefined], ['Apps (ativa)', d ? fmtSize(d.active, 'auto', 1) : undefined], ['Fixa', d ? fmtSize(d.wired, 'auto', 1) : undefined],
-          ['Comprimida', d?.compressed ? fmtSize(d.compressed, 'auto', 1) : undefined], ['Swap', d?.swapTotal ? `${fmtSize(d.swapUsed, 'auto', 1)} de ${fmtSize(d.swapTotal, 'auto', 1)}` : undefined],
-          ...(!isMac ? mods.map((m: any, i: number) => [`Slot ${m.slot || i + 1}`, `${fmtSize(m.size, 'auto', 0)}${m.speed ? ` · ${m.speed} MT/s` : ''}${m.part ? ` · ${m.part}` : ''}`] as [string, string]) : []),
-        ]} />
-      </div>
-    </div>
-  );
-}
-
-function BoardTab({ info, live }: Omit<P, 'hist'>) {
-  const b = info?.board;
-  return (
-    <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
-      <Scene height={400} rx={56} rz={-40}>
-        <div className="relative" style={{ width: 460, height: 320, transformStyle: 'preserve-3d' }}>
-          <Box x={0} y={0} w={460} h={320} d={8} color="#0d1a17" top="linear-gradient(135deg,#0f231e,#0a1210)"><div className="hw-pcb absolute inset-0 opacity-80" /></Box>
-          <Traces w={460} h={320} activity={(live?.load ?? 20) / 100} color={C.acc} paths={['M230,160 L80,160 L80,60', 'M230,160 L380,160 L380,260', 'M230,160 L230,280 L120,280', 'M230,160 L230,50 L360,50']} />
-          <Box x={175} y={110} w={110} h={100} d={16} color="#2b313c" top="linear-gradient(135deg,#9aa1ad,#4b5260)" glow={0.5}><div className="flex h-full items-center justify-center text-[11px] font-bold text-black/70">{b?.chip || (isMac ? 'SoC' : 'CPU')}</div></Box>
-          <Box x={50} y={40} w={60} h={40} d={10} color="#1d2430"><div className="flex h-full items-center justify-center text-[9px] font-bold text-white/60">{isMac ? 'SEP' : 'BIOS'}</div></Box>
-          <Box x={340} y={240} w={80} h={36} d={8} color="#20262f"><div className="flex h-full items-center justify-center text-[9px] font-bold text-white/60">NVMe</div></Box>
-          <Box x={330} y={30} w={70} h={40} d={10} color="#1d2430"><div className="flex h-full items-center justify-center text-[9px] font-bold text-white/60">{isMac ? 'PMU' : 'CHIPSET'}</div></Box>
-          <Box x={90} y={262} w={60} h={34} d={12} color="#3b2f12"><div className="flex h-full items-center justify-center" style={{ color: C.pwr }}><Zap size={14} className="hw-glow" /></div></Box>
-        </div>
-      </Scene>
-      <Spec rows={[
-        ['Computador', b?.system], ['Fabricante', b?.manufacturer], [isMac ? 'Identificador do modelo' : 'Modelo da placa', b?.model], [isMac ? 'Número do modelo' : 'Revisão', b?.version],
-        [isMac ? 'Chip' : 'Processador', b?.chip || info?.cpu.name], [isMac ? 'Firmware (iBoot)' : 'BIOS', b?.firmware], ['Data do firmware', b?.firmwareDate],
-        ['Memória', info ? `${fmtSize(info.memory.total, 'auto', 0)}${info.memory.type ? ` ${info.memory.type}` : ''}` : undefined],
-        ['Placa de vídeo', info?.gpus.map((g) => g.name).join(', ')], ['Telas', info?.displays.length ? String(info.displays.length) : undefined],
-        ['Ligado há', live ? `${Math.floor(live.uptime / 86400)} d ${Math.floor((live.uptime % 86400) / 3600)} h` : undefined],
-      ]} />
-    </div>
-  );
-}
-
-function PowerTab({ live, watts, hist }: Omit<P, 'info'> & { watts?: number }) {
-  const p = live?.live?.power, b = live?.battery, h = live?.batteryHealth;
-  const flow = Math.min(1, (watts || 5) / 50);
-  const W = 520, H = 260;
-  return (
-    <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
-      <Scene height={400} rx={54} rz={-28}>
-        <div className="relative" style={{ width: W, height: H, transformStyle: 'preserve-3d' }}>
-          <Box x={0} y={0} w={W} h={H} d={4} color="#0b1110" top="linear-gradient(135deg,#0e1714,#090d0c)"><div className="hw-grid absolute inset-0 opacity-50" /></Box>
-          <Traces w={W} h={H} activity={flow} color={C.pwr} paths={['M90,130 L230,130', 'M290,130 L430,130', 'M260,160 L260,215 L430,215']} />
-          <Box x={30} y={95} w={60} h={70} d={34} color="#2d2a20" title="Carregador" glow={b?.plugged ? 0.8 : 0}><div className="flex h-full flex-col items-center justify-center text-[10px] font-bold" style={{ color: C.pwr }}><Zap size={18} />{p?.adapterW ? `${p.adapterW} W` : b?.plugged ? 'AC' : '—'}</div></Box>
-          <Box x={225} y={95} w={70} h={70} d={18} color="#2b313c" title="Sistema" glow={flow}><div className="flex h-full flex-col items-center justify-center text-[10px] font-bold text-white/80"><CircuitBoard size={18} />{watts !== undefined ? `${n1(watts)} W` : '—'}</div></Box>
-          <Box x={430} y={80} w={60} h={100} d={22} color="#1c2b22" title="Bateria" glow={0.4}>
-            <div className="absolute inset-x-1.5 bottom-1.5 rounded-sm transition-[height] duration-700" style={{ height: `${(b?.percent ?? 0) * 0.85}%`, background: `linear-gradient(to top, ${C.acc}, color-mix(in srgb, ${C.acc} 40%, transparent))` }} />
-            <div className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-white">{b ? `${b.percent}%` : '—'}</div>
-          </Box>
-          <Box x={430} y={195} w={60} h={40} d={8} color="#20262f" title="Componentes"><div className="flex h-full items-center justify-center text-[9px] font-bold text-white/60">CPU·GPU</div></Box>
-        </div>
-      </Scene>
-      <div className="space-y-3">
-        <Metric label={p?.systemW !== undefined ? 'Consumo do sistema' : 'Potência da bateria'} value={watts !== undefined ? `${n1(watts)} W` : '—'} color={C.pwr}><Spark data={hist.pwr} color={C.pwr} /></Metric>
-        <Spec rows={[
-          ['Carregador', p?.adapterW ? `${p.adapterW} W` : b ? (b.plugged ? 'conectado' : 'desconectado') : 'tomada'],
-          [p?.batteryW !== undefined && p.batteryW < 0 ? 'Saindo da bateria' : 'Entrando na bateria', p?.batteryW !== undefined ? `${n1(Math.abs(p.batteryW))} W` : undefined],
-          ['Tensão da bateria', p?.voltage ? `${n1(p.voltage, 2)} V` : undefined], ['Corrente', p?.current !== undefined ? `${n1(p.current, 2)} A` : undefined],
-          ['Carga', b ? `${b.percent}%` : undefined], ['Estado', b ? (b.charging ? 'carregando' : b.plugged ? 'na tomada' : 'na bateria') : undefined],
-          ['Capacidade máxima', h?.maxCapacity !== undefined ? `${h.maxCapacity}%` : undefined], ['Ciclos', h?.cycles], ['Condição', h?.condition],
-          ['Temperatura da bateria', live?.temps.battery !== undefined ? `${Math.round(live.temps.battery)} °C` : undefined], ['Plano de energia', p?.plan],
-        ]} />
-      </div>
-    </div>
-  );
-}
-
-function SensorsTab({ live, hist }: Omit<P, 'info'>) {
-  const t = live?.temps || {};
+function SensorsTab({ live, stats }: { live: HardwareLive | null; stats: Map<string, Stat> }) {
+  const temps = (live?.live?.sensors || []).filter((s) => (s.group || 'temp') === 'temp');
+  const byKind = new Map<string, number>();
+  for (const s of temps) byKind.set(s.kind, Math.max(byKind.get(s.kind) ?? -Infinity, s.value));
   const fans = live?.live?.fans || [];
-  return (
-    <div className="space-y-4">
-      {live?.live?.needsAdmin && (
-        <div className="flex items-center gap-3 rounded-xl border border-[color-mix(in_srgb,var(--warn)_40%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] p-4 text-[13px]">
-          <Thermometer size={18} className="shrink-0 text-[var(--warn)]" />
-          <span className="flex-1">{live.live.needsAdmin}</span>
-          <button onClick={() => cc.restartAdmin()} className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-[12px] font-semibold text-white">Reabrir como administrador</button>
-        </div>
-      )}
-      {(() => {
-        const KIND: Record<string, { label: string; color: string; max: number; warn: number; danger: number }> = {
-          cpu: { label: 'Processador', color: C.cpu, max: 110, warn: 80, danger: 95 }, gpu: { label: 'Placa de vídeo', color: C.gpu, max: 110, warn: 80, danger: 95 },
-          disk: { label: 'Disco', color: C.ram, max: 90, warn: 60, danger: 75 }, battery: { label: 'Bateria', color: C.pwr, max: 60, warn: 38, danger: 45 }, board: { label: 'Placa', color: C.acc, max: 100, warn: 75, danger: 90 },
-        };
-        const list = live?.live?.sensors?.length ? live.live.sensors : [
-          ...(t.cpu !== undefined ? [{ kind: 'cpu' as const, name: 'Processador', value: t.cpu }] : []), ...(t.gpu !== undefined ? [{ kind: 'gpu' as const, name: 'GPU', value: t.gpu }] : []),
-          ...(t.ssd !== undefined ? [{ kind: 'disk' as const, name: 'SSD', value: t.ssd }] : []), ...(t.battery !== undefined ? [{ kind: 'battery' as const, name: 'Bateria', value: t.battery }] : []),
-        ];
-        if (!list.length) return <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 text-center text-[13px] text-muted">Nenhum sensor de temperatura disponível neste computador.</div>;
-        return (
-          <div className="grid grid-cols-2 gap-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 sm:grid-cols-3 lg:grid-cols-4">
-            {list.map((x, i) => { const k = KIND[x.kind] || KIND.board; return <div key={i} title={x.name}><Gauge value={x.value} max={k.max} label={x.name.length > 26 ? x.name.slice(0, 25) + '…' : x.name} unit="°C" color={k.color} warn={k.warn} danger={k.danger} /></div>; })}
-          </div>
-        );
-      })()}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Metric label="Temperatura do processador" value={t.cpu !== undefined ? `${Math.round(t.cpu)} °C` : '—'} color={C.cpu}><Spark data={hist.temp} color={C.cpu} /></Metric>
-        <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
-          <div className="mb-2 flex items-center gap-2 text-[13px] font-semibold"><Fan size={15} />Ventoinhas</div>
-          {fans.length ? fans.map((f) => <div key={f.name} className="flex justify-between text-[13px]"><span>{f.name}</span><span className="tabular-nums">{f.rpm} RPM</span></div>)
-            : <div className="text-[13px] text-muted">{isMac ? 'Este Mac não tem ventoinha ou o macOS não informa a rotação.' : 'O Windows não informa a rotação das ventoinhas sem um driver do fabricante.'}</div>}
-          <div className="mt-3 text-[12px] text-muted">{isMac ? 'Leituras dos sensores térmicos do chip (IOHID).' : 'No Windows, a temperatura da CPU depende de suporte do fabricante e a da GPU aparece em placas NVIDIA.'}</div>
-        </div>
+  const exportCsv = () => {
+    const rows = [['Componente', 'Hardware', 'Grupo', 'Sensor', 'Atual', 'Mínimo', 'Máximo', 'Média', 'Unidade']];
+    for (const s of live?.live?.sensors || []) { const st = stats.get(`${s.kind}|${s.hw || ''}|${s.group || 'temp'}|${s.name}`); rows.push([KIND_LABEL[s.kind] || s.kind, s.hw || '', GROUP_LABEL[s.group || 'temp'] || s.group || '', s.name, String(s.value), String(st?.min ?? ''), String(st?.max ?? ''), st ? String(st.sum / st.count) : '', s.unit ?? '°C']); }
+    const blob = new Blob(['﻿' + rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(';')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `cleancode-sensores-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  };
+  const tile = (k: string, label: string, icon: React.ReactNode) => {
+    const v = byKind.get(k); const has = v !== undefined && isFinite(v);
+    const hue = has ? Math.max(0, Math.min(1, (v! - 30) / 65)) : 0;
+    const col = has ? `hsl(${(1 - hue) * 220}, 90%, 55%)` : 'var(--line)';
+    return (
+      <div className="relative overflow-hidden rounded-xl border border-[var(--line)] p-4" style={{ background: has ? `radial-gradient(120% 120% at 50% 100%, color-mix(in srgb, ${col} 35%, transparent), var(--surface) 70%)` : 'var(--surface)' }}>
+        <div className="flex items-center gap-2 text-[12px] text-muted">{icon}{label}</div>
+        <div className="mt-1 text-[26px] font-semibold tabular-nums" style={{ color: has ? col : undefined }}>{has ? `${Math.round(v!)} °C` : '—'}</div>
       </div>
-      <div className="flex items-center gap-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4 text-[13px]"><Monitor size={16} className="text-muted" />As leituras são atualizadas a cada 1,5 segundo enquanto esta tela está aberta.</div>
-    </div>
+    );
+  };
+  return (
+    <>
+      <div className="flex items-center justify-between">
+        <div className="text-[14px] font-semibold">Mapa térmico</div>
+        <button onClick={exportCsv} className="flex items-center gap-1.5 rounded-lg border border-[var(--line)] px-3 py-1.5 text-[12px] font-semibold hover:bg-[var(--hover)]"><Download size={13} />Exportar CSV</button>
+      </div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        {tile('cpu', 'Processador', <Cpu size={14} />)}{tile('gpu', 'Placa de vídeo', <Gpu size={14} />)}{tile('ram', 'Memória', <MemoryStick size={14} />)}
+        {tile('board', isMac ? 'Placa lógica' : 'Placa-mãe', <CircuitBoard size={14} />)}{tile('disk', 'Armazenamento', <HardDrive size={14} />)}{tile('battery', 'Bateria', <Zap size={14} />)}
+      </div>
+      {live?.live?.needsAdmin && !live.live.advanced?.active && <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3 text-[12.5px] text-muted">{live.live.needsAdmin}</div>}
+      {fans.length > 0 && <div className="flex flex-wrap gap-2">{fans.map((f) => <span key={f.name} className="flex items-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-[12.5px]"><Fan size={13} className="text-[var(--accent)]" />{f.name}<b className="tabular-nums">{f.rpm} RPM</b></span>)}</div>}
+      <SensorTable live={live} stats={stats} title="Todos os sensores" />
+    </>
   );
 }

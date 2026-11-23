@@ -49,6 +49,10 @@ jobs:
       - name: Instalar dependências
         run: npm ci --legacy-peer-deps
 
+      # helper de sensores (LibreHardwareMonitorLib, .NET Framework 4.7.2), incluído no instalador
+      - name: Compilar helper de sensores
+        run: dotnet build native/windows/cc-lhm/cc-lhm.csproj -c Release -o native/windows/cc-lhm/bin/Release/net472
+
       - name: Gerar instalador (x64)
         run: npm run dist
 

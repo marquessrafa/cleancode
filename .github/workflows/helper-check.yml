@@ -1,0 +1,19 @@
+# Compila o helper de sensores do Windows (cc-lhm) a cada mudança nele, sem publicar nada.
+name: Helper de sensores (verificação)
+on:
+  push:
+    branches: [main]
+    paths: ['native/windows/**', '.github/workflows/helper-check.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compilar cc-lhm
+        run: dotnet build native/windows/cc-lhm/cc-lhm.csproj -c Release -o out
+      - name: Testar uma leitura
+        shell: bash
+        run: ./out/cc-lhm.exe --once | head -c 600

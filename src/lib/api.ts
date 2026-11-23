@@ -80,7 +80,8 @@ export interface HwLive {
   gpu: { util?: number; memUsed?: number; memTotal?: number; temp?: number; procs?: { name: string; pid: number; util: number }[] };
   power: { systemW?: number; batteryW?: number; adapterW?: number; voltage?: number; current?: number; plan?: string };
   cpuMHz?: number; fans: { name: string; rpm: number }[];
-  sensors?: { kind: 'cpu' | 'gpu' | 'disk' | 'battery' | 'board'; name: string; value: number }[];
+  sensors?: { kind: 'cpu' | 'gpu' | 'disk' | 'battery' | 'board' | 'ram' | 'psu'; group?: string; hw?: string; name: string; value: number; min?: number; max?: number; unit?: string }[];
+  advanced?: { available: boolean; active: boolean; source?: string };
   needsAdmin?: string;
 }
 export interface HardwareLive {
@@ -88,6 +89,11 @@ export interface HardwareLive {
   memoryDetail: { active: number; wired: number; compressed: number; available: number; swapUsed: number; swapTotal: number } | null;
   battery: { percent: number; charging: boolean; plugged: boolean; minutesLeft?: number } | null; batteryHealth: { cycles?: number; condition?: string; maxCapacity?: number } | null;
   cores: number[]; load: number; split: { user: number; system: number; idle: number }; uptime: number;
+}
+export interface DiskDetail {
+  id: string; name: string; model?: string; firmware?: string; bus?: string; media?: string; size?: number; link?: string; trim?: boolean;
+  health?: string; healthPct?: number; temp?: number; powerOnHours?: number; powerCycles?: number; written?: number; read?: number;
+  unsafeShutdowns?: number; mediaErrors?: number; spare?: number; partitions?: { name: string; size: number; fs?: string; mount?: string }[]; needsAdmin?: boolean;
 }
 export interface RepairItem { id: string; category: string; title: string; detail: string; target?: string; fixable: boolean; needsAdmin?: boolean; optional?: boolean }
 export type BrowserItemId = 'cache' | 'gpu' | 'history' | 'downloads' | 'cookies' | 'sessions' | 'autofill';
@@ -139,6 +145,8 @@ interface CC {
   whatsNew(): Promise<{ show: boolean; version: string; previous?: string }>;
   hardwareInfo(): Promise<HardwareInfo>;
   hardwareLive(): Promise<HardwareLive>;
+  hardwareDisks(): Promise<DiskDetail[]>;
+  hardwareAdvanced(on: boolean): Promise<{ ok: boolean; message: string }>;
   whatsNewSeen(): Promise<boolean>;
   clutterScan(): Promise<ClutterReport>;
   clutterCancel(): Promise<boolean>;

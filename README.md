@@ -102,16 +102,19 @@ Tudo foi feito para ser **seguro por padrão**:
   </tr>
   <tr>
     <td width="50%" valign="top"><img src="docs/screenshots/hw-power.webp" alt="Energia" width="100%" /><br /><strong>Energia</strong><br />Fluxo do carregador para a placa e a bateria, consumo em watts, tensão, corrente e saúde.</td>
-    <td width="50%" valign="top"><img src="docs/screenshots/hw-board.webp" alt="Placa-mãe" width="100%" /><br /><strong>Placa-mãe / placa lógica</strong><br />Fabricante, modelo, chip, BIOS ou firmware, memória e tempo ligado.</td>
+    <td width="50%" valign="top"><img src="docs/screenshots/hw-board.webp" alt="Placa-mãe" width="100%" /><br /><strong>Placa-mãe / placa lógica</strong><br />Soquete, reguladores, slots com os pentes RGB instalados, BIOS ou firmware, tensões e ventoinhas.</td>
   </tr>
 </table>
 
 <details>
-<summary><strong>Mais: sensores e uninstaller</strong></summary>
+<summary><strong>Mais: armazenamento, sensores e desinstalador</strong></summary>
 <br />
 <table>
   <tr>
-    <td width="50%" valign="top"><img src="docs/screenshots/hw-sensors.webp" alt="Sensores" width="100%" /><br /><strong>Sensores</strong><br />Temperaturas de processador, GPU, SSD e bateria com histórico.</td>
+    <td width="50%" valign="top"><img src="docs/screenshots/hw-sensors.webp" alt="Sensores" width="100%" /><br /><strong>Sensores</strong><br />Mapa térmico e tabela no estilo AIDA64 (atual, mínimo, máximo, média e histórico), com exportação CSV.</td>
+    <td width="50%" valign="top"><img src="docs/screenshots/hw-storage.webp" alt="Armazenamento" width="100%" /><br /><strong>Armazenamento</strong><br />Cada disco em 3D com modelo, firmware, interface, saúde, temperatura, SMART e partições.</td>
+  </tr>
+  <tr>
     <td width="50%" valign="top"><img src="docs/screenshots/uninstall.webp" alt="Desinstalador" width="100%" /><br /><strong>Desinstalador</strong><br />Apps, pacotes da loja e restos em <code>~/Library</code> ou no registro, removidos em lote para a Lixeira.</td>
   </tr>
 </table>
@@ -221,8 +224,13 @@ Tudo foi feito para ser **seguro por padrão**:
 - **Memória RAM:** tipo (DDR4, DDR5, LPDDR5…), velocidade, fabricante, pentes e slots, composição (ativa, fixa, comprimida), pressão e swap.
 - **Placa-mãe / placa lógica:** fabricante, modelo, revisão, chip, BIOS ou firmware e data.
 - **Energia:** consumo do sistema em watts, carregador, potência entrando ou saindo da bateria, tensão, corrente, ciclos e saúde.
-- **Sensores:** temperaturas de CPU, GPU, SSD e bateria, e ventoinhas quando o sistema informa.
-- **Cenas 3D animadas** (CSS 3D e SVG), que reagem aos dados e inclinam com o mouse.
+- **Armazenamento:** cada disco com modelo, firmware, interface, link, TRIM, saúde, temperatura, horas ligado, dados gravados e lidos, e partições.
+- **Sensores no nível do AIDA64:** tabela por componente com valor atual, mínimo, máximo, média e minigráfico; mapa térmico; exportação CSV.
+  - **Windows:** **LibreHardwareMonitor** integrado. Com o monitoramento avançado (driver PawnIO, assinado), lê temperatura e frequência por núcleo, tensões, ventoinhas da placa-mãe, consumo e SMART.
+  - **Mac:** frequência e atividade dos grupos de núcleos e da GPU, e consumo, pelo IOReport, sem senha.
+- **Modelos 3D (three.js)** com luz, reflexos e LEDs neon:
+  - placa de vídeo, processador, RAM, placa-mãe, SSD e energia;
+  - na visão geral, o seu computador: PC em gabinete de vidro, MacBook ou notebook Windows.
 
 </details>
 
@@ -300,6 +308,8 @@ Baixe a versão mais recente em **[Releases](https://github.com/marquessrafa/cle
 | Windows | FFI com [koffi](https://koffi.dev) para Win32 (`FindFirstFileExW`, `GetCompressedFileSizeW`…), PowerShell/CIM, `reg.exe`, contadores de desempenho |
 | macOS | `diskutil`, `system_profiler`, `ioreg`, `launchctl`, `pmset`, `plutil`, `codesign`/`spctl` e um helper nativo em C (`cc-sensors`) para sensores IOHID |
 | Dados dos navegadores | `node:sqlite` (`DatabaseSync`) embutido no Node 24 |
+| 3D | [three.js](https://threejs.org) com PBR, bloom (`UnrealBloomPass`) e modelos procedurais próprios |
+| Sensores | Windows: [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) (helper em C#) + driver [PawnIO](https://pawnio.eu) opcional; macOS: IOReport (`cc-power`) e IOHID (`cc-sensors`) |
 | Trabalho pesado | `worker_threads` para varredura, tamanhos, limpeza e acúmulos, sem travar a interface |
 | Build e distribuição | electron-builder (NSIS, DMG, ZIP), GitHub Actions, feed próprio com uma entrada por arquitetura e verificação SHA-512 |
 
@@ -356,3 +366,5 @@ O CleanCode é um projeto independente, com design e código próprios. Não é 
 ## Licença
 
 [MIT](LICENSE). Use, estude, modifique e distribua à vontade.
+
+Bibliotecas de terceiros: three.js (MIT), LibreHardwareMonitorLib (MPL 2.0). O driver PawnIO (GPL-2.0) não é distribuído com o CleanCode: ele é baixado do site oficial e instalado à parte, só quando você ativa o monitoramento avançado.
