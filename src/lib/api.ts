@@ -180,6 +180,8 @@ interface CC {
   fdaIcon(): Promise<string | null>;
   fdaRelaunch(): Promise<void>;
   fdaDrag(): void;
+  fdaReveal(): Promise<boolean>;
+  fdaCopyPath(): Promise<string | null>;
   onFdaGranted(cb: () => void): () => void;
   openFullDiskAccess(): Promise<boolean>;
   drivesHardware(force?: boolean): Promise<DriveHardware[]>;

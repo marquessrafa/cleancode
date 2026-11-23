@@ -4,11 +4,11 @@
 // - mostra uma janelinha flutuante com o ícone do CleanCode para arrastar direto para a lista
 //   (sem procurar o app pelo botão "+");
 // - confere o acesso a cada segundo e avisa a janela principal assim que for liberado.
-import { app, BrowserWindow, ipcMain, nativeImage, screen } from 'electron';
+import { app, BrowserWindow, clipboard, ipcMain, nativeImage, screen, shell } from 'electron';
 import path from 'path';
 import { system } from './platform';
 
-const W = 460, H = 360;
+const W = 470, H = 430;
 let helper: BrowserWindow | null = null;
 let timer: ReturnType<typeof setInterval> | null = null;
 let iconCache: Electron.NativeImage | null = null;
@@ -80,7 +80,11 @@ export function setupFdaAssistant(opts: { isDev: boolean; mainWindow: () => Brow
   // (startDrag precisa ser chamado na hora do dragstart: o ícone já fica carregado ao abrir a janelinha)
   ipcMain.on('fda:drag', (e) => {
     const b = bundle(); if (!b || !iconCache || iconCache.isEmpty()) return;
-    e.sender.startDrag({ file: b, icon: iconCache.resize({ width: 72, height: 72 }) });
+    try { e.sender.startDrag({ file: b, icon: iconCache.resize({ width: 72, height: 72 }) }); } catch { /* sem arraste: usa o Finder ou o botão + */ }
   });
+  // caminhos garantidos (no macOS 27 a lista pode não aceitar o arraste vindo do app):
+  // o Finder com o CleanCode selecionado (arraste nativo) e o caminho copiado para o botão + (⌘⇧G e colar)
+  ipcMain.handle('fda:reveal', () => { const b = bundle(); if (b) shell.showItemInFolder(b); return !!b; });
+  ipcMain.handle('fda:copyPath', () => { const b = bundle(); if (b) clipboard.writeText(b); return b; });
   app.on('before-quit', () => { stopWatching(); closeHelper(); });
 }

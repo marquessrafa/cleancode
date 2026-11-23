@@ -73,8 +73,8 @@ export function FdaAssistantHost() {
           </div>
           <div className="text-[12px] font-semibold uppercase tracking-wider text-muted">Como liberar</div>
           <div className="space-y-3.5">
-            <Step n={1} title="Arraste o ícone para a lista" icon={<Hand size={13} className="text-accent" />}>
-              Os Ajustes abrem em Privacidade e Segurança: clique em <b className="font-medium text-fg">Acesso Total ao Disco</b> se ele não abrir sozinho. Ao lado aparece uma janelinha com o ícone do CleanCode: arraste o ícone para a lista e ligue a chave ao lado dele.
+            <Step n={1} title="Adicione o CleanCode à lista" icon={<Hand size={13} className="text-accent" />}>
+              Os Ajustes abrem em Privacidade e Segurança: clique em <b className="font-medium text-fg">Acesso Total ao Disco</b> se ele não abrir sozinho. Ao lado aparece uma janelinha que copia o caminho do app: clique no + embaixo da lista, aperte ⌘⇧G, cole e clique em Abrir. Depois ligue a chave do CleanCode.
             </Step>
             <Step n={2} title="Confirme os avisos do macOS" icon={<MousePointer2 size={13} className="text-accent" />}>
               O macOS mostra dois avisos padrão, iguais para qualquer app com esse acesso (antivírus, backup, limpeza): em “Escolher pastas”, clique em <Key>Ignorar Proteções do Sistema</Key>; no alerta vermelho, clique em <Key tone="danger">Ativar Acesso Total ao Disco</Key>. Eles parecem assustadores, mas são o texto fixo da Apple.

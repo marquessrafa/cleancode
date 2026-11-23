@@ -5,6 +5,14 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.5', date: '2026-11-23', headline: 'Acesso Total ao Disco pelo botão +',
+    groups: [
+      { title: 'Mac', icon: 'panel', items: [
+        'O assistente agora copia o caminho do app: no + da lista do Acesso Total ao Disco, aperte ⌘⇧G, cole e clique em Abrir. Também abre o CleanCode selecionado no Finder para arrastar de lá.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.4', date: '2026-11-23', headline: 'Painel instantâneo e temperatura real da CPU',
     groups: [
       { title: 'Painel', icon: 'panel', items: [
