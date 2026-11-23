@@ -1,21 +1,21 @@
-version: 1.3.1
+version: 1.3.2
 files:
-  - url: CleanCode-1.3.1-macOS-Universal.zip
-    sha512: FtXTTTJ3jw4EZYNUd21IPIJ8ODL8cmJOTJEuwwtK7CgvQ5pfBax9Y/8/jlUpd7cUA2txp+PUjq2osrEVX6Cv8w==
-    size: 223718368
-  - url: CleanCode-1.3.1-macOS-Apple-Silicon.zip
-    sha512: KAPWAvr5EXA6EjuabqyLTlQ2HTlYoaQ1/KBF+ZM1hanVC9Rx1flQ6bEqPrdnoIM/fpCzhhYtCAju7UDJlkgddQ==
-    size: 122890428
-  - url: CleanCode-1.3.1-macOS-Intel.zip
-    sha512: fq+zjrimSRDEcXyx/RK2BeGev1wVgwpCFoAOVtQLHGU7DGC8eT8ra05PlnIy6ZFtuBXaBmOpJqaPFhYoEj6o2g==
-    size: 130034612
-path: CleanCode-1.3.1-macOS-Universal.zip
-sha512: FtXTTTJ3jw4EZYNUd21IPIJ8ODL8cmJOTJEuwwtK7CgvQ5pfBax9Y/8/jlUpd7cUA2txp+PUjq2osrEVX6Cv8w==
-pathArm64: CleanCode-1.3.1-macOS-Apple-Silicon.zip
-sha512Arm64: KAPWAvr5EXA6EjuabqyLTlQ2HTlYoaQ1/KBF+ZM1hanVC9Rx1flQ6bEqPrdnoIM/fpCzhhYtCAju7UDJlkgddQ==
-sizeArm64: 122890428
-pathX64: CleanCode-1.3.1-macOS-Intel.zip
-sha512X64: fq+zjrimSRDEcXyx/RK2BeGev1wVgwpCFoAOVtQLHGU7DGC8eT8ra05PlnIy6ZFtuBXaBmOpJqaPFhYoEj6o2g==
-sizeX64: 130034612
-base: https://github.com/marquessrafa/cleancode/releases/download/v1.3.1
-releaseDate: '2026-11-23T16:28:23.936Z'
+  - url: CleanCode-1.3.2-macOS-Universal.zip
+    sha512: 1tevCkevE31q8Us+6+9RQ5ggs57GKvleqrN80YSY/Wn1/MhnbAHpk+EDg5yM6qjgujl7zutZRFwDBPncUCKj5g==
+    size: 223718950
+  - url: CleanCode-1.3.2-macOS-Apple-Silicon.zip
+    sha512: ileEfFDnzaQxmzWlVCN1lPz0xA+x38XF7PA8Mmk3LPyX4Ag1vH0NlfX9XYHsVgjwTiImsDo7lpxfwz+hHWsn4Q==
+    size: 122890792
+  - url: CleanCode-1.3.2-macOS-Intel.zip
+    sha512: BkP8iai6IoCfTIWs1tVEfroIVyFVt0Gnm1rQE3ZWm4csmlcW93u+V0SqWZLdpMuRfzvijexHcGM/Q5kWsFwXZw==
+    size: 130034988
+path: CleanCode-1.3.2-macOS-Universal.zip
+sha512: 1tevCkevE31q8Us+6+9RQ5ggs57GKvleqrN80YSY/Wn1/MhnbAHpk+EDg5yM6qjgujl7zutZRFwDBPncUCKj5g==
+pathArm64: CleanCode-1.3.2-macOS-Apple-Silicon.zip
+sha512Arm64: ileEfFDnzaQxmzWlVCN1lPz0xA+x38XF7PA8Mmk3LPyX4Ag1vH0NlfX9XYHsVgjwTiImsDo7lpxfwz+hHWsn4Q==
+sizeArm64: 122890792
+pathX64: CleanCode-1.3.2-macOS-Intel.zip
+sha512X64: BkP8iai6IoCfTIWs1tVEfroIVyFVt0Gnm1rQE3ZWm4csmlcW93u+V0SqWZLdpMuRfzvijexHcGM/Q5kWsFwXZw==
+sizeX64: 130034988
+base: https://github.com/marquessrafa/cleancode/releases/download/v1.3.2
+releaseDate: '2026-11-23T16:46:42.248Z'
