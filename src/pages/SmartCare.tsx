@@ -2,10 +2,11 @@
 // que executa só o que é seguro (lixo marcado por padrão e tarefas recomendadas). O resto fica para revisão.
 import React, { useEffect, useMemo, useState } from 'react';
 import { Sparkles, ShieldCheck, ShieldAlert, Gauge, Radar, Loader2, CheckCircle2, ChevronRight, RotateCcw, Lock, HeartPulse } from 'lucide-react';
-import { useApp } from '../lib/store';
+import { useApp, useRunning } from '../lib/store';
 import { cc, JunkCategoryInfo, JunkResult, ProtectionReport, MaintenanceTask, AppEntry, isMac } from '../lib/api';
 import { fmtSize, fmtNum } from '../lib/format';
 import { Button, Checkbox, cx } from '../components/ui';
+import { Float3D } from './maint';
 import { PageBody } from './common';
 
 type Phase = 'intro' | 'scanning' | 'results' | 'running' | 'done';
@@ -31,21 +32,7 @@ function useTween(target: number, ms = 800) {
 
 /** Marca do módulo: coração pulsando dentro de anéis concêntricos na cor de destaque. */
 function Pulse({ size = 280, active }: { size?: number; active?: boolean }) {
-  return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
-      <div className={cx('absolute inset-[10%] rounded-full blur-3xl', active && 'anim-breathe')} style={{ background: 'color-mix(in srgb, var(--accent) 45%, transparent)' }} />
-      <svg viewBox="0 0 200 200" className="absolute inset-0">
-        {[88, 74, 60].map((r, i) => (
-          <circle key={r} cx="100" cy="100" r={r} fill="none" stroke="var(--accent)" strokeOpacity={0.12 + i * 0.08} strokeWidth={1.5}
-            className={active ? 'anim-ping-soft' : ''} style={{ transformOrigin: '100px 100px', animationDelay: `${i * 0.5}s` }} />
-        ))}
-        <defs><radialGradient id="pulse-core" cx="35%" cy="30%" r="80%"><stop offset="0%" stopColor="color-mix(in srgb, var(--accent) 35%, #ffffff)" /><stop offset="60%" stopColor="var(--accent)" /><stop offset="100%" stopColor="color-mix(in srgb, var(--accent) 55%, #000000)" /></radialGradient></defs>
-        <circle cx="100" cy="100" r="46" fill="url(#pulse-core)" />
-        <ellipse cx="88" cy="80" rx="18" ry="9" fill="#ffffff" fillOpacity=".25" />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center"><HeartPulse size={size * 0.17} className="text-white drop-shadow" /></div>
-    </div>
-  );
+  return <Float3D icon={<HeartPulse />} active={active} size={size} />;
 }
 
 export default function SmartCare() {
@@ -53,6 +40,7 @@ export default function SmartCare() {
   const units = settings?.units || 'auto';
   const [phase, setPhase] = useState<Phase>('intro');
   const [status, setStatus] = useState<Record<Mod, 'idle' | 'busy' | 'done'>>({ cleanup: 'idle', protection: 'idle', performance: 'idle', apps: 'idle' });
+  useRunning('smartcare', phase === 'scanning' ? 'Cuidados Inteligentes: analisando' : phase === 'running' ? 'Cuidados Inteligentes: aplicando' : null);
   const [cats, setCats] = useState<JunkCategoryInfo[]>([]);
   const [junk, setJunk] = useState<JunkResult[]>([]);
   const [prot, setProt] = useState<ProtectionReport | null>(null);

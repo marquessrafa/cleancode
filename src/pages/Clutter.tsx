@@ -2,28 +2,17 @@
 // Tudo vai para a Lixeira e só depois de você marcar (as cópias de duplicados vêm marcadas, o original não).
 import React, { useEffect, useMemo, useState } from 'react';
 import { Layers, Copy, Images, FileBox, Download, Loader2, FolderOpen, RotateCcw, Trash2, Crown, Check } from 'lucide-react';
-import { useApp } from '../lib/store';
+import { useApp, useRunning } from '../lib/store';
 import { cc, ClutterReport, ClutterFile, FILE_MANAGER, isMac } from '../lib/api';
 import { fmtSize, fmtNum, fmtRelative } from '../lib/format';
 import { Badge, Button, Checkbox, cx, Empty } from '../components/ui';
+import { Float3D } from './maint';
 import { PageBody } from './common';
 
 type Tab = 'duplicates' | 'similar' | 'large' | 'downloads';
 
 function Stack({ size = 280, active }: { size?: number; active?: boolean }) {
-  return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
-      <div className={cx('absolute inset-[12%] rounded-full blur-3xl', active && 'anim-breathe')} style={{ background: 'color-mix(in srgb, var(--accent) 42%, transparent)' }} />
-      <svg viewBox="0 0 200 200" className="absolute inset-0">
-        <defs><linearGradient id="stk" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="color-mix(in srgb, var(--accent) 40%, #ffffff)" /><stop offset="100%" stopColor="var(--accent)" /></linearGradient></defs>
-        {[0, 1, 2].map((i) => (
-          <rect key={i} x={52 + i * 8} y={70 - i * 14} width="96" height="70" rx="14" fill={i === 2 ? 'url(#stk)' : 'var(--accent)'} fillOpacity={0.25 + i * 0.35}
-            className={active ? 'anim-float' : ''} style={{ animationDelay: `${i * 0.25}s`, transformOrigin: '100px 100px' }} transform={`rotate(${(i - 1) * 6} 100 100)`} />
-        ))}
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center pt-6"><Layers size={size * 0.15} className="text-white drop-shadow" /></div>
-    </div>
-  );
+  return <Float3D icon={<Layers />} active={active} size={size} />;
 }
 
 function Row({ f, on, toggle, badge }: { f: ClutterFile; on: boolean; toggle: (v: boolean) => void; badge?: React.ReactNode }) {
@@ -49,6 +38,7 @@ export default function Clutter() {
   const [tab, setTab] = useState<Tab>('duplicates');
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
+  useRunning('clutter', phase === 'scanning' ? 'Acúmulos: analisando' : busy ? 'Acúmulos: movendo para a Lixeira' : null);
   useEffect(() => cc.on.clutterProgress(setProg), []);
 
   const scan = async () => {

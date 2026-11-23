@@ -2,7 +2,7 @@
 // sessões, preenchimento) e quanto ocupa; limpeza por item e otimização dos bancos internos.
 import React, { useMemo, useState } from 'react';
 import { Globe, Sparkles, Zap, Lock, Loader2, RotateCcw, XCircle, CheckCircle2, ShieldAlert } from 'lucide-react';
-import { useApp } from '../lib/store';
+import { useApp, useRunning } from '../lib/store';
 import { cc, isMac, BrowserProfile, BrowserItemId } from '../lib/api';
 import { fmtNum, fmtSize } from '../lib/format';
 import { Badge, Button, Checkbox, cx } from '../components/ui';
@@ -15,6 +15,7 @@ export default function Browsers() {
   const { toast, confirm } = useApp();
   const [data, setData] = useState<{ profiles: BrowserProfile[]; denied: string[] } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  useRunning('browsers', busy === 'scan' ? 'Navegadores: medindo' : busy === 'clean' ? 'Navegadores: limpando' : busy === 'opt' ? 'Navegadores: otimizando' : null);
   const [sel, setSel] = useState<Record<string, Set<BrowserItemId>>>({});
   const [result, setResult] = useState<Record<string, { ok: boolean; message: string }>>({});
 

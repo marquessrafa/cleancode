@@ -232,6 +232,10 @@ export interface HwLive {
   power: { systemW?: number; batteryW?: number; adapterW?: number; voltage?: number; current?: number; plan?: string };
   cpuMHz?: number;
   fans: { name: string; rpm: number }[];
+  /** todos os sensores de temperatura disponíveis (um por disco, por GPU, zonas térmicas…) */
+  sensors?: { kind: 'cpu' | 'gpu' | 'disk' | 'battery' | 'board'; name: string; value: number }[];
+  /** o que só aparece com o app aberto como administrador */
+  needsAdmin?: string;
 }
 
 export type UninstallResult = { ok: boolean; code: number; message: string };

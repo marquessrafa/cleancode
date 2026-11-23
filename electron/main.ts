@@ -44,9 +44,13 @@ const DEFAULTS = {
   notifyRepairs: true, repairsSeen: [] as string[],
   // janela de novidades: última versão cujas notas o usuário já viu
   lastSeenVersion: '',
+  // 1.3.1: a 1.3.0 não mostrava as novidades para quem atualizava; marca que a correção já rodou
+  whatsNewFixed: false,
 };
 type Settings = typeof DEFAULTS;
 let settings: Settings = { ...DEFAULTS };
+// já havia configurações salvas? (distingue atualização de instalação nova, para a janela de novidades)
+const hadSettings = fs.existsSync(settingsFile);
 try { settings = { ...DEFAULTS, ...JSON.parse(fs.readFileSync(settingsFile, 'utf8')) }; } catch { /* primeiro uso */ }
 // a fonte de atualizações é obrigatória: se estiver vazia, usa a definida no app
 if (!settings.updateSource) settings.updateSource = DEFAULT_UPDATE_SOURCE;
@@ -304,7 +308,16 @@ app.on('before-quit', () => { if (gameSession) system.game.stop().catch(() => nu
 // ---------- novidades da versão ----------
 ipcMain.handle('app:whatsNew', () => {
   const v = app.getVersion();
-  if (!settings.lastSeenVersion) { settings.lastSeenVersion = v; saveSettings(); return { show: false, version: v }; } // instalação nova: nada a mostrar
+  // a 1.3.0 tratava a atualização vinda da 1.2.x como instalação nova (a chave não existia) e não mostrava nada:
+  // quem ficou marcado como "já viu a 1.3.0" sem ter visto recebe as notas desde a 1.2.1
+  if (!settings.whatsNewFixed) {
+    settings.whatsNewFixed = true; saveSettings();
+    if (hadSettings && (!settings.lastSeenVersion || settings.lastSeenVersion === '1.3.0')) return { show: true, version: v, previous: '1.2.1' };
+  }
+  if (!settings.lastSeenVersion) {
+    settings.lastSeenVersion = v; saveSettings();
+    return hadSettings ? { show: true, version: v } : { show: false, version: v }; // sem configurações salvas = instalação nova
+  }
   return { show: settings.lastSeenVersion !== v, version: v, previous: settings.lastSeenVersion };
 });
 ipcMain.handle('app:whatsNewSeen', () => { settings.lastSeenVersion = app.getVersion(); saveSettings(); return true; });

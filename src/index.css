@@ -224,3 +224,13 @@ body.panel-body, body.panel-body #root { background: transparent !important; hei
 @keyframes hw-scan { from { top: 100%; } to { top: -10%; } }
 .hw-scan { animation: hw-scan 2.4s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .hw-spin, .hw-trace, .hw-scan, .hw-glow { animation: none; } }
+/* objetos 3D soltos das telas iniciais (Float3D) */
+@keyframes f3d-ring { from { transform: rotateX(var(--rx)) rotateY(var(--ry)) rotateZ(0deg); } to { transform: rotateX(var(--rx)) rotateY(var(--ry)) rotateZ(360deg); } }
+.f3d-ring { transform-style: preserve-3d; animation: f3d-ring 9s linear infinite; }
+@keyframes f3d-float { 0%, 100% { transform: translate3d(0, -6px, 0); } 50% { transform: translate3d(0, 8px, 0); } }
+.f3d-float { animation: f3d-float 5s ease-in-out infinite; }
+@keyframes f3d-sway { 0%, 100% { transform: rotateY(-32deg) rotateX(6deg); } 50% { transform: rotateY(32deg) rotateX(-4deg); } }
+.f3d-sway { animation: f3d-sway 7s ease-in-out infinite; }
+@keyframes f3d-particle { 0%, 100% { opacity: .15; } 50% { opacity: .9; } }
+.f3d-particle { animation: f3d-particle 3.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .f3d-ring, .f3d-float, .f3d-sway, .f3d-particle { animation: none; } }

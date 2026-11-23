@@ -3,7 +3,7 @@
 // preferências corrompidas e agentes de inicialização órfãos. Backup automático antes de corrigir.
 import React, { useMemo, useState } from 'react';
 import { Wrench, ShieldCheck, Archive, AlertTriangle, RotateCcw, CheckCircle2, Info, Loader2, Bug } from 'lucide-react';
-import { useApp } from '../lib/store';
+import { useApp, useRunning } from '../lib/store';
 import { cc, isMac, RepairItem } from '../lib/api';
 import { fmtNum, fmtRelative } from '../lib/format';
 import { Badge, Button, Checkbox, cx } from '../components/ui';
@@ -30,6 +30,7 @@ export default function Repairs() {
   const { toast, confirm } = useApp();
   const [items, setItems] = useState<RepairItem[] | null>(null);
   const [busy, setBusy] = useState<'scan' | 'fix' | null>(null);
+  useRunning('repairs', busy === 'scan' ? `${isMac ? 'Reparos' : 'Registro'}: analisando` : busy === 'fix' ? `${isMac ? 'Reparos' : 'Registro'}: corrigindo` : null);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [done, setDone] = useState<Record<string, { ok: boolean; message: string }>>({});
   const [errors, setErrors] = useState<{ app: string; message: string; at: number }[]>([]);

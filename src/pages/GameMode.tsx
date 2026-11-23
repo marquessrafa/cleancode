@@ -3,7 +3,7 @@
 // limpeza dos caches de shaders e a lista de jogos instalados (Steam, Epic, GOG, apps de jogos).
 import React, { useEffect, useMemo, useState } from 'react';
 import { Gamepad2, Zap, MemoryStick, Power, Play, Square, Loader2, CheckCircle2, XCircle, Sparkles, RotateCcw, Rocket } from 'lucide-react';
-import { useApp } from '../lib/store';
+import { useApp, useRunning } from '../lib/store';
 import { cc, isMac, GameInfo, GameStatus, GameStep } from '../lib/api';
 import { fmtSize } from '../lib/format';
 import { Badge, Button, Checkbox, Toggle, cx } from '../components/ui';
@@ -24,6 +24,7 @@ export default function GameMode() {
   const [busy, setBusy] = useState<string | null>(null);
   const [steps, setSteps] = useState<GameStep[]>([]);
   const [started, setStarted] = useState(false);
+  useRunning('game', status?.session ? 'Modo Jogo ativo' : busy === 'start' ? 'Modo Jogo: ativando' : null);
 
   const load = async () => {
     setBusy('load');

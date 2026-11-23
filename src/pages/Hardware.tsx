@@ -394,12 +394,29 @@ function SensorsTab({ live, hist }: Omit<P, 'info'>) {
   const fans = live?.live?.fans || [];
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 sm:grid-cols-4">
-        <Gauge value={t.cpu} max={110} label="Processador" unit="°C" color={C.cpu} warn={80} danger={95} />
-        <Gauge value={t.gpu ?? live?.live?.gpu.temp} max={110} label="Placa de vídeo" unit="°C" color={C.gpu} warn={80} danger={95} />
-        <Gauge value={t.ssd} max={90} label="SSD" unit="°C" color={C.ram} warn={60} danger={75} />
-        <Gauge value={t.battery} max={60} label="Bateria" unit="°C" color={C.pwr} warn={38} danger={45} />
-      </div>
+      {live?.live?.needsAdmin && (
+        <div className="flex items-center gap-3 rounded-xl border border-[color-mix(in_srgb,var(--warn)_40%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] p-4 text-[13px]">
+          <Thermometer size={18} className="shrink-0 text-[var(--warn)]" />
+          <span className="flex-1">{live.live.needsAdmin}</span>
+          <button onClick={() => cc.restartAdmin()} className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-[12px] font-semibold text-white">Reabrir como administrador</button>
+        </div>
+      )}
+      {(() => {
+        const KIND: Record<string, { label: string; color: string; max: number; warn: number; danger: number }> = {
+          cpu: { label: 'Processador', color: C.cpu, max: 110, warn: 80, danger: 95 }, gpu: { label: 'Placa de vídeo', color: C.gpu, max: 110, warn: 80, danger: 95 },
+          disk: { label: 'Disco', color: C.ram, max: 90, warn: 60, danger: 75 }, battery: { label: 'Bateria', color: C.pwr, max: 60, warn: 38, danger: 45 }, board: { label: 'Placa', color: C.acc, max: 100, warn: 75, danger: 90 },
+        };
+        const list = live?.live?.sensors?.length ? live.live.sensors : [
+          ...(t.cpu !== undefined ? [{ kind: 'cpu' as const, name: 'Processador', value: t.cpu }] : []), ...(t.gpu !== undefined ? [{ kind: 'gpu' as const, name: 'GPU', value: t.gpu }] : []),
+          ...(t.ssd !== undefined ? [{ kind: 'disk' as const, name: 'SSD', value: t.ssd }] : []), ...(t.battery !== undefined ? [{ kind: 'battery' as const, name: 'Bateria', value: t.battery }] : []),
+        ];
+        if (!list.length) return <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 text-center text-[13px] text-muted">Nenhum sensor de temperatura disponível neste computador.</div>;
+        return (
+          <div className="grid grid-cols-2 gap-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 sm:grid-cols-3 lg:grid-cols-4">
+            {list.map((x, i) => { const k = KIND[x.kind] || KIND.board; return <div key={i} title={x.name}><Gauge value={x.value} max={k.max} label={x.name.length > 26 ? x.name.slice(0, 25) + '…' : x.name} unit="°C" color={k.color} warn={k.warn} danger={k.danger} /></div>; })}
+          </div>
+        );
+      })()}
       <div className="grid gap-4 lg:grid-cols-2">
         <Metric label="Temperatura do processador" value={t.cpu !== undefined ? `${Math.round(t.cpu)} °C` : '—'} color={C.cpu}><Spark data={hist.temp} color={C.cpu} /></Metric>
         <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">

@@ -2,10 +2,11 @@
 // mostra tudo para revisão e remove só o que estiver marcado (Lixeira por padrão).
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Sparkles, ChevronRight, Loader2, CheckCircle2, AlertTriangle, RotateCcw, FolderOpen, Trash2, ShieldCheck, Layers, Zap } from 'lucide-react';
-import { useApp } from '../lib/store';
+import { useApp, useRunning } from '../lib/store';
 import { cc, JunkCategoryInfo, JunkResult, FILE_MANAGER, isMac } from '../lib/api';
 import { fmtSize, fmtNum, fmtRelative } from '../lib/format';
 import { Badge, Button, Checkbox, cx } from '../components/ui';
+import { Float3D } from './maint';
 import { PageBody } from './common';
 
 type Phase = 'intro' | 'scanning' | 'results' | 'cleaning' | 'done';
@@ -29,37 +30,14 @@ function useTween(target: number, ms = 700) {
 
 /** Ilustração do módulo: anéis em órbita ao redor de um núcleo na cor de destaque. */
 function Orb({ active, size = 260 }: { active?: boolean; size?: number }) {
-  return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
-      <div className={cx('absolute inset-[12%] rounded-full blur-3xl', active ? 'anim-breathe' : '')} style={{ background: 'color-mix(in srgb, var(--accent) 45%, transparent)' }} />
-      <svg viewBox="0 0 200 200" className="absolute inset-0">
-        <defs>
-          <radialGradient id="orb-core" cx="35%" cy="30%" r="75%">
-            <stop offset="0%" stopColor="color-mix(in srgb, var(--accent) 35%, #ffffff)" />
-            <stop offset="55%" stopColor="var(--accent)" />
-            <stop offset="100%" stopColor="color-mix(in srgb, var(--accent) 60%, #000000)" />
-          </radialGradient>
-        </defs>
-        <g className={active ? 'anim-spin-fast' : 'anim-spin-slow'} style={{ transformOrigin: '100px 100px' }}>
-          <circle cx="100" cy="100" r="86" fill="none" stroke="var(--accent)" strokeOpacity=".25" strokeWidth="1.5" strokeDasharray="4 10" />
-          <circle cx="100" cy="14" r="5" fill="var(--accent)" />
-        </g>
-        <g className="anim-spin-rev" style={{ transformOrigin: '100px 100px' }}>
-          <circle cx="100" cy="100" r="70" fill="none" stroke="var(--accent)" strokeOpacity=".35" strokeWidth="2" strokeDasharray="60 380" strokeLinecap="round" />
-          <circle cx="170" cy="100" r="3.5" fill="var(--accent)" fillOpacity=".7" />
-        </g>
-        <circle cx="100" cy="100" r="50" fill="url(#orb-core)" />
-        <ellipse cx="86" cy="80" rx="20" ry="11" fill="#ffffff" fillOpacity=".28" />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center"><Sparkles size={size * 0.17} className="text-white drop-shadow" /></div>
-    </div>
-  );
+  return <Float3D icon={<Sparkles />} active={active} size={size} />;
 }
 
 export default function Cleanup() {
   const { confirm, toast, settings } = useApp();
   const units = settings?.units || 'auto';
   const [phase, setPhase] = useState<Phase>('intro');
+  useRunning('cleanup', phase === 'scanning' ? 'Limpeza: analisando' : phase === 'cleaning' ? 'Limpeza: limpando' : null);
   const [cats, setCats] = useState<JunkCategoryInfo[]>([]);
   const [results, setResults] = useState<Record<string, JunkResult>>({});
   const [current, setCurrent] = useState<string | null>(null);

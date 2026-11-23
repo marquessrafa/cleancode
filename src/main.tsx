@@ -31,8 +31,13 @@ import { NeedsScan } from './pages/common';
 import Panel from './panel/Panel';
 import WhatsNew from './components/WhatsNew';
 
-function Content() {
-  const { page, active, settings } = useApp();
+// telas com tarefas longas ficam montadas depois da primeira visita: trocar de tela não perde o
+// progresso nem o resultado (e a execução continua aparecendo no menu e na central do topo)
+const KEEP_ALIVE = new Set<string>(['smartcare', 'cleanup', 'clutter', 'performance', 'protection', 'repairs', 'browsers', 'game', 'uninstall', 'discover']);
+
+function Content({ page: forced }: { page?: string } = {}) {
+  const { page: current, active, settings } = useApp();
+  const page = (forced || current) as typeof current;
   if (!settings) return null;
   const needs = ['explorer', 'visual', 'types', 'age', 'owners', 'top', 'duplicates', 'search'].includes(page);
   if (needs && !active) return <NeedsScan />;
@@ -65,14 +70,19 @@ function Content() {
 
 function App() {
   const { page } = useApp();
+  const [alive, setAlive] = React.useState<string[]>([]);
+  React.useEffect(() => { if (KEEP_ALIVE.has(page)) setAlive((a) => (a.includes(page) ? a : [...a, page])); }, [page]);
   return (
     <div className="flex h-full flex-col">
       <TopBar />
       <div className="flex min-h-0 flex-1">
         <Sidebar />
-        <main key={page} className="min-w-0 flex-1 overflow-hidden anim-page">
-          <Content />
-        </main>
+        <div className="relative min-w-0 flex-1 overflow-hidden">
+          {!KEEP_ALIVE.has(page) && <main key={page} className="h-full min-w-0 overflow-hidden anim-page"><Content /></main>}
+          {(KEEP_ALIVE.has(page) && !alive.includes(page) ? [...alive, page] : alive).map((p) => (
+            <main key={p} className={p === page ? 'h-full min-w-0 overflow-hidden anim-page' : 'hidden'}><Content page={p} /></main>
+          ))}
+        </div>
       </div>
       <Toasts />
       <ConfirmDialog />

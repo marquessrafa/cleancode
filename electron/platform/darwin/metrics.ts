@@ -221,6 +221,12 @@ async function hwLive(): Promise<HwLive> {
     power: { systemW: sysLoad ? +sysLoad / 1000 : undefined, adapterW: adapterW ? +adapterW : undefined, voltage: volt ? volt / 1000 : undefined, current: amp !== undefined ? amp / 1000 : undefined, batteryW: volt && amp !== undefined ? (volt * amp) / 1e6 : undefined },
     cpuMHz: undefined,
     fans: [],
+    sensors: [
+      ...(temps.cpu !== undefined ? [{ kind: 'cpu' as const, name: 'Processador', value: temps.cpu }] : []),
+      ...(temps.gpu !== undefined ? [{ kind: 'gpu' as const, name: 'GPU', value: temps.gpu }] : []),
+      ...(temps.ssd !== undefined ? [{ kind: 'disk' as const, name: 'SSD interno', value: temps.ssd }] : []),
+      ...(temps.battery !== undefined ? [{ kind: 'battery' as const, name: 'Bateria', value: temps.battery }] : []),
+    ],
   };
   liveCache = { at: Date.now(), value };
   return value;

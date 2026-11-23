@@ -2,10 +2,11 @@
 // e extensões de navegador. Não substitui o antivírus do SO; mostra o que merece atenção.
 import React, { useMemo, useState } from 'react';
 import { ShieldCheck, ShieldAlert, ShieldX, Loader2, ExternalLink, FolderOpen, Puzzle, Power, RotateCcw, Info, Globe, ScanLine, CheckCircle2, AlertTriangle, XCircle, HelpCircle } from 'lucide-react';
-import { useApp } from '../lib/store';
+import { useApp, useRunning } from '../lib/store';
 import { cc, ProtectionReport, PersistenceFinding, isMac, OS_NAME, FILE_MANAGER } from '../lib/api';
 import { fmtNum } from '../lib/format';
 import { Badge, Button, cx, Segmented } from '../components/ui';
+import { Float3D } from './maint';
 import { PageBody } from './common';
 
 const SIG_LABEL: Record<string, string> = {
@@ -15,23 +16,9 @@ const SIG_LABEL: Record<string, string> = {
 const KIND_LABEL: Record<string, string> = { login: 'Item de login', agent: 'Agente', daemon: 'Serviço', run: 'Inicialização', folder: 'Pasta Inicializar', task: 'Tarefa agendada' };
 
 function Shield({ state, size = 220, active }: { state: 'idle' | 'good' | 'warn' | 'risk'; size?: number; active?: boolean }) {
-  const color = state === 'risk' ? 'var(--danger)' : state === 'warn' ? 'var(--warn)' : 'var(--accent)';
+  const tone = state === 'risk' ? 'var(--danger)' : state === 'warn' ? 'var(--warn)' : 'var(--accent)';
   const Icon = state === 'risk' ? ShieldX : state === 'warn' ? ShieldAlert : ShieldCheck;
-  return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
-      <div className={cx('absolute inset-[14%] rounded-full blur-3xl', active && 'anim-breathe')} style={{ background: `color-mix(in srgb, ${color} 40%, transparent)` }} />
-      <svg viewBox="0 0 200 200" className="absolute inset-0">
-        <g className={active ? 'anim-spin-fast' : 'anim-spin-slow'} style={{ transformOrigin: '100px 100px' }}>
-          <circle cx="100" cy="100" r="88" fill="none" stroke={color} strokeOpacity=".22" strokeWidth="1.5" strokeDasharray="2 8" />
-        </g>
-        {active && <g className="anim-spin-rev" style={{ transformOrigin: '100px 100px' }}><circle cx="100" cy="100" r="74" fill="none" stroke={color} strokeOpacity=".5" strokeWidth="3" strokeDasharray="90 380" strokeLinecap="round" /></g>}
-        <defs><radialGradient id="sh-core" cx="35%" cy="30%" r="80%"><stop offset="0%" stopColor={`color-mix(in srgb, ${color} 35%, #ffffff)`} /><stop offset="60%" stopColor={color} /><stop offset="100%" stopColor={`color-mix(in srgb, ${color} 55%, #000000)`} /></radialGradient></defs>
-        <circle cx="100" cy="100" r="54" fill="url(#sh-core)" />
-        <ellipse cx="86" cy="78" rx="22" ry="11" fill="#ffffff" fillOpacity=".25" />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center"><Icon size={size * 0.2} className="text-white drop-shadow" /></div>
-    </div>
-  );
+  return <Float3D icon={<Icon />} active={active} tone={tone} size={size} />;
 }
 
 export default function Protection() {
@@ -40,6 +27,7 @@ export default function Protection() {
   const [rep, setRep] = useState<ProtectionReport | null>(null);
   const [filter, setFilter] = useState<'attention' | 'all'>('attention');
   const [busy, setBusy] = useState<string | null>(null);
+  useRunning('protection', phase === 'scanning' ? 'Proteção: verificando' : null);
   const [qs, setQs] = useState<{ running: boolean; result?: { ok: boolean; message: string } }>({ running: false });
 
   const scan = async () => { setPhase('scanning'); try { setRep(await cc.protectionScan()); } finally { setPhase('done'); } };

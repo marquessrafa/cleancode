@@ -80,6 +80,8 @@ export interface HwLive {
   gpu: { util?: number; memUsed?: number; memTotal?: number; temp?: number; procs?: { name: string; pid: number; util: number }[] };
   power: { systemW?: number; batteryW?: number; adapterW?: number; voltage?: number; current?: number; plan?: string };
   cpuMHz?: number; fans: { name: string; rpm: number }[];
+  sensors?: { kind: 'cpu' | 'gpu' | 'disk' | 'battery' | 'board'; name: string; value: number }[];
+  needsAdmin?: string;
 }
 export interface HardwareLive {
   live: HwLive | null; temps: { cpu?: number; gpu?: number; battery?: number; ssd?: number }; memory: { total: number; used: number; pressure: number; level: string };

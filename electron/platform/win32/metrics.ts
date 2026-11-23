@@ -159,15 +159,39 @@ async function hardware(): Promise<HardwareInfo> {
 // GPU por contadores de desempenho (motor 3D de cada processo), frequência atual da CPU,
 // potência da bateria (root/wmi) e temperatura da GPU NVIDIA quando o nvidia-smi existe
 const LIVE = String.raw`$ErrorActionPreference='SilentlyContinue'
-$s=(Get-Counter '\GPU Engine(*engtype_3D)\Utilization Percentage','\GPU Adapter Memory(*)\Dedicated Usage','\Processor Information(_Total)\% Processor Performance' -ErrorAction SilentlyContinue).CounterSamples
+$s=(Get-Counter '\GPU Engine(*engtype_3D)\Utilization Percentage','\GPU Adapter Memory(*)\Dedicated Usage','\Processor Information(_Total)\% Processor Performance','\Thermal Zone Information(*)\Temperature' -ErrorAction SilentlyContinue).CounterSamples
 $by=@{}; $mem=0; $perf=$null
-foreach($x in $s){ if($x.Path -like '*gpu engine*'){ if($x.InstanceName -match 'pid_(\d+)'){ $p=[int]$matches[1]; $by[$p]=[double]$by[$p]+$x.CookedValue } } elseif($x.Path -like '*adapter memory*'){ $mem+=$x.CookedValue } else { $perf=$x.CookedValue } }
+$zones=@()
+foreach($x in $s){ if($x.Path -like '*thermal zone*'){ $k=[double]$x.CookedValue; if($k -gt 250 -and $k -lt 400){ $zones+=[pscustomobject]@{name=$x.InstanceName;c=[math]::Round($k-273.15,1)} } } elseif($x.Path -like '*gpu engine*'){ if($x.InstanceName -match 'pid_(\d+)'){ $p=[int]$matches[1]; $by[$p]=[double]$by[$p]+$x.CookedValue } } elseif($x.Path -like '*adapter memory*'){ $mem+=$x.CookedValue } else { $perf=$x.CookedValue } }
 $procs=@($by.GetEnumerator() | Where-Object { $_.Value -gt 0.5 } | Sort-Object Value -Descending | Select-Object -First 6 | ForEach-Object { [pscustomobject]@{pid=$_.Key;util=[math]::Round($_.Value,1);name=(Get-Process -Id $_.Key).ProcessName} })
 $util=[math]::Min(100,($by.Values | Measure-Object -Sum).Sum)
 $bs=Get-CimInstance -Namespace root/wmi -ClassName BatteryStatus | Select-Object -First 1 ChargeRate,DischargeRate,Voltage,PowerOnline
 $plan=(powercfg /getactivescheme) -join ' '
 $t=$null; $nv="$env:SystemRoot\System32\nvidia-smi.exe"; if(Test-Path $nv){ $t=(& $nv --query-gpu=temperature.gpu --format=csv,noheader,nounits | Select-Object -First 1) }
-[pscustomobject]@{util=$util;mem=$mem;perf=$perf;procs=$procs;bat=$bs;plan=$plan;temp=$t} | ConvertTo-Json -Depth 3 -Compress`;
+[pscustomobject]@{util=$util;mem=$mem;perf=$perf;procs=$procs;bat=$bs;plan=$plan;temp=$t;zones=$zones} | ConvertTo-Json -Depth 3 -Compress`;
+// temperatura de cada disco (SMART/NVMe via contador de confiabilidade). O Windows só entrega com administrador.
+const DISKS = String.raw`$ErrorActionPreference='SilentlyContinue'
+@(Get-PhysicalDisk | ForEach-Object { $r = $_ | Get-StorageReliabilityCounter; [pscustomobject]@{name=$_.FriendlyName;media=[string]$_.MediaType;bus=[string]$_.BusType;temp=$r.Temperature;max=$r.TemperatureMax} }) | ConvertTo-Json -Compress`;
+let diskCache: { at: number; value: { name: string; media: string; bus: string; temp?: number }[] } | null = null;
+async function diskTemps() {
+  if (diskCache && Date.now() - diskCache.at < 60000) return diskCache.value;
+  let j: any = []; try { j = JSON.parse((await ps(DISKS)).trim() || '[]'); } catch { /* */ }
+  const value = (Array.isArray(j) ? j : j ? [j] : []).filter((d: any) => d?.name).map((d: any) => ({ name: String(d.name).trim(), media: d.media, bus: d.bus, temp: Number(d.temp) > 0 && Number(d.temp) < 120 ? Number(d.temp) : undefined }));
+  diskCache = { at: Date.now(), value };
+  return value;
+}
+// sensores das GPUs (D3DKMT); carregado só aqui para não pesar a inicialização
+let gpuSensorsFn: (() => { name: string; temp?: number; fanRPM?: number; powerPct?: number }[]) | null | undefined;
+function readGpuSensors() {
+  if (gpuSensorsFn === undefined) { try { gpuSensorsFn = require('./gpuperf').gpuSensors; } catch { gpuSensorsFn = null; } }
+  try { return gpuSensorsFn ? gpuSensorsFn() : []; } catch { return []; }
+}
+let isAdminCache: boolean | undefined;
+async function amAdmin() {
+  if (isAdminCache === undefined) isAdminCache = /True/i.test(await ps('([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)'));
+  return isAdminCache;
+}
+
 let liveCache: { at: number; value: HwLive } | null = null;
 let liveRunning: Promise<HwLive> | null = null;
 async function hwLive(): Promise<HwLive> {
@@ -177,11 +201,23 @@ async function hwLive(): Promise<HwLive> {
     const hw = await hardware().catch(() => null);
     const b = j.bat || {};
     const rate = b.PowerOnline ? b.ChargeRate : -(b.DischargeRate || 0);
+    const [disks, admin] = await Promise.all([diskTemps(), amAdmin()]);
+    const gpus = readGpuSensors();
+    const zones: { name: string; c: number }[] = (Array.isArray(j.zones) ? j.zones : j.zones ? [j.zones] : []).filter((z: any) => z && z.c > 0);
+    const gpuTemp = gpus.find((g) => g.temp !== undefined)?.temp ?? (j.temp ? Number(j.temp) : undefined);
+    const sensors: NonNullable<HwLive['sensors']> = [
+      ...zones.map((z, i) => ({ kind: 'cpu' as const, name: zones.length > 1 ? `Zona térmica ${i + 1}` : 'Processador (zona térmica)', value: z.c })),
+      ...gpus.filter((g) => g.temp !== undefined).map((g) => ({ kind: 'gpu' as const, name: g.name, value: g.temp! })),
+      ...(!gpus.some((g) => g.temp !== undefined) && j.temp ? [{ kind: 'gpu' as const, name: hw?.gpus[0]?.name || 'GPU', value: Number(j.temp) }] : []),
+      ...disks.filter((d) => d.temp !== undefined).map((d) => ({ kind: 'disk' as const, name: `${d.name}${d.bus ? ` (${d.bus})` : ''}`, value: d.temp! })),
+    ];
     const value: HwLive = {
-      gpu: { util: typeof j.util === 'number' ? Math.round(j.util) : undefined, memUsed: j.mem || undefined, memTotal: hw?.gpus[0]?.vram, temp: j.temp ? Number(j.temp) : undefined, procs: (Array.isArray(j.procs) ? j.procs : j.procs ? [j.procs] : []).map((p: any) => ({ name: p.name || `PID ${p.pid}`, pid: p.pid, util: p.util })) },
+      sensors,
+      needsAdmin: !admin && disks.length > 0 && disks.every((d) => d.temp === undefined) ? `A temperatura de ${disks.length === 1 ? 'o disco' : `cada um dos ${disks.length} discos`} só é informada pelo Windows com o app aberto como administrador.` : undefined,
+      gpu: { util: typeof j.util === 'number' ? Math.round(j.util) : undefined, memUsed: j.mem || undefined, memTotal: hw?.gpus[0]?.vram, temp: gpuTemp, procs: (Array.isArray(j.procs) ? j.procs : j.procs ? [j.procs] : []).map((p: any) => ({ name: p.name || `PID ${p.pid}`, pid: p.pid, util: p.util })) },
       power: { batteryW: rate ? rate / 1000 : undefined, voltage: b.Voltage ? b.Voltage / 1000 : undefined, plan: /\(([^)]+)\)\s*$/.exec(String(j.plan || '').trim())?.[1] },
       cpuMHz: j.perf && hw?.cpu.baseMHz ? Math.round((j.perf / 100) * hw.cpu.baseMHz) : undefined,
-      fans: [],
+      fans: gpus.filter((g) => g.fanRPM).map((g) => ({ name: `Ventoinha da ${g.name}`, rpm: g.fanRPM! })),
     };
     liveCache = { at: Date.now(), value };
     return value;

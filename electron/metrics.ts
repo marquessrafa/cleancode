@@ -91,7 +91,7 @@ export async function snapshot(): Promise<MetricsSnapshot> {
   const d = drives().find((x) => x.type === 'Local' && x.total > 0) || null;
   const base = {
     machine, os: system.osName, at: now,
-    cpu: { load: cpuLoad(), cores: os.cpus().length, temperature: temperatures.cpu, user: lastSplit.user, system: lastSplit.system },
+    cpu: { load: cpuLoad(), cores: os.cpus().length, temperature: temperatures.cpu ?? live?.sensors?.find((x) => x.kind === 'cpu')?.value, user: lastSplit.user, system: lastSplit.system },
     memory,
     disk: d ? { root: d.root, label: d.label || d.root, total: d.total, free: d.free } : null,
     battery, temperatures, network, devices,

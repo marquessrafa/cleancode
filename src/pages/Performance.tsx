@@ -1,7 +1,7 @@
 // Desempenho: tarefas de manutenção, itens que abrem com o sistema e apps que mais consomem.
 import React, { useEffect, useMemo, useState } from 'react';
 import { Gauge, Wrench, Power, Flame, Lock, CheckCircle2, XCircle, Loader2, RefreshCw, ExternalLink, FolderOpen, Search, X, Cpu, MemoryStick } from 'lucide-react';
-import { useApp } from '../lib/store';
+import { useApp, useRunning } from '../lib/store';
 import { cc, MaintenanceTask, StartupItem, ProcInfo, isMac, OS_NAME, FILE_MANAGER } from '../lib/api';
 import { fmtSize } from '../lib/format';
 import { Badge, Button, Checkbox, cx, Empty, Input, Segmented } from '../components/ui';
@@ -25,6 +25,7 @@ function Maintenance() {
   const [tasks, setTasks] = useState<MaintenanceTask[]>([]);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [running, setRunning] = useState(false);
+  useRunning('performance', running ? 'Desempenho: executando manutenção' : null);
   const [res, setRes] = useState<Record<string, { ok: boolean; message: string }>>({});
   useEffect(() => { cc.perfTasks().then((t) => { setTasks(t); setSel(new Set(t.filter((x) => x.recommended).map((x) => x.id))); }); }, []);
   const needsAdmin = tasks.some((t) => sel.has(t.id) && t.admin);

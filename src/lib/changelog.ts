@@ -5,6 +5,29 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.3.1', date: '2026-11-23', headline: 'Tarefas que continuam, discos em destaque e sensores',
+    groups: [
+      { title: 'Tarefas em andamento', icon: 'sparkles', items: [
+        'O que você inicia continua rodando ao trocar de tela: a página volta exatamente como estava, com o progresso ou o resultado.',
+        'Um ponto verde no menu lateral mostra cada tela executando, e a central de atividades no topo lista tudo o que está em andamento.',
+      ] },
+      { title: 'Visão geral e análise', icon: 'download', items: [
+        'Os discos ficam em destaque no topo da Visão geral, prontos para analisar.',
+        'O botão + da barra superior abre um menu para escolher um disco ou uma pasta.',
+        'Cuidados Inteligentes agora abre o grupo Manutenção.',
+      ] },
+      { title: 'Sensores', icon: 'chip', items: [
+        'Windows: temperatura, ventoinha e potência de qualquer placa de vídeo (NVIDIA, AMD e Intel), sem precisar de administrador.',
+        'Windows: temperatura de cada disco separado e das zonas térmicas do processador; quando faltar permissão, o app oferece reabrir como administrador.',
+        'A aba Sensores mostra um medidor para cada sensor encontrado.',
+      ] },
+      { title: 'Visual', icon: 'panel', items: [
+        'As telas iniciais de Manutenção ganharam objetos 3D animados, soltos na tela, que reagem ao mouse e aceleram durante a execução.',
+        'A janela de novidades volta a aparecer depois de atualizar.',
+      ] },
+    ],
+  },
+  {
     version: '1.3.0', date: '2026-11-23', headline: 'Hardware, registro, navegadores e Modo Jogo',
     groups: [
       { title: 'Registro do Windows / Reparos do macOS', icon: 'wrench', items: [

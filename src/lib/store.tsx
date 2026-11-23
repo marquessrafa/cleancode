@@ -33,6 +33,9 @@ interface Ctx {
   info: AppInfo | null;
   setComparing: (id: string | null) => void;
   tasks: BgTask[];
+  /** execuções em andamento nas telas (Limpeza, Proteção…), por página: aparecem no menu e na central do topo */
+  running: Record<string, { label: string; since: number }>;
+  setRunning: (page: string, label: string | null) => void;
   findTask: (kind: BgTask['kind'], scanId?: number, nodeId?: number) => BgTask | undefined;
   startScanTask: (kind: 'owners' | 'duplicates', nodeId: number, args?: any[]) => void;
   cancelTask: (key: string) => void;
@@ -58,6 +61,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const progressBuf = useRef(new Map<number, Progress>());
   const scanningRef = useRef(false);
   const [tasks, setTasks] = useState<BgTask[]>([]);
+  const [running, setRunningState] = useState<Record<string, { label: string; since: number }>>({});
+  const setRunning = useCallback((page: string, label: string | null) => setRunningState((r) => {
+    if (!label) { if (!(page in r)) return r; const n = { ...r }; delete n[page]; return n; }
+    if (r[page]?.label === label) return r;
+    return { ...r, [page]: { label, since: r[page]?.since || Date.now() } };
+  }), []);
   const [update, setUpdate] = useState<UpdateState>({ status: 'idle' });
   const patchTask = useCallback((key: string, p: Partial<BgTask> | ((t: BgTask) => Partial<BgTask>)) =>
     setTasks((ts) => ts.map((t) => (t.key === key ? { ...t, ...(typeof p === 'function' ? p(t) : p) } : t))), []);
@@ -231,7 +240,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     tasks, findTask, startScanTask, cancelTask, updateTaskResult, clearFinishedTasks, startUninstall,
     settings, setSettings, dark, page, go: setPage, scans, active, activeId, setActive: setActiveId,
     startScan, closeScan, stopScan, refreshScan, select, tick: tickEff, bump: () => setTick((t) => t + 1),
-    toast, toasts, confirm, confirmState, info, setComparing,
+    toast, toasts, confirm, confirmState, info, setComparing, running, setRunning,
   };
   return <C.Provider value={value}>{children}</C.Provider>;
 }
@@ -251,4 +260,10 @@ export function useScanQuery<T>(method: string | null, args: any[], deps: any[] 
     return () => { alive = false; };
   }, [active?.id, method, key, tick, n, ...deps]); // eslint-disable-line
   return { data, loading, reload: () => setN((x) => x + 1) };
+}
+
+/** A tela informa que está executando algo (label) ou que terminou (null). */
+export function useRunning(page: Page, label: string | null | false) {
+  const { setRunning } = useApp();
+  useEffect(() => { setRunning(page, label || null); }, [page, label, setRunning]);
 }

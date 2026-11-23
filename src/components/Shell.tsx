@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   LayoutDashboard, FolderTree, LayoutGrid, FileType2, CalendarClock, Users, ArrowDownWideNarrow, Copy, Search, History,
   Radar, PackageX, Settings as Cog, PanelLeftClose, PanelLeftOpen, Sun, Moon, Monitor, X, HardDrive, ShieldCheck, ShieldAlert,
-  CheckCircle2, AlertCircle, Info, Plus, Loader2, ArrowUpCircle, Sparkles, Gauge, Activity, Shield, HeartPulse, Layers, Wrench, Globe, Gamepad2, CircuitBoard,
+  CheckCircle2, AlertCircle, Info, Plus, Loader2, ArrowUpCircle, Sparkles, Gauge, Activity, Shield, HeartPulse, Layers, Wrench, Globe, Gamepad2, CircuitBoard, FolderOpen,
 } from 'lucide-react';
 import { Page, useApp } from '../lib/store';
 import { cc, isMac } from '../lib/api';
@@ -11,7 +11,6 @@ import { Button, Checkbox, cx, Dropdown, Modal, ProgressBar } from './ui';
 
 const NAV: { group: string; items: { page: Page; label: string; icon: React.ReactNode; needsScan?: boolean }[] }[] = [
   { group: '', items: [
-    { page: 'smartcare', label: 'Cuidados Inteligentes', icon: <HeartPulse size={17} /> },
     { page: 'overview', label: 'Visão geral', icon: <LayoutDashboard size={17} /> },
   ] },
   {
@@ -29,6 +28,7 @@ const NAV: { group: string; items: { page: Page; label: string; icon: React.Reac
   },
   {
     group: 'Manutenção', items: [
+      { page: 'smartcare', label: 'Cuidados Inteligentes', icon: <HeartPulse size={17} /> },
       { page: 'cleanup', label: 'Limpeza', icon: <Sparkles size={17} /> },
       { page: 'clutter', label: 'Acúmulos', icon: <Layers size={17} /> },
       { page: 'performance', label: 'Desempenho', icon: <Gauge size={17} /> },
@@ -53,10 +53,11 @@ const NAV: { group: string; items: { page: Page; label: string; icon: React.Reac
 ];
 
 export function Sidebar() {
-  const { page, go, settings, setSettings, active, tasks, scans } = useApp();
+  const { page, go, settings, setSettings, active, tasks, scans, running } = useApp();
   const collapsed = !!settings?.sidebarCollapsed;
   // páginas com trabalho em andamento ganham um indicador no menu
   const busyPages = new Set<string>(tasks.filter((t) => t.status === 'running').map((t) => t.page));
+  Object.keys(running).forEach((p) => busyPages.add(p));
   if (scans.some((s) => !s.done)) busyPages.add('explorer');
   return (
     <aside className={cx('flex shrink-0 flex-col overflow-hidden border-r border-line bg-surface transition-[width] duration-300 ease-[cubic-bezier(.2,.8,.2,1)]', collapsed ? 'w-[56px]' : 'w-[228px]')}>
@@ -84,7 +85,7 @@ export function Sidebar() {
                   </span>
                   <span className={cx('truncate whitespace-nowrap transition-opacity duration-200', collapsed && 'opacity-0')}>{it.label}</span>
                   {busyPages.has(it.page) && !collapsed
-                    ? <Loader2 size={13} className="ml-auto shrink-0 animate-spin text-accent"><title>Em andamento</title></Loader2>
+                    ? <span className="ml-auto flex shrink-0 items-center" title={running[it.page]?.label || 'Em andamento'}><span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent" /></span></span>
                     : it.needsScan && !active && !collapsed && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-line-strong" title="Requer uma varredura" />}
                 </button>
               );
@@ -119,6 +120,18 @@ export function TopBar() {
   const theme = settings?.theme || 'system';
   const nextTheme = theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system';
   const pick = async () => { const p = await cc.pickFolder(); if (p) startScan(p); };
+  const [addOpen, setAddOpen] = useState(false);
+  const [drives, setDrives] = useState<import('../lib/api').Drive[] | null>(null);
+  const addRef = React.useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!addOpen) return;
+    cc.drives().then((d) => setDrives(d.filter((x) => x.total > 0))).catch(() => setDrives([]));
+    const h = (e: MouseEvent) => { if (!addRef.current?.contains(e.target as Node)) setAddOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [addOpen]);
+  // disco: o mesmo que o "Analisar" da Visão geral
+  const scanDrive = (root: string) => { setAddOpen(false); startScan(root); };
   return (
     // Windows: espaço à direita para os botões do overlay; macOS: à esquerda para os botões de semáforo
     <header className="drag flex h-10 shrink-0 items-center border-b border-line bg-bg" style={isMac ? { paddingLeft: 84, paddingRight: 12 } : { paddingLeft: 12, paddingRight: 150 }}>
@@ -146,10 +159,34 @@ export function TopBar() {
             </div>
           );
         })}
-        <button onClick={pick} title="Analisar outra pasta" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-hover hover:text-fg"><Plus size={15} /></button>
+        <div ref={addRef} className="relative shrink-0">
+          <button onClick={() => setAddOpen((o) => !o)} title="Analisar um disco ou uma pasta" className={cx('flex h-7 w-7 items-center justify-center rounded-md transition-colors', addOpen ? 'bg-hover text-fg' : 'text-muted hover:bg-hover hover:text-fg')}><Plus size={15} /></button>
+        </div>
         </div>
         <div className="h-full min-w-[40px] flex-1" />
       </div>
+      {addOpen && addRef.current && (() => {
+        const r = addRef.current!.getBoundingClientRect();
+        return (
+          <div className="no-drag anim-pop fixed z-[70] w-[300px] rounded-xl border border-line bg-surface p-1.5 shadow-2xl" style={{ left: Math.max(8, r.left - 8), top: r.bottom + 6 }} onMouseDown={(e) => e.stopPropagation()}>
+            <div className="px-2 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">Analisar um disco</div>
+            {drives === null ? <div className="flex items-center gap-2 px-2 py-2 text-[12px] text-muted"><Loader2 size={13} className="animate-spin" />Lendo unidades…</div> : drives.map((d) => (
+              <button key={d.root} onClick={() => scanDrive(d.root)} className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left hover:bg-hover">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent"><HardDrive size={15} /></span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-medium">{d.label || d.root} <span className="font-normal text-muted">{d.root}</span></span>
+                  <span className="mt-1 block h-1 overflow-hidden rounded-full bg-line"><span className="block h-full rounded-full bg-accent" style={{ width: `${Math.round((d.used / d.total) * 100)}%` }} /></span>
+                  <span className="mt-0.5 block text-[11px] text-muted tnum">{fmtSize(d.free, 'auto', 0)} livres de {fmtSize(d.total, 'auto', 0)}</span>
+                </span>
+              </button>
+            ))}
+            <div className="my-1 h-px bg-line" />
+            <button onClick={() => { setAddOpen(false); pick(); }} className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-[13px] font-medium hover:bg-hover">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-hover text-muted"><FolderOpen size={15} /></span>Escolher uma pasta…
+            </button>
+          </div>
+        );
+      })()}
       <div className="no-drag flex items-center gap-1 pl-2">
         <UpdatePill />
         <ActivityCenter />
@@ -190,7 +227,7 @@ function UpdatePill() {
 
 /** Centro de atividades: mostra tarefas em segundo plano em qualquer tela. */
 export function ActivityCenter() {
-  const { tasks, scans, go, setActive, select, cancelTask, clearFinishedTasks } = useApp();
+  const { tasks, scans, go, setActive, select, cancelTask, clearFinishedTasks, running: pageRuns } = useApp();
   const [open, setOpen] = useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -201,7 +238,8 @@ export function ActivityCenter() {
   }, [open]);
   const scanning = scans.filter((s) => !s.done);
   const running = tasks.filter((t) => t.status === 'running');
-  const nRunning = running.length + scanning.length;
+  const runs = Object.entries(pageRuns);
+  const nRunning = running.length + scanning.length + runs.length;
   const finished = tasks.filter((t) => t.status !== 'running').slice(-6).reverse();
   if (!nRunning && !finished.length) return null;
   const pct = (p?: { done: number; total: number }) => (p && p.total ? p.done / p.total : undefined);
@@ -221,6 +259,17 @@ export function ActivityCenter() {
             <span className="text-xs font-medium text-muted">Atividades</span>
             {finished.length > 0 && <button onClick={clearFinishedTasks} className="text-[11px] text-muted hover:text-fg">Limpar concluídas</button>}
           </div>
+          {runs.map(([p, r]) => (
+            <div key={'p' + p} className="rounded-md px-2 py-2 hover:bg-hover">
+              <div className="flex items-center gap-2 text-[13px]">
+                <span className="relative flex h-2.5 w-2.5 shrink-0"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent" /></span>
+                <span className="flex-1 truncate" title={r.label}>{r.label}</span>
+                <button className="text-xs text-accent hover:underline" onClick={() => { go(p as any); setOpen(false); }}>Abrir</button>
+              </div>
+              <div className="mt-1 pl-[18px] text-[11px] text-muted">em andamento há {Math.max(1, Math.round((Date.now() - r.since) / 1000))} s</div>
+              <div className="mt-1.5 pl-[18px]"><ProgressBar indeterminate className="h-1" /></div>
+            </div>
+          ))}
           {scanning.map((s) => (
             <div key={'s' + s.id} className="rounded-md px-2 py-2 hover:bg-hover">
               <div className="flex items-center gap-2 text-[13px]">
