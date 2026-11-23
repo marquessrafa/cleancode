@@ -10,12 +10,13 @@ import { useApp } from '../lib/store';
 import { PageBody } from './common';
 import Viewer3D, { LiveInput } from '../hw3d/Viewer';
 import { gpuModel, cpuModel, ramModel, boardModel, ssdModel, powerModel, pcModel, laptopModel } from '../hw3d/models';
+import { socModel, gpuChipModel, soDimmModel, solderedMemModel, macLogicBoardModel, laptopBoardModel, onboardFlashModel } from '../hw3d/mobile';
 
 type Tab = 'overview' | 'cpu' | 'gpu' | 'ram' | 'board' | 'storage' | 'power' | 'sensors';
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'overview', label: 'Visão geral', icon: <LayoutGrid size={15} /> },
   { id: 'cpu', label: 'Processador', icon: <Cpu size={15} /> },
-  { id: 'gpu', label: 'Placa de vídeo', icon: <Gpu size={15} /> },
+  { id: 'gpu', label: isMac ? 'GPU' : 'Placa de vídeo', icon: <Gpu size={15} /> },
   { id: 'ram', label: 'Memória', icon: <MemoryStick size={15} /> },
   { id: 'board', label: isMac ? 'Placa lógica' : 'Placa-mãe', icon: <CircuitBoard size={15} /> },
   { id: 'storage', label: 'Armazenamento', icon: <HardDrive size={15} /> },
@@ -24,7 +25,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 ];
 const GROUP_LABEL: Record<string, string> = { temp: 'Temperaturas', volt: 'Tensões', current: 'Correntes', power: 'Consumo', clock: 'Frequências', load: 'Uso', fan: 'Ventoinhas', control: 'Controle das ventoinhas', level: 'Níveis', data: 'Dados', throughput: 'Transferência', energy: 'Energia', factor: 'Fatores', time: 'Tempo' };
 const GROUP_ORDER = ['temp', 'power', 'volt', 'current', 'clock', 'load', 'fan', 'control', 'level', 'data', 'throughput', 'energy', 'factor', 'time'];
-const KIND_LABEL: Record<string, string> = { cpu: 'Processador', gpu: 'Placa de vídeo', ram: 'Memória', board: isMac ? 'Placa lógica' : 'Placa-mãe', disk: 'Armazenamento', battery: 'Bateria', psu: 'Energia' };
+const KIND_LABEL: Record<string, string> = { cpu: 'Processador', gpu: isMac ? 'GPU' : 'Placa de vídeo', ram: 'Memória', board: isMac ? 'Placa lógica' : 'Placa-mãe', disk: 'Armazenamento', battery: 'Bateria', psu: 'Energia' };
 const n = (v?: number, d = 1) => (v === undefined || v === null || isNaN(v) ? '—' : v.toLocaleString('pt-BR', { maximumFractionDigits: d }));
 const fmtVal = (v: number | undefined, unit = '') => {
   if (v === undefined) return '—';
@@ -167,6 +168,35 @@ function Stage({ build, buildKey, live, height = 400, children }: { build: () =>
   );
 }
 
+// ---------- modelo 3D de cada peça conforme a máquina ----------
+// Mac (Apple Silicon): CPU, GPU e memória ficam no mesmo chip; a placa é a placa lógica do MacBook.
+// Notebook Windows: processador soldado (BGA) com GPU integrada, GPU dedicada como chip na placa,
+// memória SO-DIMM ou soldada, placa-mãe de notebook. Desktop Windows: peças de PC (soquete, placa de vídeo, DIMM).
+const DGPU = /nvidia|geforce|quadro|rtx|gtx|radeon\s*(rx|pro)|radeon\s*\d{3,4}m|arc\s*a\d/i;
+function machineProfile(info: HardwareInfo | null, laptop: boolean) {
+  const appleSi = isMac && !/intel/i.test(info?.cpu.arch || '');
+  const vendor: 'intel' | 'amd' = /amd|ryzen/i.test(info?.cpu.name || '') ? 'amd' : 'intel';
+  const mods = info?.memory.modules || [];
+  const dg = info?.gpus.find((g) => DGPU.test(g.name || ''));
+  const dgpu = !isMac && !!dg;
+  const soldered = laptop && !isMac && (mods.some((x) => x.formFactor === 'onboard') || /^LP/i.test(info?.memory.type || '')) && !mods.some((x) => x.formFactor === 'sodimm');
+  const memChips = /max|ultra/i.test(info?.board.chip || info?.cpu.name || '') ? 4 : 2;
+  const total = info?.memory.total || 0;
+  const memLabel = total ? fmtSize(total / memChips, 'auto', 0) : '';
+  const gddr = dg?.vram ? Math.max(2, Math.min(8, Math.round(dg.vram / 2 ** 31))) : 4;
+  const apple = (highlight: 'cpu' | 'gpu' | 'mem') => socModel({ vendor: 'apple', pCores: info?.cpu.pCores, eCores: info?.cpu.eCores, gpuCores: info?.gpus[0]?.cores, memChips, memLabel, highlight });
+  const x86 = (highlight: 'cpu' | 'gpu') => socModel({ vendor, cores: info?.cpu.cores, highlight });
+  return {
+    key: `${appleSi ? 'asi' : isMac ? 'imac' : laptop ? 'nb' : 'pc'}-${dgpu}-${soldered}-${mods.length}-${info?.cpu.cores || 0}-${info?.gpus[0]?.cores || 0}`,
+    cpu: (name: string) => (appleSi ? apple('cpu') : laptop || isMac ? x86('cpu') : cpuModel({ name, sub: info?.cpu.arch, cores: info?.cpu.cores })),
+    gpu: () => (appleSi ? apple('gpu') : dgpu ? (laptop ? gpuChipModel({ memChips: gddr }) : gpuModel()) : x86('gpu')),
+    ram: () => (appleSi ? apple('mem') : laptop || isMac ? (soldered || isMac ? solderedMemModel({ chips: 4, label: total ? fmtSize(total / 4, 'auto', 0) : '' }) : soDimmModel({ count: Math.max(1, mods.length) })) : ramModel({ count: Math.max(1, mods.length || 2) })),
+    board: () => (appleSi ? macLogicBoardModel({ pro: /pro|max/i.test(`${info?.board.system || ''} ${info?.board.chip || ''}`), pCores: info?.cpu.pCores, eCores: info?.cpu.eCores, gpuCores: info?.gpus[0]?.cores, memChips, memLabel })
+      : laptop || isMac ? laptopBoardModel({ vendor, cores: info?.cpu.cores, dgpu, sodimm: mods.length, soldered: soldered || isMac })
+      : boardModel({ sticks: mods.length || 2, dimms: Math.max(2, info?.memory.slots || 4) })),
+  };
+}
+
 // ---------- página ----------
 export default function Hardware() {
   const { page } = useApp();
@@ -174,8 +204,9 @@ export default function Hardware() {
   const { info, live, stats, hist } = useHardware(page === 'hardware');
   const L = live?.live;
   const lv = toLive(live);
-  const laptop = !!live?.battery;
+  const laptop = isMac ? info?.board.chassis !== 'desktop' : info?.board.chassis === 'laptop' || !!live?.battery;
   const watts = lv.watts;
+  const m = machineProfile(info, laptop);
   const cpuShort = (info?.cpu.name || 'Processador').replace(/\(R\)|\(TM\)|CPU|@.*$/gi, '').replace(/\s+/g, ' ').trim();
   return (
     <PageBody>
@@ -209,7 +240,7 @@ export default function Hardware() {
         {tab === 'cpu' && (
           <>
             <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
-              <Stage build={() => cpuModel({ name: cpuShort, sub: info?.cpu.arch, cores: info?.cpu.cores })} buildKey={`cpu-${cpuShort}`} live={lv} />
+              <Stage build={() => m.cpu(cpuShort)} buildKey={`cpu-${m.key}-${cpuShort}`} live={lv} />
               <div className="space-y-3">
                 <Metric label="Carga total" value={`${live?.load ?? '—'} %`} sub={live ? `Usuário ${live.split.user}% · Sistema ${live.split.system}%` : ''} data={hist.cpu} color={C.cpu} />
                 <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3.5">
@@ -227,7 +258,7 @@ export default function Hardware() {
         {tab === 'gpu' && (
           <>
             <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
-              <Stage build={() => gpuModel()} buildKey="gpu" live={lv} />
+              <Stage build={m.gpu} buildKey={`gpu-${m.key}`} live={lv} />
               <div className="space-y-3">
                 <Metric label="Uso da GPU" value={L?.gpu.util !== undefined ? `${L.gpu.util} %` : '—'} sub={L?.gpu.temp !== undefined ? `${Math.round(L.gpu.temp)} °C` : undefined} data={hist.gpu} color={C.gpu} />
                 <Metric label="Memória de vídeo em uso" value={L?.gpu.memUsed ? fmtSize(L.gpu.memUsed, 'auto', 1) : '—'} sub={L?.gpu.memTotal ? `de ${fmtSize(L.gpu.memTotal, 'auto', 0)}` : undefined} />
@@ -236,14 +267,14 @@ export default function Hardware() {
             </div>
             <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
               <Spec title="Especificações" rows={[...((info?.gpus || []).flatMap((g, i) => [[`GPU ${i + 1}`, g.name], ['Fabricante', g.vendor], ['Núcleos', g.cores], [isMac ? 'Gráficos' : 'API', g.api], ['Driver', g.driver], ['Memória de vídeo', g.vram ? fmtSize(g.vram, 'auto', 0) : isMac ? 'unificada com a RAM' : undefined]] as [string, any][])), ...((info?.displays || []).map((d, i) => [`Tela ${i + 1}`, `${d.name}${d.resolution ? ` · ${d.resolution}` : ''}`] as [string, string]))]} />
-              <SensorTable live={live} stats={stats} kinds={['gpu']} title="Sensores da placa de vídeo" />
+              <SensorTable live={live} stats={stats} kinds={['gpu']} title={isMac ? 'Sensores da GPU' : 'Sensores da placa de vídeo'} />
             </div>
           </>
         )}
         {tab === 'ram' && (
           <>
             <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
-              <Stage build={() => ramModel({ count: isMac ? 2 : Math.max(1, info?.memory.modules.length || 2) })} buildKey={`ram-${info?.memory.modules.length || 0}`} live={lv} />
+              <Stage build={m.ram} buildKey={`ram-${m.key}`} live={lv} />
               <div className="space-y-3">
                 <Metric label="Em uso" value={live ? `${fmtSize(live.memory.used, 'auto', 1)}` : '—'} sub={live ? `de ${fmtSize(live.memory.total, 'auto', 0)} · pressão ${live.memory.pressure}%` : ''} data={hist.mem} color={C.ram} />
                 {live?.memoryDetail && <Spec rows={[['Apps (ativa)', fmtSize(live.memoryDetail.active, 'auto', 1)], ['Fixa', fmtSize(live.memoryDetail.wired, 'auto', 1)], ['Comprimida', live.memoryDetail.compressed ? fmtSize(live.memoryDetail.compressed, 'auto', 1) : undefined], ['Disponível', fmtSize(live.memoryDetail.available, 'auto', 1)], ['Swap', live.memoryDetail.swapTotal ? `${fmtSize(live.memoryDetail.swapUsed, 'auto', 1)} de ${fmtSize(live.memoryDetail.swapTotal, 'auto', 1)}` : undefined]]} />}
@@ -257,7 +288,7 @@ export default function Hardware() {
         )}
         {tab === 'board' && (
           <>
-            <Stage build={() => boardModel({ sticks: isMac ? 2 : info?.memory.modules.length || 2, dimms: Math.max(2, info?.memory.slots || 4) })} buildKey={`board-${info?.memory.modules.length || 0}-${info?.memory.slots || 0}`} live={lv} height={460} />
+            <Stage build={m.board} buildKey={`board-${m.key}`} live={lv} height={460} />
             <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
               <Spec title="Placa" rows={[['Computador', info?.board.system], ['Fabricante', info?.board.manufacturer], [isMac ? 'Identificador do modelo' : 'Modelo da placa', info?.board.model], [isMac ? 'Número do modelo' : 'Revisão', info?.board.version], [isMac ? 'Chip' : 'Processador', info?.board.chip || info?.cpu.name], [isMac ? 'Firmware (iBoot)' : 'BIOS', info?.board.firmware], ['Data do firmware', info?.board.firmwareDate], ['Memória', info ? `${fmtSize(info.memory.total, 'auto', 0)}${info.memory.type ? ` ${info.memory.type}` : ''}` : undefined], ['Slots de memória', !isMac && info?.memory.slots ? info.memory.slots : undefined]]} />
               <SensorTable live={live} stats={stats} kinds={['board']} title={isMac ? 'Sensores da placa' : 'Sensores da placa-mãe (tensões e ventoinhas)'} />
@@ -288,14 +319,14 @@ function StorageTab({ live, stats }: { live: HardwareLive | null; stats: Map<str
   const [sel, setSel] = useState(0);
   useEffect(() => { let alive = true; const load = () => cc.hardwareDisks().then((d) => alive && setDisks(d)).catch(() => alive && setDisks([])); load(); const t = setInterval(load, 15000); return () => { alive = false; clearInterval(t); }; }, []);
   const d = disks?.[sel];
-  const kind = !d ? 'nvme' : d.bus === 'USB' ? 'usb' : d.media === 'HD' || d.media === 'HDD' ? 'hdd' : d.bus === 'NVMe' ? 'nvme' : 'sata';
+  const kind = !d ? 'nvme' : d.bus === 'USB' ? 'usb' : d.media === 'HD' || d.media === 'HDD' ? 'hdd' : d.bus === 'NVMe' ? (isMac ? 'onboard' : 'nvme') : 'sata';
   if (!disks) return <div className="flex justify-center py-10"><Loader2 className="animate-spin text-muted" /></div>;
   if (!disks.length) return <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-6 text-center text-[13px] text-muted">Nenhum disco encontrado.</div>;
   return (
     <>
       <div className="flex flex-wrap gap-2">{disks.map((x, i) => <button key={x.id + i} onClick={() => setSel(i)} className={cx('flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-[13px]', i === sel ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-[var(--line)] bg-[var(--surface)] hover:bg-[var(--hover)]')}><HardDrive size={15} /><span><span className="block font-medium">{x.name}</span><span className="block text-[11px] text-muted">{[x.bus, x.size ? fmtSize(x.size, 'auto', 0) : ''].filter(Boolean).join(' · ')}</span></span></button>)}</div>
       <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
-        <Stage build={() => ssdModel({ kind, label: d?.model || d?.name })} buildKey={`ssd-${sel}-${kind}`} live={{ disk: 0.4 }} />
+        <Stage build={() => (kind === 'onboard' ? onboardFlashModel({ label: d?.size ? fmtSize(d.size / 2, 'auto', 0) : '', chips: 2 }) : ssdModel({ kind, label: d?.model || d?.name }))} buildKey={`ssd-${sel}-${kind}`} live={{ disk: 0.4 }} />
         <div className="space-y-3">
           <Metric label="Saúde" value={d?.healthPct !== undefined ? `${d.healthPct} %` : d?.health || '—'} sub={d?.health && d.healthPct !== undefined ? d.health : undefined} />
           <Metric label="Temperatura" value={d?.temp !== undefined ? `${Math.round(d.temp)} °C` : '—'} sub={d?.needsAdmin && !isMac ? 'Ative o monitoramento avançado para ler o SMART' : undefined} />

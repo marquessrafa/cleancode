@@ -26,7 +26,7 @@ export interface Live {
   temps?: Record<string, number>; // temperatura por peça (cpu, gpu, ram, board, disk, psu)
   accent: THREE.Color;
 }
-export interface Model { group: THREE.Group; update?: (live: Live, t: number, dt: number) => void; focus?: { distance: number; target?: [number, number, number]; height?: number } }
+export interface Model { group: THREE.Group; update?: (live: Live, t: number, dt: number) => void; focus?: { distance: number; target?: [number, number, number]; height?: number }; orbit?: { auto?: boolean; range?: number; start?: number } }
 
 // ---------- materiais ----------
 export const mat = {
@@ -176,9 +176,15 @@ export function createViewer(host: HTMLElement, build: () => Model, opts: { bloo
   if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
 
   const scene = new THREE.Scene();
-  // o brilho (bloom) não preserva transparência: o fundo da cena acompanha a superfície do app
-  const surface = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim();
-  scene.background = new THREE.Color(surface && !surface.startsWith('var') ? surface : '#141518');
+  // fundo tecnológico: gradiente com brilho na cor de destaque (o bloom não preserva transparência)
+  const accentCss = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#3ddc97';
+  scene.background = canvasTex(1024, 640, (c) => {
+    const g = c.createLinearGradient(0, 0, 0, 640); g.addColorStop(0, '#07090f'); g.addColorStop(1, '#0b0f17'); c.fillStyle = g; c.fillRect(0, 0, 1024, 640);
+    const r1 = c.createRadialGradient(512, 300, 20, 512, 300, 520); r1.addColorStop(0, accentCss + '30'); r1.addColorStop(1, 'transparent'); c.fillStyle = r1; c.fillRect(0, 0, 1024, 640);
+    const r2 = c.createRadialGradient(860, 120, 10, 860, 120, 380); r2.addColorStop(0, 'rgba(122,60,255,0.22)'); r2.addColorStop(1, 'transparent'); c.fillStyle = r2; c.fillRect(0, 0, 1024, 640);
+    c.fillStyle = 'rgba(255,255,255,0.05)'; for (let y = 0; y < 640; y += 3) c.fillRect(0, y, 1024, 1);
+  });
+  scene.fog = new THREE.Fog(0x080b12, 2.5, 7);
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   (scene as any).environmentIntensity = 0.55; // reflexos suaves (metal escuro continua escuro)
@@ -189,6 +195,15 @@ export function createViewer(host: HTMLElement, build: () => Model, opts: { bloo
   scene.add(new THREE.AmbientLight(0xffffff, 0.12));
   const floor = new THREE.Mesh(new THREE.CircleGeometry(3, 64), new THREE.ShadowMaterial({ opacity: 0.28 })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
 
+  const backdrop = new THREE.Group(); scene.add(backdrop);
+  const grid = new THREE.GridHelper(8, 64, new THREE.Color(accentCss), new THREE.Color(accentCss));
+  (grid.material as THREE.Material).transparent = true; (grid.material as THREE.LineBasicMaterial).opacity = 0.16; grid.position.y = 0.0005; backdrop.add(grid);
+  const NP = 420, pos = new Float32Array(NP * 3), speed = new Float32Array(NP);
+  for (let i = 0; i < NP; i++) { pos[i * 3] = (Math.random() - 0.5) * 6; pos[i * 3 + 1] = Math.random() * 2.6; pos[i * 3 + 2] = (Math.random() - 0.5) * 6; speed[i] = 0.02 + Math.random() * 0.06; }
+  const pgeo = new THREE.BufferGeometry(); pgeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const dot = canvasTex(64, 64, (c) => { const g = c.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.4, 'rgba(255,255,255,0.5)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(0, 0, 64, 64); });
+  const pmat = new THREE.PointsMaterial({ size: 0.022, map: dot, color: new THREE.Color(accentCss), transparent: true, opacity: 0.75, depthWrite: false, blending: THREE.AdditiveBlending });
+  const particles = new THREE.Points(pgeo, pmat); backdrop.add(particles);
   const model = build();
   // centraliza e apoia no chão
   const bb = new THREE.Box3().setFromObject(model.group);
@@ -209,11 +224,13 @@ export function createViewer(host: HTMLElement, build: () => Model, opts: { bloo
   composer.addPass(new OutputPass());
 
   const live: Live = { accent: new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#3ddc97') };
-  let az = -0.6, el = 0.0, targetAz = az, dragging = false, lastX = 0, lastY = 0, hover = { x: 0, y: 0 };
+  const autoRotate = (model.orbit?.auto ?? opts.autoRotate) !== false, range = model.orbit?.range;
+  let az = model.orbit?.start ?? -0.6, el = 0.0, targetAz = az, dragging = false, lastX = 0, lastY = 0, hover = { x: 0, y: 0 };
+  const az0 = az; let spinDir = 1;
   const onDown = (e: PointerEvent) => { dragging = true; lastX = e.clientX; lastY = e.clientY; host.setPointerCapture(e.pointerId); };
   const onMove = (e: PointerEvent) => {
     const r = host.getBoundingClientRect(); hover = { x: (e.clientX - r.left) / r.width - 0.5, y: (e.clientY - r.top) / r.height - 0.5 };
-    if (!dragging) return; targetAz -= (e.clientX - lastX) * 0.008; el = Math.max(-0.35, Math.min(0.5, el + (e.clientY - lastY) * 0.004)); lastX = e.clientX; lastY = e.clientY;
+    if (!dragging) return; targetAz -= (e.clientX - lastX) * 0.008; if (range !== undefined) targetAz = Math.max(az0 - range, Math.min(az0 + range, targetAz)); el = Math.max(-0.35, Math.min(0.5, el + (e.clientY - lastY) * 0.004)); lastX = e.clientX; lastY = e.clientY;
   };
   const onUp = () => { dragging = false; };
   host.addEventListener('pointerdown', onDown); host.addEventListener('pointermove', onMove); host.addEventListener('pointerup', onUp); host.addEventListener('pointerleave', () => { hover = { x: 0, y: 0 }; });
@@ -230,7 +247,14 @@ export function createViewer(host: HTMLElement, build: () => Model, opts: { bloo
   let raf = 0, last = performance.now(), t = 0, alive = true;
   const step = (dt: number) => {
     t += dt;
-    if (opts.autoRotate !== false && !dragging) targetAz += dt * 0.12;
+    if (autoRotate && !dragging) {
+      // com limite de órbita, vai e volta dentro do arco permitido
+      if (range !== undefined) { targetAz += dt * 0.12 * spinDir; if (targetAz > az0 + range) spinDir = -1; else if (targetAz < az0 - range) spinDir = 1; }
+      else targetAz += dt * 0.12;
+    }
+    // partículas sobem devagar e reaparecem embaixo
+    for (let i = 0; i < NP; i++) { pos[i * 3 + 1] += speed[i] * dt; if (pos[i * 3 + 1] > 2.6) pos[i * 3 + 1] = 0; }
+    pgeo.attributes.position.needsUpdate = true; particles.rotation.y += dt * 0.02;
     az += (targetAz - az) * Math.min(1, dt * 6);
     const a = az + hover.x * 0.25, e2 = el + hover.y * 0.12;
     camera.position.set(target.x + Math.sin(a) * dist * Math.cos(e2), camH + Math.sin(e2) * dist, target.z + Math.cos(a) * dist * Math.cos(e2));

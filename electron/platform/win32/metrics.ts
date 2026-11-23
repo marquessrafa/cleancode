@@ -133,13 +133,17 @@ $c=Get-CimInstance Win32_Processor | Select-Object -First 1 Name,NumberOfCores,N
 $g=@(Get-CimInstance Win32_VideoController | ForEach-Object { $v=$_; $q=$null
   Get-ChildItem 'HKLM:\SYSTEM\ControlSet001\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}' | ForEach-Object { $p=Get-ItemProperty $_.PSPath; if($p.DriverDesc -eq $v.Name -and $p.'HardwareInformation.qwMemorySize'){ $q=[int64]$p.'HardwareInformation.qwMemorySize' } }
   [pscustomobject]@{name=$v.Name;driver=$v.DriverVersion;ram=$(if($q){$q}else{[int64]$v.AdapterRAM});vendor=$v.AdapterCompatibility;w=$v.CurrentHorizontalResolution;h=$v.CurrentVerticalResolution;hz=$v.CurrentRefreshRate} })
-$m=@(Get-CimInstance Win32_PhysicalMemory | Select-Object Capacity,ConfiguredClockSpeed,Speed,Manufacturer,PartNumber,DeviceLocator,SMBIOSMemoryType)
+$m=@(Get-CimInstance Win32_PhysicalMemory | Select-Object Capacity,ConfiguredClockSpeed,Speed,Manufacturer,PartNumber,DeviceLocator,SMBIOSMemoryType,FormFactor)
 $slots=(Get-CimInstance Win32_PhysicalMemoryArray | Measure-Object -Property MemoryDevices -Sum).Sum
 $b=Get-CimInstance Win32_BaseBoard | Select-Object -First 1 Manufacturer,Product,Version
 $bi=Get-CimInstance Win32_BIOS | Select-Object -First 1 SMBIOSBIOSVersion,ReleaseDate
-$cs=Get-CimInstance Win32_ComputerSystem | Select-Object -First 1 Manufacturer,Model
-[pscustomobject]@{cpu=$c;gpu=$g;mem=$m;slots=$slots;board=$b;bios=$bi;cs=$cs} | ConvertTo-Json -Depth 4 -Compress`;
+$cs=Get-CimInstance Win32_ComputerSystem | Select-Object -First 1 Manufacturer,Model,PCSystemType
+$ch=@((Get-CimInstance Win32_SystemEnclosure | Select-Object -First 1).ChassisTypes)
+$bat=@(Get-CimInstance Win32_Battery).Count
+[pscustomobject]@{cpu=$c;gpu=$g;mem=$m;slots=$slots;board=$b;bios=$bi;cs=$cs;chassis=$ch;bat=$bat} | ConvertTo-Json -Depth 4 -Compress`;
 const MEMTYPE: Record<number, string> = { 20: 'DDR', 21: 'DDR2', 24: 'DDR3', 26: 'DDR4', 27: 'LPDDR', 28: 'LPDDR2', 29: 'LPDDR3', 30: 'LPDDR4', 34: 'DDR5', 35: 'LPDDR5' };
+// notebook: tipo de gabinete portátil (SMBIOS 8, 9, 10, 14, 30, 31, 32), PCSystemType móvel ou bateria presente
+const isLaptop = (j: any) => { const ch = (Array.isArray(j.chassis) ? j.chassis : [j.chassis]).map(Number); return ch.some((c: number) => [8, 9, 10, 14, 30, 31, 32].includes(c)) || j.cs?.PCSystemType === 2 || Number(j.bat) > 0; };
 let hwCache: HardwareInfo | null = null;
 async function hardware(): Promise<HardwareInfo> {
   if (hwCache) return hwCache;
@@ -151,8 +155,8 @@ async function hardware(): Promise<HardwareInfo> {
     cpu: { name: String(c.Name || os.cpus()[0]?.model || 'Processador').trim(), cores: c.NumberOfCores || os.cpus().length, threads: c.NumberOfLogicalProcessors || os.cpus().length, maxMHz: c.MaxClockSpeed, baseMHz: c.MaxClockSpeed, l2: c.L2CacheSize ? c.L2CacheSize * 1024 : undefined, l3: c.L3CacheSize ? c.L3CacheSize * 1024 : undefined, arch: process.arch === 'ia32' ? 'x86 (32 bits)' : process.arch === 'arm64' ? 'ARM64' : 'x86-64' },
     gpus: arr(j.gpu).map((g: any) => ({ name: g.name, driver: g.driver, vram: g.ram > 0 ? g.ram : undefined, vendor: g.vendor, api: 'DirectX 12' })),
     memory: { total: os.totalmem(), type: MEMTYPE[mem[0]?.SMBIOSMemoryType], speed: mem[0]?.ConfiguredClockSpeed || mem[0]?.Speed, manufacturer: String(mem[0]?.Manufacturer || '').trim() || undefined, slots: j.slots || undefined,
-      modules: mem.map((m: any) => ({ size: Number(m.Capacity) || 0, speed: m.ConfiguredClockSpeed || m.Speed, manufacturer: String(m.Manufacturer || '').trim(), part: String(m.PartNumber || '').trim(), slot: m.DeviceLocator })) },
-    board: { system: [j.cs?.Manufacturer, j.cs?.Model].filter(Boolean).join(' '), manufacturer: j.board?.Manufacturer, model: j.board?.Product, version: j.board?.Version, firmware: j.bios?.SMBIOSBIOSVersion, firmwareDate: date ? new Date(+date).toLocaleDateString('pt-BR') : undefined },
+      modules: mem.map((m: any) => ({ size: Number(m.Capacity) || 0, speed: m.ConfiguredClockSpeed || m.Speed, manufacturer: String(m.Manufacturer || '').trim(), part: String(m.PartNumber || '').trim(), slot: m.DeviceLocator, formFactor: m.FormFactor === 12 ? 'sodimm' as const : m.FormFactor === 8 ? 'dimm' as const : /^LP/.test(MEMTYPE[m.SMBIOSMemoryType] || '') ? 'onboard' as const : undefined })) },
+    board: { system: [j.cs?.Manufacturer, j.cs?.Model].filter(Boolean).join(' '), manufacturer: j.board?.Manufacturer, model: j.board?.Product, version: j.board?.Version, firmware: j.bios?.SMBIOSBIOSVersion, firmwareDate: date ? new Date(+date).toLocaleDateString('pt-BR') : undefined, chassis: isLaptop(j) ? 'laptop' : 'desktop' },
     displays: arr(j.gpu).filter((g: any) => g.w).map((g: any) => ({ name: g.name, resolution: `${g.w} x ${g.h}${g.hz ? ` @ ${g.hz}Hz` : ''}` })),
   };
   return hwCache;

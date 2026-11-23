@@ -72,8 +72,8 @@ export interface ClutterFile { path: string; name: string; size: number; mtime: 
 export interface HardwareInfo {
   cpu: { name: string; cores: number; threads: number; pCores?: number; eCores?: number; baseMHz?: number; maxMHz?: number; l2?: number; l3?: number; arch: string };
   gpus: { name: string; cores?: number; vram?: number; driver?: string; api?: string; vendor?: string }[];
-  memory: { total: number; type?: string; speed?: number; manufacturer?: string; slots?: number; modules: { size: number; speed?: number; manufacturer?: string; part?: string; slot?: string }[] };
-  board: { system?: string; manufacturer?: string; model?: string; version?: string; firmware?: string; firmwareDate?: string; chip?: string };
+  memory: { total: number; type?: string; speed?: number; manufacturer?: string; slots?: number; modules: { size: number; speed?: number; manufacturer?: string; part?: string; slot?: string; formFactor?: 'dimm' | 'sodimm' | 'onboard' }[] };
+  board: { system?: string; manufacturer?: string; model?: string; version?: string; firmware?: string; firmwareDate?: string; chip?: string; chassis?: 'desktop' | 'laptop' };
   displays: { name: string; resolution?: string; builtin?: boolean }[];
 }
 export interface HwLive {

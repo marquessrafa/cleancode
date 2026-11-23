@@ -31,7 +31,7 @@ export function gpuModel(opts: { fans?: number } = {}): Model {
   const darkInset = slab(L * 0.3, H * 0.8, 0.002, 0.01, mat.dark(0x15171b)); darkInset.position.set(L * 0.3, 0, T / 2 - 0.004); g.add(darkInset);
   // ventoinhas
   const fans: ReturnType<typeof fan>[] = [];
-  const r = H * 0.39, step = (L * 0.86) / nFans;
+  const step = (L * 0.86) / nFans, r = Math.min(H * 0.39, step * 0.42);
   for (let i = 0; i < nFans; i++) {
     const f = fan(r, { blades: 11 }); f.group.position.set(-L * 0.43 + step * (i + 0.5), -0.003, T / 2 - 0.002); g.add(f.group); fans.push(f);
     const shroud = new THREE.Mesh(new THREE.TorusGeometry(r * 1.03, r * 0.05, 10, 64), mat.metal(0x5d636b, 0.3)); shroud.position.copy(f.group.position); g.add(shroud);
@@ -406,30 +406,51 @@ function winScreen(accent: string) {
 }
 export function laptopModel(opts: { mac?: boolean } = {}): Model {
   const g = new THREE.Group(); const mac = !!opts.mac;
-  const W = 0.62, D = 0.43, T = 0.03;
-  const body = mac ? new THREE.MeshPhysicalMaterial({ color: 0x141518, metalness: 0.8, roughness: 0.42, clearcoat: 0.2 }) : mat.plastic(0x141518, 0.7);
-  const base = slab(W, D, T, 0.03, body, 0.006); base.rotation.x = -Math.PI / 2; base.position.y = T / 2; g.add(base);
-  const well = slab(W * 0.88, D * 0.42, 0.004, 0.012, mat.dark(0x0b0b0d, 0.6), 0.001); well.rotation.x = -Math.PI / 2; well.position.set(0, T + 0.0005, -D * 0.16); g.add(well);
-  const kb = keyboard(mac ? 14 : 15, 6, mac ? 0.034 : 0.031, 0.006, new THREE.MeshStandardMaterial({ color: 0x0f1012, metalness: 0.2, roughness: 0.55 })); kb.position.set(0, T + 0.0062, -D * 0.33); g.add(kb);
-  const pad = slab(mac ? W * 0.42 : W * 0.32, D * 0.27, 0.002, 0.012, new THREE.MeshPhysicalMaterial({ color: mac ? 0x232428 : 0x18191c, roughness: 0.25, clearcoat: 0.6 })); pad.rotation.x = -Math.PI / 2; pad.position.set(0, T + 0.002, D * 0.26); g.add(pad);
-  // tampa com tela (dobradiça na traseira)
-  const lid = new THREE.Group(); lid.position.set(0, T, -D / 2 + 0.008); g.add(lid);
-  const lidBody = slab(W, D * 0.98, 0.012, 0.03, body, 0.004); lidBody.position.set(0, D * 0.49, -0.006); lid.add(lidBody);
-  const bezel = slab(W * 0.985, D * 0.96, 0.002, 0.024, mat.dark(0x050506, 0.4), 0.001); bezel.position.set(0, D * 0.49, 0.001); lid.add(bezel);
-  const screenMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: new THREE.Color(0xffffff), emissiveIntensity: 1.05, roughness: 0.15 });
-  const scr = new THREE.Mesh(new THREE.PlaneGeometry(W * 0.94, D * 0.88), screenMat); scr.position.set(0, D * 0.5, 0.0042); lid.add(scr);
-  if (mac) { const notch = slab(0.07, 0.016, 0.001, 0.006, mat.dark(0x000000, 0.4), 0); notch.position.set(0, D * 0.93, 0.0048); lid.add(notch); }
-  else { const cam = cyl(0.003, 0.003, 0.002, mat.dark(0x000000), 16); cam.rotation.x = Math.PI / 2; cam.position.set(0, D * 0.955, 0.0045); lid.add(cam); }
-  const hinge = cyl(0.01, 0.01, W * 0.85, body, 24); hinge.rotation.z = Math.PI / 2; hinge.position.set(0, T, -D / 2 + 0.006); g.add(hinge);
-  let open = 0, lastAccent = '';
+  // proporções de um notebook de 14" (x2): MacBook ~ 312 x 221 x 15,5 mm
+  const W = 0.62, D = 0.44, T = mac ? 0.019 : 0.022;
+  const body = mac
+    ? new THREE.MeshPhysicalMaterial({ color: 0x1e1f22, metalness: 0.92, roughness: 0.34, clearcoat: 0.25, clearcoatRoughness: 0.4 })
+    : new THREE.MeshStandardMaterial({ color: 0x18191c, metalness: 0.25, roughness: 0.72 });
+  const base = slab(W, D, T - 0.004, 0.026, body, 0.002); base.rotation.x = -Math.PI / 2; base.position.y = T / 2; g.add(base);
+  // pés de borracha
+  for (const [x, z] of [[-W * 0.42, -D * 0.4], [W * 0.42, -D * 0.4], [-W * 0.42, D * 0.4], [W * 0.42, D * 0.4]]) { const f = cyl(0.012, 0.012, 0.003, mat.dark(0x0a0a0b, 0.9), 20); f.position.set(x, -0.001, z); g.add(f); }
+  // rebaixo do teclado (rente ao tampo) e teclas
+  const well = slab(W * 0.82, D * 0.55, 0.002, 0.01, mat.dark(0x0b0b0c, 0.7), 0); well.rotation.x = -Math.PI / 2; well.position.set(0, T + 0.0006, -D * 0.166); g.add(well);
+  const keyMat = new THREE.MeshStandardMaterial({ color: 0x0c0c0d, metalness: 0.1, roughness: 0.62 });
+  const kb = keyboard(mac ? 14 : 15, 6, mac ? 0.0295 : 0.0275, 0.0055, keyMat); kb.position.set(0, T + 0.0022, -D * 0.4); g.add(kb);
+  // grades de alto-falante dos lados do teclado (MacBook)
+  if (mac) {
+    const holes = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.0011, 0.0011, 0.001, 8), mat.dark(0x050505, 0.8), 2 * 30 * 6);
+    const m4 = new THREE.Matrix4(); let k = 0;
+    for (const sx of [-1, 1]) for (let r = 0; r < 30; r++) for (let c = 0; c < 6; c++) { m4.makeTranslation(sx * (W * 0.445) + (c - 2.5) * 0.0045, T + 0.0003, -D * 0.36 + r * 0.0065); holes.setMatrixAt(k++, m4); }
+    g.add(holes);
+  }
+  // trackpad de vidro e entalhe frontal
+  const pad = slab(mac ? W * 0.44 : W * 0.3, D * 0.26, 0.001, 0.014, new THREE.MeshPhysicalMaterial({ color: mac ? 0x26272b : 0x1c1d20, roughness: 0.22, clearcoat: 0.8 }), 0); pad.rotation.x = -Math.PI / 2; pad.position.set(0, T + 0.0007, D * 0.27); g.add(pad);
+  if (mac) { const notchFront = slab(0.07, 0.008, T * 0.6, 0.004, mat.dark(0x101012, 0.5), 0); notchFront.position.set(0, T * 0.55, D / 2 + 0.0005); g.add(notchFront); }
+  // portas laterais
+  for (const [x, z, w] of mac ? [[-W / 2, -D * 0.25, 0.014], [-W / 2, -D * 0.18, 0.01], [-W / 2, -D * 0.12, 0.01], [W / 2, -D * 0.2, 0.01], [W / 2, -D * 0.1, 0.012]] : [[-W / 2, -D * 0.2, 0.012], [-W / 2, -D * 0.05, 0.01], [W / 2, -D * 0.15, 0.012], [W / 2, 0.0, 0.008]]) {
+    const port = rbox(0.002, 0.005, w, 0.0015, mat.dark(0x040404, 0.6)); port.position.set(x as number, T * 0.5, z as number); g.add(port);
+  }
+  // tampa: dobradiça na traseira, aberta e fixa (~110°)
+  const lid = new THREE.Group(); lid.position.set(0, T, -D / 2 + 0.004); lid.rotation.x = -0.34; g.add(lid);
+  const LT = mac ? 0.0075 : 0.009;
+  const lidBody = slab(W, D * 0.96, LT - 0.003, 0.026, body, 0.0015); lidBody.position.set(0, D * 0.48, -LT / 2); lid.add(lidBody);
+  const glass = slab(W * 0.992, D * 0.952, 0.0012, 0.022, new THREE.MeshPhysicalMaterial({ color: 0x030304, roughness: 0.08, clearcoat: 1 }), 0); glass.position.set(0, D * 0.48, 0.0007); lid.add(glass);
+  const screenMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: new THREE.Color(0xffffff), emissiveIntensity: 1.0, roughness: 0.1 });
+  const sw = mac ? W * 0.965 : W * 0.93, sh = mac ? D * 0.9 : D * 0.84;
+  const scr = new THREE.Mesh(new THREE.PlaneGeometry(sw, sh), screenMat); scr.position.set(0, mac ? D * 0.475 : D * 0.49, 0.0016); lid.add(scr);
+  if (mac) { const notch = slab(0.064, 0.014, 0.0005, 0.006, mat.dark(0x000000, 0.5), 0); notch.position.set(0, D * 0.475 + sh / 2 - 0.006, 0.0019); lid.add(notch); }
+  else { const cam = cyl(0.0025, 0.0025, 0.001, mat.dark(0x000000), 16); cam.rotation.x = Math.PI / 2; cam.position.set(0, D * 0.935, 0.0018); lid.add(cam); }
+  // dobradiça embutida
+  const hinge = cyl(T * 0.42, T * 0.42, W * 0.82, body, 32); hinge.rotation.z = Math.PI / 2; hinge.position.set(0, T * 0.9, -D / 2 + 0.006); g.add(hinge);
+  let lastAccent = '';
   return {
-    group: g, focus: { distance: 1.35, target: [0, 0.16, 0], height: 0.42 },
-    update(live, t, dt) {
-      open = Math.min(1, open + dt * 0.8); const e = 1 - Math.pow(1 - open, 3);
-      lid.rotation.x = (1 - e) * (Math.PI / 2) - e * 0.18; // fechada sobre o teclado → aberta (~100°)
+    group: g, focus: { distance: 1.3, target: [0, 0.14, 0.02], height: 0.36 }, orbit: { auto: false, range: 0.9, start: -0.45 },
+    update(live, t) {
       const hex = accentHex(live);
       if (hex !== lastAccent) { lastAccent = hex; screenMat.emissiveMap?.dispose(); screenMat.emissiveMap = mac ? macScreen(hex) : winScreen(hex); screenMat.needsUpdate = true; }
-      screenMat.emissiveIntensity = 0.9 + Math.sin(t * 0.8) * 0.06;
+      screenMat.emissiveIntensity = 0.95 + Math.sin(t * 0.8) * 0.05;
     },
   };
 }
