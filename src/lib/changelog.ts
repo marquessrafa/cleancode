@@ -5,6 +5,17 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.4', date: '2026-11-23', headline: 'Painel instantâneo e temperatura real da CPU',
+    groups: [
+      { title: 'Painel', icon: 'panel', items: [
+        'O painel da barra de menus / bandeja abre com os números na hora, sem ficar carregando.',
+      ] },
+      { title: 'Windows', icon: 'chip', items: [
+        'A temperatura do processador agora vem do sensor real (a mesma fonte do AIDA64), com o monitoramento avançado ativo. Antes aparecia a zona térmica da placa, quase sempre fixa em 28 °C.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.3', date: '2026-11-23', headline: 'Assistente de Acesso Total ao Disco mais claro',
     groups: [
       { title: 'Mac', icon: 'panel', items: [

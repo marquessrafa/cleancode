@@ -65,16 +65,37 @@ function health(s: Omit<MetricsSnapshot, 'health'>): MetricsSnapshot['health'] {
   return { level: score >= 2 ? 'attention' : score === 1 ? 'fair' : 'good', issues };
 }
 
+// Cada leitura responde na hora com o último valor conhecido e se atualiza em segundo plano quando passa
+// da idade máxima. Na primeira vez espera no máximo `wait` ms (depois usa o valor padrão e completa na próxima
+// leitura). Antes, o painel esperava a leitura mais lenta (PowerShell no Windows, system_profiler e sensores
+// no Mac) e ficava 5 a 10 s carregando.
+const swrValue = new Map<string, { at: number; v: unknown }>();
+const swrRunning = new Map<string, Promise<unknown>>();
+function swr<T>(key: string, fn: () => Promise<T>, maxAge: number, fallback: T, wait = 600): Promise<T> {
+  const refresh = (): Promise<T> => {
+    const running = swrRunning.get(key) as Promise<T> | undefined;
+    if (running) return running;
+    const p = fn().then((v) => { swrValue.set(key, { at: Date.now(), v }); return v; })
+      .catch(() => (swrValue.get(key)?.v as T) ?? fallback)
+      .finally(() => swrRunning.delete(key));
+    swrRunning.set(key, p);
+    return p;
+  };
+  const cached = swrValue.get(key);
+  if (cached) { if (Date.now() - cached.at > maxAge) void refresh(); return Promise.resolve(cached.v as T); }
+  return Promise.race([refresh(), new Promise<T>((r) => setTimeout(() => r(fallback), wait))]);
+}
+
 export async function snapshot(): Promise<MetricsSnapshot> {
   const m = system.metrics;
   const [machine, memory, battery, temperatures, counters, devices, live] = await Promise.all([
-    m.machineName().catch(() => os.hostname()),
+    swr('machine', () => m.machineName(), 3600000, os.hostname()),
     m.memory(),
-    m.battery().catch(() => null),
-    m.temperatures().catch((): Temperatures => ({})),
-    m.network().catch(() => null),
-    m.devices().catch(() => []),
-    m.hwLive().catch(() => null),
+    swr<BatteryInfo | null>('battery', () => m.battery(), 4000, null),
+    swr<Temperatures>('temps', () => m.temperatures(), 2500, {}),
+    swr('network', () => m.network(), 900, null as Awaited<ReturnType<typeof m.network>>, 400),
+    swr<ConnectedDevice[]>('devices', () => m.devices(), 30000, []),
+    swr('live', () => m.hwLive(), 2000, null as Awaited<ReturnType<typeof m.hwLive>> | null),
   ]);
   const now = Date.now();
   let network: MetricsSnapshot['network'] = null;
@@ -91,7 +112,7 @@ export async function snapshot(): Promise<MetricsSnapshot> {
   const d = drives().find((x) => x.type === 'Local' && x.total > 0) || null;
   const base = {
     machine, os: system.osName, at: now,
-    cpu: { load: cpuLoad(), cores: os.cpus().length, temperature: temperatures.cpu ?? live?.sensors?.find((x) => x.kind === 'cpu')?.value, user: lastSplit.user, system: lastSplit.system },
+    cpu: { load: cpuLoad(), cores: os.cpus().length, temperature: temperatures.cpu ?? live?.sensors?.find((x) => x.kind === 'cpu' && (x.group || 'temp') === 'temp' && !/zona térmica/i.test(x.name))?.value, user: lastSplit.user, system: lastSplit.system },
     memory,
     disk: d ? { root: d.root, label: d.label || d.root, total: d.total, free: d.free } : null,
     battery, temperatures, network, devices,
@@ -218,25 +239,25 @@ export async function details(kind: string): Promise<any> {
   switch (kind) {
     case 'cpu': {
       cpuLoad();
-      const [temps, top] = await Promise.all([m.temperatures().catch((): Temperatures => ({})), topApps('cpu')]);
+      const [temps, top] = await Promise.all([swr<Temperatures>('temps', () => m.temperatures(), 2500, {}), swr('top-cpu', () => topApps('cpu'), 2000, [] as Awaited<ReturnType<typeof topApps>>)]);
       return { split: lastSplit, load: lastLoad, cores: os.cpus().length, model: os.cpus()[0]?.model, uptime: os.uptime(), temperature: temps.cpu, top };
     }
     case 'memory': {
-      const [mem, detail, top] = await Promise.all([m.memory(), m.memoryDetail().catch(() => null), topApps('mem')]);
+      const [mem, detail, top] = await Promise.all([m.memory(), m.memoryDetail().catch(() => null), swr('top-mem', () => topApps('mem'), 2000, [] as Awaited<ReturnType<typeof topApps>>)]);
       return { memory: mem, detail, top };
     }
     case 'battery': {
-      const [battery, health, temps] = await Promise.all([m.battery().catch(() => null), m.batteryHealth().catch(() => null), m.temperatures().catch((): Temperatures => ({}))]);
+      const [battery, health, temps] = await Promise.all([m.battery().catch(() => null), swr('battery-health', () => m.batteryHealth(), 60000, null as Awaited<ReturnType<typeof m.batteryHealth>> | null, 1500), swr<Temperatures>('temps', () => m.temperatures(), 2500, {})]);
       return { battery, health, temperature: temps.battery };
     }
     case 'storage': {
       refreshStorage();
       const d = drives().find((x) => x.type === 'Local' && x.total > 0) || null;
       const hw = d ? (await system.driveHardware(false).catch(() => [])).find((h) => h.letter === d.root || h.letter === d.root.slice(0, 1)) : undefined;
-      return { disk: d && { root: d.root, label: d.label, total: d.total, free: d.free, used: d.used }, categories: storageCache.sizes, trash: trashReadable() ? storageCache.trash : null, computing: storageCache.running, hardware: hw || null, ssd: (await m.temperatures().catch((): Temperatures => ({}))).ssd };
+      return { disk: d && { root: d.root, label: d.label, total: d.total, free: d.free, used: d.used }, categories: storageCache.sizes, trash: trashReadable() ? storageCache.trash : null, computing: storageCache.running, hardware: hw || null, ssd: (await swr<Temperatures>('temps', () => m.temperatures(), 2500, {})).ssd };
     }
     case 'network': {
-      const info = await m.networkInfo().catch(() => ({}));
+      const info = await swr('net-info', () => m.networkInfo(), 15000, {} as any, 1500);
       return { info };
     }
     case 'gpu': {
@@ -244,7 +265,7 @@ export async function details(kind: string): Promise<any> {
       return { info: info.gpus, live: live.gpu, displays: info.displays, top };
     }
     case 'power': {
-      const [live, battery, health, temps] = await Promise.all([m.hwLive(), m.battery().catch(() => null), m.batteryHealth().catch(() => null), m.temperatures().catch((): Temperatures => ({}))]);
+      const [live, battery, health, temps] = await Promise.all([m.hwLive(), m.battery().catch(() => null), swr('battery-health', () => m.batteryHealth(), 60000, null as Awaited<ReturnType<typeof m.batteryHealth>> | null, 1500), swr<Temperatures>('temps', () => m.temperatures(), 2500, {})]);
       return { power: live.power, battery, health, temperature: temps.battery };
     }
     case 'devices': {
@@ -273,8 +294,8 @@ export const hardwareInfo = () => system.metrics.hardware();
 export async function hardwareLive() {
   const m = system.metrics;
   const [live, temps, memory, detail, battery, health] = await Promise.all([
-    m.hwLive().catch(() => null), m.temperatures().catch((): Temperatures => ({})), m.memory(), m.memoryDetail().catch(() => null),
-    m.battery().catch(() => null), m.batteryHealth().catch(() => null),
+    m.hwLive().catch(() => null), swr<Temperatures>('temps', () => m.temperatures(), 2500, {}), m.memory(), m.memoryDetail().catch(() => null),
+    m.battery().catch(() => null), swr('battery-health', () => m.batteryHealth(), 60000, null as Awaited<ReturnType<typeof m.batteryHealth>> | null, 1500),
   ]);
   return { live, temps, memory, memoryDetail: detail, battery, batteryHealth: health, cores: perCore(), load: cpuLoad(), split: lastSplit, uptime: os.uptime() };
 }

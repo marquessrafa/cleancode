@@ -121,6 +121,9 @@ function createTray() {
   tray.on('click', (e) => { if (isMac && e.ctrlKey) tray?.popUpContextMenu(menu()); else togglePanel(); });
   tray.on('right-click', () => tray?.popUpContextMenu(menu()));
   tray.on('double-click', showMain);
+  // pré-carrega as leituras do painel: ao passar o mouse no ícone e logo depois de abrir o app
+  tray.on('mouse-enter', () => { metricsSnapshot().catch(() => null); });
+  setTimeout(() => { metricsSnapshot().catch(() => null); }, 2500);
 }
 
 // ---------- painel da barra de menus / bandeja ----------

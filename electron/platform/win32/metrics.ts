@@ -48,15 +48,22 @@ async function battery(): Promise<BatteryInfo | null> {
 }
 
 let tempCache: { at: number; value: Temperatures } | null = null;
+// Temperatura da CPU e da GPU pelo LibreHardwareMonitor (a mesma fonte do AIDA64/HWiNFO).
+// A zona térmica ACPI (MSAcpi_ThermalZoneTemperature) não é usada como temperatura da CPU: em muitos PCs ela
+// é um sensor da placa, ou um valor fixo (~27,8 °C), e mostrava "28 °C" o tempo todo.
+// Sem o monitoramento avançado (driver PawnIO), o Windows não informa a temperatura da CPU: fica em branco.
 async function temperatures(): Promise<Temperatures> {
-  if (tempCache && Date.now() - tempCache.at < 15000) return tempCache.value;
-  let value: Temperatures = {};
-  try {
-    // décimos de Kelvin; muitos PCs não expõem ou exigem administrador
-    const t = (await ps('(Get-CimInstance -Namespace root/wmi MSAcpi_ThermalZoneTemperature -ErrorAction Stop | Measure-Object CurrentTemperature -Maximum).Maximum')).trim();
-    const c = Number(t) / 10 - 273.15;
-    if (Number.isFinite(c) && c > 0 && c < 150) value = { cpu: Math.round(c * 10) / 10 };
-  } catch { /* indisponível */ }
+  if (tempCache && Date.now() - tempCache.at < 3000) return tempCache.value;
+  const flat = Lhm.flatten(await Lhm.snapshot().catch(() => null));
+  const find = (kind: string, res: RegExp[]) => {
+    for (const re of res) { const x = flat.find((s) => s.kind === kind && s.group === 'temp' && re.test(s.name) && s.value > 5 && s.value < 125); if (x) return Math.round(x.value * 10) / 10; }
+    return undefined;
+  };
+  const value: Temperatures = {};
+  const cpu = find('cpu', [/package/i, /tctl|tdie/i, /core max/i, /core average/i, /^(core|cpu)/i]);
+  const gpu = find('gpu', [/gpu core|gpu temperature|^gpu$/i, /hot ?spot/i]);
+  if (cpu !== undefined) value.cpu = cpu;
+  if (gpu !== undefined) value.gpu = gpu;
   tempCache = { at: Date.now(), value };
   return value;
 }
@@ -211,7 +218,8 @@ async function hwLive(): Promise<HwLive> {
     const zones: { name: string; c: number }[] = (Array.isArray(j.zones) ? j.zones : j.zones ? [j.zones] : []).filter((z: any) => z && z.c > 0);
     const gpuTemp = gpus.find((g) => g.temp !== undefined)?.temp ?? (j.temp ? Number(j.temp) : undefined);
     const sensors: NonNullable<HwLive['sensors']> = [
-      ...zones.map((z, i) => ({ kind: 'cpu' as const, name: zones.length > 1 ? `Zona térmica ${i + 1}` : 'Processador (zona térmica)', value: z.c })),
+      // zona térmica ACPI: sensor da placa (não é a temperatura da CPU)
+      ...zones.map((z, i) => ({ kind: 'board' as const, group: 'temp', name: zones.length > 1 ? `Zona térmica ACPI ${i + 1}` : 'Zona térmica ACPI', value: z.c })),
       ...gpus.filter((g) => g.temp !== undefined).map((g) => ({ kind: 'gpu' as const, name: g.name, value: g.temp! })),
       ...(!gpus.some((g) => g.temp !== undefined) && j.temp ? [{ kind: 'gpu' as const, name: hw?.gpus[0]?.name || 'GPU', value: Number(j.temp) }] : []),
       ...disks.filter((d) => d.temp !== undefined).map((d) => ({ kind: 'disk' as const, name: `${d.name}${d.bus ? ` (${d.bus})` : ''}`, value: d.temp! })),
