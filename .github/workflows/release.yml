@@ -1,4 +1,5 @@
-# Gera e publica uma versão do CleanCode (Windows x64/x86 e macOS Apple Silicon/Intel).
+# Gera e publica uma versão do CleanCode (Windows x64 e macOS Apple Silicon/Intel).
+# (o Electron 45 não é mais publicado para Windows 32 bits, por isso não há build x86)
 # Uso: crie uma tag "vX.Y.Z" (ex.: git tag v1.3.0 && git push --tags).
 # Código, Releases e feed do atualizador ficam neste mesmo repositório (público).
 # As notas do Release vêm de release-notes/<versão>.md.
@@ -46,14 +47,7 @@ jobs:
       - name: Instalar dependências
         run: npm ci --legacy-peer-deps
 
-      # o koffi traz o binário nativo por arquitetura; o npm só instala o da máquina (x64)
-      - name: Binário nativo x86 (32 bits)
-        shell: bash
-        run: |
-          KV=$(node -p "require('./node_modules/koffi/package.json').version")
-          npm install --no-save --force --legacy-peer-deps "@koromix/koffi-win32-ia32@$KV"
-
-      - name: Gerar instaladores (x64 e x86)
+      - name: Gerar instalador (x64)
         run: npm run dist
 
       - name: Publicar no repositório de releases
@@ -65,7 +59,6 @@ jobs:
           make_latest: true
           files: |
             release/CleanCode-${{ env.VERSION }}-Windows-x64.exe
-            release/CleanCode-${{ env.VERSION }}-Windows-x86.exe
             release/latest.yml
 
   # macOS: .dmg e .zip para Apple Silicon e Intel, assinatura ad-hoc (sem conta Apple),

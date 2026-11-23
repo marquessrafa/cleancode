@@ -34,7 +34,7 @@ export const CHANGELOG: Release[] = [
         'Abre no canto da tela deslizando, sem piscar.',
       ] },
       { title: 'Downloads', icon: 'download', items: [
-        'Instaladores separados: macOS Apple Silicon e Intel, Windows x64 e x86.',
+        'Instaladores separados: macOS Apple Silicon e Intel, e Windows x64.',
         'Atualizações menores e mais rápidas: cada computador baixa só a versão da própria arquitetura.',
       ] },
     ],

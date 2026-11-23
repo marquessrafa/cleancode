@@ -13,7 +13,7 @@
     "build": "npm run build:electron && npm run build:renderer",
     "start": "npm run build && electron .",
     "dev": "vite",
-    "dist": "npm run build && electron-builder --win nsis --x64 --publish never --config.directories.output=release-build && electron-builder --win nsis --ia32 --publish never --config.directories.output=release-build && node scripts/publish-local.cjs",
+    "dist": "npm run build && electron-builder --win nsis --x64 --publish never --config.directories.output=release-build && node scripts/publish-local.cjs",
     "dist:mac": "npm run build && electron-builder --mac --publish never --config.directories.output=release-build && node scripts/publish-local.cjs",
     "latest": "node scripts/make-latest.cjs"
   },

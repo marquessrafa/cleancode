@@ -19,7 +19,6 @@
   <a href="https://github.com/marquessrafa/cleancode/releases/latest"><img src="https://img.shields.io/badge/macOS-Apple%20Silicon-111111?style=for-the-badge&logo=apple&logoColor=white" alt="Baixar para macOS Apple Silicon" height="30" /></a>
   <a href="https://github.com/marquessrafa/cleancode/releases/latest"><img src="https://img.shields.io/badge/macOS-Intel-3a3a3c?style=for-the-badge&logo=apple&logoColor=white" alt="Baixar para macOS Intel" height="30" /></a>
   <a href="https://github.com/marquessrafa/cleancode/releases/latest"><img src="https://img.shields.io/badge/Windows-x64-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Baixar para Windows x64" height="30" /></a>
-  <a href="https://github.com/marquessrafa/cleancode/releases/latest"><img src="https://img.shields.io/badge/Windows-x86-005a9e?style=for-the-badge&logo=windows&logoColor=white" alt="Baixar para Windows x86" height="30" /></a>
 </p>
 
 </div>
@@ -279,7 +278,6 @@ Baixe a versão mais recente em **[Releases](https://github.com/marquessrafa/cle
 | macOS 12+ com Apple Silicon (M1, M2, M3, M4, M5) | `CleanCode-<versão>-macOS-Apple-Silicon.dmg` |
 | macOS 12+ com Intel | `CleanCode-<versão>-macOS-Intel.dmg` |
 | Windows 10/11 64 bits | `CleanCode-<versão>-Windows-x64.exe` |
-| Windows 10 32 bits | `CleanCode-<versão>-Windows-x86.exe` |
 
 **macOS:**
 1. Abra o `.dmg` e arraste o CleanCode para Aplicativos.
@@ -344,7 +342,7 @@ npm run dist
 ```
 
 - `npm run dist:mac` (no Mac) gera os `.dmg` e `.zip` de Apple Silicon e Intel.
-- `npm run dist` (no Windows) gera os instaladores x64 e x86.
+- `npm run dist` (no Windows) gera o instalador x64.
 - Uma tag `vX.Y.Z` dispara o workflow que compila os dois sistemas e publica o Release com as notas de `release-notes/<versão>.md`.
 
 Mais detalhes em [docs/DESENVOLVIMENTO.md](docs/DESENVOLVIMENTO.md).

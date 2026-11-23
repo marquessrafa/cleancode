@@ -16,7 +16,7 @@ const target = process.argv[2] || (process.platform === 'darwin' ? 'mac' : 'win'
 const feed = target === 'mac' ? 'latest-mac.yml' : 'latest.yml';
 const arch = target === 'mac'
   ? { Universal: `CleanCode-${v}-macOS-Universal.zip`, Arm64: `CleanCode-${v}-macOS-Apple-Silicon.zip`, X64: `CleanCode-${v}-macOS-Intel.zip` }
-  : { X64: `CleanCode-${v}-Windows-x64.exe`, Ia32: `CleanCode-${v}-Windows-x86.exe` };
+  : { X64: `CleanCode-${v}-Windows-x64.exe` };
 const info = {};
 for (const [k, f] of Object.entries(arch)) {
   const p = path.join(root, 'release', f);
