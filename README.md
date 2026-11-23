@@ -46,7 +46,7 @@
 O **CleanCode** é um app de manutenção para **macOS e Windows** que junta, num só lugar:
 
 - **análise de disco** com treemap, tipos de arquivo, idade, duplicados e histórico;
-- **manutenção**: limpeza, acúmulos, desempenho, proteção, registro/reparos, navegadores e Modo Jogo;
+- **manutenção**: limpeza, acúmulos, desempenho, proteção, registro/reparos, navegadores, AppData e Modo Jogo;
 - **aplicativos**: desinstalador completo, com restos, e descoberta de apps esquecidos;
 - **monitor de hardware** com cenas 3D animadas que reagem aos dados reais;
 - um **painel na barra de menus** (macOS) ou na bandeja (Windows) com a saúde do computador em tempo real.
@@ -198,6 +198,11 @@ Tudo foi feito para ser **seguro por padrão**:
   - itens: cache e imagens, GPU e shaders, histórico, histórico de downloads, cookies e dados de sites, sessões e preenchimento automático;
   - **otimização** com `VACUUM` dos bancos internos;
   - fecha o navegador para você, sem forçar.
+- **AppData / Dados de apps**:
+  - tamanho de cada pasta que os programas guardam no perfil (`Local`, `Roaming`, `LocalLow`; no Mac, `Application Support` e `Caches`);
+  - limpeza segura de caches, logs, relatórios de travamento e versões antigas deixadas por atualizações;
+  - sobras de programas desinstalados, com envio para a Lixeira.
+- **Liberar memória** no painel, na aba Memória e no menu do ícone.
 - **Modo Jogo**:
   - sessão que fecha apps em segundo plano e libera memória;
   - plano de energia de alto desempenho (Windows) ou desliga o Modo Pouca Energia (Mac);
@@ -205,7 +210,7 @@ Tudo foi feito para ser **seguro por padrão**:
   - **restaura tudo ao encerrar**;
   - ajustes do Windows: Modo de Jogo, gravação do Xbox e agendamento de GPU;
   - limpeza dos caches de shaders (DirectX, NVIDIA, AMD, Intel e Metal);
-  - jogos da Steam, Epic e GOG detectados.
+  - jogos da Steam, Epic e GOG detectados, mais pastas de jogos escolhidas por você.
 - **Atividades**: histórico de tudo o que o CleanCode fez, com espaço liberado.
 
 </details>

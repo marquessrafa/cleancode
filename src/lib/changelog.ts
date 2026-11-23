@@ -5,6 +5,26 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.1', date: '2026-11-23', headline: 'AppData, liberar memória e permissões que não se perdem',
+    groups: [
+      { title: 'Nova tela: AppData', icon: 'sparkles', items: [
+        'Veja quanto cada programa guarda em AppData (no Mac, em Dados de apps) e limpe só o que é seguro: caches, logs e versões antigas deixadas por atualizações.',
+        'Sobras de programas já desinstalados aparecem separadas e podem ir para a Lixeira.',
+      ] },
+      { title: 'Memória e limpeza', icon: 'wrench', items: [
+        'Botão Liberar memória no painel, na aba Memória e no menu do ícone.',
+        'A limpeza de temporários agora encontra muito mais: pastas com algum arquivo recente não escondem mais o que está parado. No Windows, há também um modo agressivo.',
+      ] },
+      { title: 'Modo Jogo', icon: 'gamepad', items: [
+        'Adicione pastas de jogos instalados fora da Steam, Epic e GOG.',
+      ] },
+      { title: 'Correções', icon: 'panel', items: [
+        'Windows: o monitoramento avançado não abre mais uma janela de CMD, e o driver de sensores instala sem janelas. Se você já tinha ativado, ative de novo uma vez.',
+        'Mac: o Acesso Total ao Disco continua valendo depois das próximas atualizações (pode ser pedido uma última vez), com um assistente que guia a liberação.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.0', date: '2026-11-23', headline: 'Monitor de hardware em 3D, nível AIDA64',
     groups: [
       { title: 'Modelos 3D de verdade', icon: 'chip', items: [
