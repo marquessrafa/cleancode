@@ -1,6 +1,7 @@
 // Atualizador embutido: lê o latest.yml gerado pelo electron-builder (pasta local ou URL),
 // baixa/copia o instalador e confere o SHA-512. A instalação é por SO (platform/*: installUpdate).
 import { app, net } from 'electron';
+import { execFileSync } from 'child_process';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
@@ -21,10 +22,21 @@ export function newer(a: string, b: string): boolean {
 // quando vem do repositório, a pasta do Release onde estão os arquivos (base). O "path" do topo
 // continua apontando para um arquivo que serve às versões antigas do atualizador.
 const ARCH_KEY: Record<string, string> = { arm64: 'Arm64', x64: 'X64', ia32: 'Ia32' };
+// build Intel rodando no Apple Silicon pelo Rosetta (ex.: veio do .zip Intel do topo do feed):
+// baixa o build Apple Silicon para voltar a rodar nativo
+let nativeArch: string | null = null;
+function updateArch() {
+  if (nativeArch) return nativeArch;
+  nativeArch = process.arch;
+  if (process.platform === 'darwin' && process.arch === 'x64') {
+    try { if (execFileSync('/usr/sbin/sysctl', ['-in', 'sysctl.proc_translated'], { encoding: 'utf8', timeout: 3000 }).trim() === '1') nativeArch = 'arm64'; } catch { /* Mac Intel */ }
+  }
+  return nativeArch;
+}
 function parseLatest(yml: string) {
   const top = (k: string) => new RegExp(`^${k}:\\s*['"]?([^'"\\r\\n]+)`, 'm').exec(yml)?.[1].trim();
   const size = /^\s+size:\s*(\d+)/m.exec(yml)?.[1];
-  const a = ARCH_KEY[process.arch];
+  const a = ARCH_KEY[updateArch()];
   const archFile = a ? top(`path${a}`) : undefined;
   if (archFile && top(`sha512${a}`)) return { version: top('version'), file: archFile, sha512: top(`sha512${a}`), size: Number(top(`size${a}`)) || 0, date: top('releaseDate'), base: top('base') };
   return { version: top('version'), file: top('path'), sha512: top('sha512'), size: size ? +size : 0, date: top('releaseDate'), base: top('base') };

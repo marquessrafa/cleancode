@@ -90,7 +90,6 @@ jobs:
       - name: Gerar .dmg e .zip
         run: npm run dist:mac
 
-      # o .zip universal só é necessário enquanto houver Macs com versões anteriores à 1.3.0
       - uses: actions/upload-artifact@v4
         with:
           name: macos
@@ -100,7 +99,6 @@ jobs:
             release/CleanCode-${{ env.VERSION }}-macOS-Intel.dmg
             release/CleanCode-${{ env.VERSION }}-macOS-Apple-Silicon.zip
             release/CleanCode-${{ env.VERSION }}-macOS-Intel.zip
-            release/CleanCode-${{ env.VERSION }}-macOS-Universal.zip
             release/latest-mac.yml
 
   # publica tudo de uma vez quando os dois builds terminam
