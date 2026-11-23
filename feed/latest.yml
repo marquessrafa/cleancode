@@ -1,12 +1,12 @@
-version: 1.4.5
+version: 1.4.6
 files:
-  - url: CleanCode-1.4.5-Windows-x64.exe
-    sha512: Ynw4gZ1IyrVxRi5HLz0ExxZGM4QzHPEsVJZ26DxMP4frsZ2WgGBeX4PI77LV+1jZEgawhjySU5tySrRrqy07SA==
-    size: 130412667
-path: CleanCode-1.4.5-Windows-x64.exe
-sha512: Ynw4gZ1IyrVxRi5HLz0ExxZGM4QzHPEsVJZ26DxMP4frsZ2WgGBeX4PI77LV+1jZEgawhjySU5tySrRrqy07SA==
-pathX64: CleanCode-1.4.5-Windows-x64.exe
-sha512X64: Ynw4gZ1IyrVxRi5HLz0ExxZGM4QzHPEsVJZ26DxMP4frsZ2WgGBeX4PI77LV+1jZEgawhjySU5tySrRrqy07SA==
-sizeX64: 130412667
-base: https://github.com/marquessrafa/cleancode/releases/download/v1.4.5
-releaseDate: '2026-11-23T20:49:32.481Z'
+  - url: CleanCode-1.4.6-Windows-x64.exe
+    sha512: 9ko4MrTHGifCD9tLH3CE9rTiP5d3ICwzKyxR4+/9upGOk/WqWBmG94EjoQvi23sXbYwZ7RjHxP8eIGI0sDIm4w==
+    size: 130413119
+path: CleanCode-1.4.6-Windows-x64.exe
+sha512: 9ko4MrTHGifCD9tLH3CE9rTiP5d3ICwzKyxR4+/9upGOk/WqWBmG94EjoQvi23sXbYwZ7RjHxP8eIGI0sDIm4w==
+pathX64: CleanCode-1.4.6-Windows-x64.exe
+sha512X64: 9ko4MrTHGifCD9tLH3CE9rTiP5d3ICwzKyxR4+/9upGOk/WqWBmG94EjoQvi23sXbYwZ7RjHxP8eIGI0sDIm4w==
+sizeX64: 130413119
+base: https://github.com/marquessrafa/cleancode/releases/download/v1.4.6
+releaseDate: '2026-11-23T21:28:53.447Z'
