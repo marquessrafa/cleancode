@@ -41,19 +41,20 @@ async function readText(source: string, name: string): Promise<string> {
 
 export async function checkForUpdate(source: string): Promise<UpdateInfo | null> {
   if (!source) throw new Error('Nenhuma fonte de atualizações configurada');
-  let text: string;
-  try { text = await readText(source, FEED_FILE); }
-  catch (err0: any) {
-    // feed do repositório indisponível: tenta o mesmo arquivo nos anexos do Release mais recente
-    const m = /^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\//.exec(source);
-    let err = err0;
-    if (m) { try { text = await readText(`https://github.com/${m[1]}/${m[2]}/releases/latest/download`, FEED_FILE); err = null; } catch (e2) { err = e2; } }
-    if (!err) return finish(text!, source);
+  // feed no repositório (raw.githubusercontent, com cache de até 5 min) + o mesmo arquivo nos anexos
+  // do Release mais recente: lê os dois e fica com a versão mais nova
+  const m = /^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\//.exec(source);
+  const sources = m ? [source, `https://github.com/${m[1]}/${m[2]}/releases/latest/download`] : [source];
+  const read = await Promise.allSettled(sources.map((s) => readText(s, FEED_FILE)));
+  const ok = read.map((r, i) => (r.status === 'fulfilled' ? { text: r.value, src: sources[i] } : null)).filter(Boolean) as { text: string; src: string }[];
+  if (!ok.length) {
+    const err: any = (read[0] as PromiseRejectedResult).reason;
     // feed do Mac ainda não publicado nesta fonte: sem atualização (e não um erro)
     if (process.platform === 'darwin' && (err?.code === 'ENOENT' || /HTTP 404/.test(String(err?.message)))) return null;
     throw err;
   }
-  return finish(text, source);
+  const best = ok.map((o) => ({ ...o, v: parseLatest(o.text).version || '0' })).sort((a, b) => (newer(a.v, b.v) ? -1 : newer(b.v, a.v) ? 1 : 0))[0];
+  return finish(best.text, source);
 }
 function finish(text: string, source: string): UpdateInfo | null {
   const meta = parseLatest(text);

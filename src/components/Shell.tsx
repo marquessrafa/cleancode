@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   LayoutDashboard, FolderTree, LayoutGrid, FileType2, CalendarClock, Users, ArrowDownWideNarrow, Copy, Search, History,
   Radar, PackageX, Settings as Cog, PanelLeftClose, PanelLeftOpen, Sun, Moon, Monitor, X, HardDrive, ShieldCheck, ShieldAlert,
-  CheckCircle2, AlertCircle, Info, Plus, Loader2, ArrowUpCircle, Sparkles, Gauge, Activity, Shield, HeartPulse, Layers, Wrench, Globe, Gamepad2, CircuitBoard, FolderOpen,
+  CheckCircle2, AlertCircle, Info, Plus, Loader2, ArrowUpCircle, Sparkles, Gauge, Activity, Shield, HeartPulse, Layers, Wrench, Globe, Gamepad2, CircuitBoard, FolderOpen, RefreshCw,
 } from 'lucide-react';
 import { Page, useApp } from '../lib/store';
 import { cc, isMac } from '../lib/api';
@@ -189,6 +189,7 @@ export function TopBar() {
       })()}
       <div className="no-drag flex items-center gap-1 pl-2">
         <UpdatePill />
+        <UpdateCheckButton />
         <ActivityCenter />
         {info?.canElevate && (info.isAdmin ? (
           <span title="Executando como administrador" className="flex h-7 items-center gap-1 rounded-md px-2 text-xs text-accent"><ShieldCheck size={14} /> Admin</span>
@@ -208,6 +209,31 @@ export function TopBar() {
 }
 
 /** Aviso de atualização no topo: um clique baixa e instala em segundo plano. */
+/** Versão atual e botão de buscar atualização (canto superior direito). */
+function UpdateCheckButton() {
+  const { update, info, toast } = useApp();
+  const [checking, setChecking] = useState(false);
+  if (update.status === 'downloading' || update.status === 'installing') return null;
+  const check = async () => {
+    setChecking(true);
+    try {
+      const r = await cc.updateCheck();
+      if ((r.status === 'available' || r.status === 'ready') && r.info) toast(`CleanCode ${r.info.version} disponível`, 'ok');
+      else if (r.status === 'error') toast(`Não foi possível verificar: ${r.error || 'sem conexão'}`, 'error');
+      else toast(`Você já está na versão mais recente (${info?.version || ''})`, 'ok');
+    } catch (e: any) { toast(`Não foi possível verificar: ${e?.message || e}`, 'error'); }
+    finally { setChecking(false); }
+  };
+  const busy = checking || update.status === 'checking';
+  return (
+    <button onClick={check} disabled={busy} title="Buscar atualização"
+      className="flex h-7 items-center gap-1.5 rounded-md border border-line px-2 text-xs text-muted transition-colors hover:bg-hover hover:text-fg disabled:opacity-80">
+      <RefreshCw size={13} className={busy ? 'animate-spin' : ''} />
+      <span className="tnum">v{info?.version || '…'}</span>
+    </button>
+  );
+}
+
 function UpdatePill() {
   const { update, installUpdate } = useApp();
   if (update.status === 'downloading') {

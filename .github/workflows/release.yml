@@ -3,7 +3,7 @@
 # Uso: crie uma tag "vX.Y.Z" (ex.: git tag v1.3.0 && git push --tags).
 # Código, Releases e feed do atualizador ficam neste mesmo repositório (público).
 # As notas do Release vêm de release-notes/<versão>.md.
-# O feed (latest.yml / latest-mac.yml) é copiado para feed/ no branch main: o app 1.3.0+ lê de lá.
+# Cada job publica o próprio feed (latest.yml / latest-mac.yml) em feed/ no main assim que termina: o app 1.3.0+ lê de lá.
 # (O antigo marquessrafa/cleancode-releases foi renomeado para este repositório; o GitHub
 #  redireciona o endereço antigo, então versões até a 1.2.1 continuam encontrando as atualizações.)
 name: Release
@@ -61,6 +61,20 @@ jobs:
             release/CleanCode-${{ env.VERSION }}-Windows-x64.exe
             release/latest.yml
 
+      # publica o feed deste sistema em feed/ no main assim que o build termina (sem esperar o outro)
+      - name: Atualizar feed/latest.yml
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          CONTENT=$(base64 < release/latest.yml | tr -d '\n\r')
+          SHA=$(gh api "repos/${{ github.repository }}/contents/feed/latest.yml?ref=main" --jq .sha 2>/dev/null || true)
+          if [ -n "$SHA" ]; then
+            gh api -X PUT "repos/${{ github.repository }}/contents/feed/latest.yml" -f message="Feed do atualizador (latest.yml): $VERSION" -f content="$CONTENT" -f branch=main -f sha="$SHA" --silent
+          else
+            gh api -X PUT "repos/${{ github.repository }}/contents/feed/latest.yml" -f message="Feed do atualizador (latest.yml): $VERSION" -f content="$CONTENT" -f branch=main --silent
+          fi
+
   # macOS: .dmg e .zip para Apple Silicon e Intel, assinatura ad-hoc (sem conta Apple),
   # publicados no mesmo Release depois do Windows (evita os dois jobs criarem o Release ao mesmo tempo).
   macos:
@@ -105,30 +119,16 @@ jobs:
             release/CleanCode-${{ env.VERSION }}-macOS-Universal.zip
             release/latest-mac.yml
 
-  # copia os feeds para feed/ no branch main (de onde o app 1.3.0+ lê)
-  feed:
-    needs: macos
-    runs-on: ubuntu-latest
-    steps:
-      - name: Definir versão
-        run: |
-          V="${{ github.event.inputs.version }}"
-          if [ -z "$V" ]; then V="${GITHUB_REF_NAME#v}"; fi
-          echo "VERSION=$V" >> "$GITHUB_ENV"
-
-      - uses: actions/checkout@v4
-        with:
-          ref: main
-
-      - name: Atualizar feed/
+      # publica o feed deste sistema em feed/ no main assim que o build termina (sem esperar o outro)
+      - name: Atualizar feed/latest-mac.yml
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p feed
-          gh release download "v$VERSION" -R "${{ github.repository }}" -p latest.yml -p latest-mac.yml -D feed --clobber
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add feed
-          git diff --cached --quiet || git commit -m "Feed do atualizador: $VERSION"
-          git pull --rebase origin main
-          git push origin HEAD:main
+          CONTENT=$(base64 < release/latest-mac.yml | tr -d '\n\r')
+          SHA=$(gh api "repos/${{ github.repository }}/contents/feed/latest-mac.yml?ref=main" --jq .sha 2>/dev/null || true)
+          if [ -n "$SHA" ]; then
+            gh api -X PUT "repos/${{ github.repository }}/contents/feed/latest-mac.yml" -f message="Feed do atualizador (latest-mac.yml): $VERSION" -f content="$CONTENT" -f branch=main -f sha="$SHA" --silent
+          else
+            gh api -X PUT "repos/${{ github.repository }}/contents/feed/latest-mac.yml" -f message="Feed do atualizador (latest-mac.yml): $VERSION" -f content="$CONTENT" -f branch=main --silent
+          fi

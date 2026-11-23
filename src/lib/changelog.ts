@@ -5,6 +5,16 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.3.2', date: '2026-11-23', headline: 'Buscar atualização a qualquer momento',
+    groups: [
+      { title: 'Atualizações', icon: 'download', items: [
+        'Botão no canto superior direito com a versão instalada: um clique busca atualização na hora.',
+        'Cada sistema recebe a versão nova assim que o instalador dele fica pronto, sem esperar o do outro sistema.',
+        'O app consulta duas fontes e usa sempre a versão mais nova encontrada.',
+      ] },
+    ],
+  },
+  {
     version: '1.3.1', date: '2026-11-23', headline: 'Tarefas que continuam, discos em destaque e sensores',
     groups: [
       { title: 'Tarefas em andamento', icon: 'sparkles', items: [
