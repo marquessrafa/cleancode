@@ -64,7 +64,9 @@ jobs:
             release/CleanCode-${{ env.VERSION }}-Windows-x64.exe
             release/latest.yml
 
-  # macOS: .dmg e .zip para Apple Silicon e Intel, assinatura ad-hoc (sem conta Apple)
+  # macOS: .dmg e .zip para Apple Silicon e Intel, assinados com o certificado próprio e fixo do
+  # CleanCode (secrets MAC_CERT_P12 e MAC_CERT_PASSWORD). Com o mesmo certificado em toda versão, o
+  # macOS mantém o Acesso Total ao Disco depois das atualizações (ver scripts/mac-sign.cjs).
   macos:
     runs-on: macos-latest
     steps:
@@ -86,6 +88,26 @@ jobs:
 
       - name: Instalar dependências
         run: npm ci --legacy-peer-deps
+
+      - name: Certificado de assinatura
+        env:
+          MAC_CERT_P12: ${{ secrets.MAC_CERT_P12 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+        run: |
+          if [ -z "$MAC_CERT_P12" ]; then echo "::warning::Sem MAC_CERT_P12: o app sai com assinatura ad-hoc e o macOS vai pedir as permissões de novo após atualizar"; exit 0; fi
+          KC="$RUNNER_TEMP/cleancode-sign.keychain-db"; KP="$(openssl rand -hex 16)"
+          security create-keychain -p "$KP" "$KC"
+          security set-keychain-settings -lut 3600 "$KC"
+          security unlock-keychain -p "$KP" "$KC"
+          echo "$MAC_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cc.p12"
+          security import "$RUNNER_TEMP/cc.p12" -k "$KC" -P "$MAC_CERT_PASSWORD" -T /usr/bin/codesign
+          rm -f "$RUNNER_TEMP/cc.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KP" "$KC" > /dev/null
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+          ID="$(security find-identity -p codesigning "$KC" | awk '/CleanCode/ { print $2; exit }')"
+          if [ -z "$ID" ]; then echo "::error::Identidade de assinatura não encontrada no certificado"; exit 1; fi
+          echo "CLEANCODE_MAC_SIGN_ID=$ID" >> "$GITHUB_ENV"
+          echo "CLEANCODE_MAC_KEYCHAIN=$KC" >> "$GITHUB_ENV"
 
       - name: Gerar .dmg e .zip
         run: npm run dist:mac

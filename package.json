@@ -42,6 +42,7 @@
   },
   "build": {
     "appId": "com.cleancode.app",
+    "afterSign": "scripts/mac-sign.cjs",
     "productName": "CleanCode",
     "copyright": "CleanCode",
     "directories": {
