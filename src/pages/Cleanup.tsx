@@ -1,0 +1,313 @@
+// Limpeza: encontra caches, logs, lixeiras, sobras de desenvolvimento e downloads esquecidos,
+// mostra tudo para revisão e remove só o que estiver marcado (Lixeira por padrão).
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Sparkles, ChevronRight, Loader2, CheckCircle2, AlertTriangle, RotateCcw, FolderOpen, Trash2, ShieldCheck, Layers, Zap } from 'lucide-react';
+import { useApp } from '../lib/store';
+import { cc, JunkCategoryInfo, JunkResult, FILE_MANAGER, isMac } from '../lib/api';
+import { fmtSize, fmtNum, fmtRelative } from '../lib/format';
+import { Badge, Button, Checkbox, cx } from '../components/ui';
+import { PageBody } from './common';
+
+type Phase = 'intro' | 'scanning' | 'results' | 'cleaning' | 'done';
+
+function useTween(target: number, ms = 700) {
+  const [v, setV] = useState(target);
+  const from = useRef(target);
+  useEffect(() => {
+    const start = performance.now(), a = from.current;
+    let raf = 0;
+    const step = (t: number) => {
+      const k = Math.min(1, (t - start) / ms), e = 1 - Math.pow(1 - k, 3), cur = a + (target - a) * e;
+      setV(cur); from.current = cur;
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, ms]);
+  return v;
+}
+
+/** Ilustração do módulo: anéis em órbita ao redor de um núcleo na cor de destaque. */
+function Orb({ active, size = 260 }: { active?: boolean; size?: number }) {
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <div className={cx('absolute inset-[12%] rounded-full blur-3xl', active ? 'anim-breathe' : '')} style={{ background: 'color-mix(in srgb, var(--accent) 45%, transparent)' }} />
+      <svg viewBox="0 0 200 200" className="absolute inset-0">
+        <defs>
+          <radialGradient id="orb-core" cx="35%" cy="30%" r="75%">
+            <stop offset="0%" stopColor="color-mix(in srgb, var(--accent) 35%, #ffffff)" />
+            <stop offset="55%" stopColor="var(--accent)" />
+            <stop offset="100%" stopColor="color-mix(in srgb, var(--accent) 60%, #000000)" />
+          </radialGradient>
+        </defs>
+        <g className={active ? 'anim-spin-fast' : 'anim-spin-slow'} style={{ transformOrigin: '100px 100px' }}>
+          <circle cx="100" cy="100" r="86" fill="none" stroke="var(--accent)" strokeOpacity=".25" strokeWidth="1.5" strokeDasharray="4 10" />
+          <circle cx="100" cy="14" r="5" fill="var(--accent)" />
+        </g>
+        <g className="anim-spin-rev" style={{ transformOrigin: '100px 100px' }}>
+          <circle cx="100" cy="100" r="70" fill="none" stroke="var(--accent)" strokeOpacity=".35" strokeWidth="2" strokeDasharray="60 380" strokeLinecap="round" />
+          <circle cx="170" cy="100" r="3.5" fill="var(--accent)" fillOpacity=".7" />
+        </g>
+        <circle cx="100" cy="100" r="50" fill="url(#orb-core)" />
+        <ellipse cx="86" cy="80" rx="20" ry="11" fill="#ffffff" fillOpacity=".28" />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center"><Sparkles size={size * 0.17} className="text-white drop-shadow" /></div>
+    </div>
+  );
+}
+
+export default function Cleanup() {
+  const { confirm, toast, settings } = useApp();
+  const units = settings?.units || 'auto';
+  const [phase, setPhase] = useState<Phase>('intro');
+  const [cats, setCats] = useState<JunkCategoryInfo[]>([]);
+  const [results, setResults] = useState<Record<string, JunkResult>>({});
+  const [current, setCurrent] = useState<string | null>(null);
+  const [selCats, setSelCats] = useState<Set<string>>(new Set());
+  const [deselected, setDeselected] = useState<Set<string>>(new Set());
+  const [open, setOpen] = useState<Set<string>>(new Set());
+  const [cleanProg, setCleanProg] = useState({ done: 0, total: 0, freed: 0, current: '' });
+  const [summary, setSummary] = useState<{ freed: number; removed: number; failed: { path: string; error: string }[] } | null>(null);
+  const [last, setLast] = useState<{ at: number; freed: number } | null>(null);
+
+  useEffect(() => {
+    cc.cleanupCategories().then((c) => { setCats(c); setSelCats(new Set(c.filter((x) => x.selected).map((x) => x.id))); });
+    cc.activityList().then((l) => { const a = l.find((x) => x.kind === 'cleanup'); if (a) setLast({ at: a.at, freed: a.freed || 0 }); });
+  }, []);
+  useEffect(() => cc.on.cleanupProgress((d) => {
+    if (d.type === 'start') setCurrent(d.id || null);
+    else if (d.type === 'category' && d.id) setResults((r) => ({ ...r, [d.id!]: d as JunkResult }));
+    else if (d.type === 'done') { setCurrent(null); setPhase('results'); }
+  }), []);
+  useEffect(() => cc.on.cleanProgress(setCleanProg), []);
+
+  const start = async () => {
+    setResults({}); setDeselected(new Set()); setOpen(new Set()); setSummary(null);
+    setSelCats(new Set(cats.filter((x) => x.selected).map((x) => x.id)));
+    setPhase('scanning');
+    await cc.cleanupScan();
+  };
+
+  const found = useMemo(() => Object.values(results).reduce((s, r) => s + r.size, 0), [results]);
+  const isOn = (catId: string, path: string) => selCats.has(catId) && !deselected.has(path);
+  const selection = useMemo(() => {
+    let size = 0, count = 0;
+    const paths: string[] = [], specials: string[] = [];
+    for (const c of cats) {
+      const r = results[c.id];
+      if (!r || !selCats.has(c.id) || r.size === 0) continue;
+      if (c.special) { specials.push(c.id); size += r.size; count += r.count; continue; }
+      for (const i of r.items) if (!deselected.has(i.path)) { paths.push(i.path); size += i.size; count++; }
+    }
+    return { size, count, paths, specials };
+  }, [cats, results, selCats, deselected]);
+
+  const toggleCat = (id: string, on: boolean) => {
+    setSelCats((s) => { const n = new Set(s); on ? n.add(id) : n.delete(id); return n; });
+    const r = results[id];
+    if (r && on) setDeselected((d) => { const n = new Set(d); for (const i of r.items) n.delete(i.path); return n; });
+  };
+  const toggleItem = (catId: string, path: string, on: boolean) => {
+    if (on && !selCats.has(catId)) {
+      // marcar um item de uma categoria desmarcada: liga a categoria só com ele
+      const r = results[catId];
+      setSelCats((s) => new Set(s).add(catId));
+      setDeselected((d) => { const n = new Set(d); for (const i of r?.items || []) if (i.path !== path) n.add(i.path); n.delete(path); return n; });
+      return;
+    }
+    setDeselected((d) => { const n = new Set(d); on ? n.delete(path) : n.add(path); return n; });
+  };
+
+  const runClean = async () => {
+    const chosen = cats.filter((c) => selCats.has(c.id) && results[c.id]?.size);
+    const review = chosen.filter((c) => c.risk === 'review');
+    const r = await confirm({
+      title: `Limpar ${fmtSize(selection.size, units)}?`,
+      message: <>{fmtNum(selection.count)} itens em {chosen.length} categorias.{review.length ? <> Inclui itens para revisar ({review.map((c) => c.name).join(', ')}).</> : null} A Lixeira é sempre esvaziada de vez.</>,
+      items: chosen.map((c) => ({ label: c.name, detail: fmtSize(c.special ? results[c.id].size : results[c.id].items.filter((i) => !deselected.has(i.path)).reduce((s, i) => s + i.size, 0), units) })),
+      options: [
+        { key: 'trash', label: 'Mover para a Lixeira', hint: 'Dá para recuperar até esvaziar a Lixeira. O espaço só é liberado depois.' },
+        { key: 'delete', label: 'Apagar definitivamente', hint: 'Libera o espaço na hora. Não dá para desfazer.' },
+      ],
+      defaultOption: 'trash', danger: true, confirmLabel: 'Limpar',
+      requireCheck: review.length ? 'Revisei os itens marcados para revisão.' : undefined,
+    });
+    if (!r.ok) return;
+    setPhase('cleaning');
+    setCleanProg({ done: 0, total: selection.paths.length + selection.specials.length, freed: 0, current: '' });
+    const res = await cc.cleanupClean(selection.paths, selection.specials, r.option === 'delete' ? 'delete' : 'trash');
+    setSummary(res);
+    setLast({ at: Date.now(), freed: res.freed });
+    setPhase('done');
+    toast(`${fmtSize(res.freed, units)} liberados`);
+  };
+
+  const foundT = useTween(found);
+  const freedT = useTween(phase === 'done' ? summary?.freed || 0 : cleanProg.freed);
+  const groups = useMemo(() => [...new Set(cats.map((c) => c.group))], [cats]);
+
+  // ---------- telas ----------
+  if (phase === 'intro' || phase === 'scanning') {
+    const scanned = Object.keys(results).length;
+    return (
+      <PageBody>
+        <div className="flex min-h-[calc(100vh-140px)] flex-col items-center justify-center gap-10 py-6 lg:flex-row lg:gap-16">
+          <div className="anim-pop"><Orb active={phase === 'scanning'} size={300} /></div>
+          <div className="max-w-md anim-page">
+            <h1 className="text-[40px] font-semibold leading-tight tracking-tight text-fg">Limpeza</h1>
+            <p className="mt-2 text-[15px] text-muted">Encontra o que só ocupa espaço no {isMac ? 'Mac' : 'PC'}: caches, logs, lixeiras, sobras de desenvolvimento e downloads esquecidos. Você revisa tudo antes.</p>
+            {phase === 'intro' ? (
+              <>
+                <div className="mt-6 space-y-3">
+                  {[
+                    { icon: <Layers size={16} />, t: `${cats.length} categorias analisadas` },
+                    { icon: <ShieldCheck size={16} />, t: 'Itens sensíveis vêm desmarcados' },
+                    { icon: <Trash2 size={16} />, t: 'Vai para a Lixeira por padrão' },
+                  ].map((f, i) => (
+                    <div key={i} className="flex items-center gap-3 text-[14px] font-medium text-fg anim-page" style={{ animationDelay: `${80 + i * 60}ms` }}>
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-soft text-accent">{f.icon}</span>{f.t}
+                    </div>
+                  ))}
+                </div>
+                {last && <div className="mt-5 text-xs text-faint">Última limpeza {fmtRelative(last.at)} · {fmtSize(last.freed, units)} liberados</div>}
+                <button onClick={start} className="group relative mt-8 flex h-28 w-28 items-center justify-center rounded-full text-[17px] font-semibold text-accent-fg transition-transform hover:scale-105 active:scale-95"
+                  style={{ background: 'radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent) 55%, #ffffff), var(--accent) 60%)', boxShadow: '0 10px 40px color-mix(in srgb, var(--accent) 45%, transparent)' }}>
+                  <span className="absolute inset-0 rounded-full anim-ping-soft" style={{ boxShadow: '0 0 0 2px var(--accent)' }} />
+                  Analisar
+                </button>
+              </>
+            ) : (
+              <div className="mt-6">
+                <div className="flex items-baseline gap-2"><span className="text-3xl font-semibold tabular-nums text-fg">{fmtSize(foundT, units)}</span><span className="text-sm text-muted">encontrados até agora</span></div>
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-2"><div className="h-full rounded-full bg-accent transition-[width] duration-500" style={{ width: `${cats.length ? (scanned / cats.length) * 100 : 0}%` }} /></div>
+                <div className="mt-4 space-y-1.5">
+                  {cats.map((c) => {
+                    const r = results[c.id];
+                    return (
+                      <div key={c.id} className="flex items-center gap-2 text-[13px]">
+                        {r ? <CheckCircle2 size={14} className="text-accent" /> : current === c.id ? <Loader2 size={14} className="animate-spin text-accent" /> : <span className="h-3.5 w-3.5 rounded-full border border-line-strong" />}
+                        <span className={cx('flex-1 truncate', r || current === c.id ? 'text-fg' : 'text-faint')}>{c.name}</span>
+                        {r && <span className="tabular-nums text-muted">{fmtSize(r.size, units)}</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+                <Button className="mt-5" variant="ghost" onClick={() => { cc.cleanupCancel(); setPhase('intro'); }}>Parar</Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </PageBody>
+    );
+  }
+
+  if (phase === 'cleaning' || phase === 'done') {
+    const pct = cleanProg.total ? (cleanProg.done / cleanProg.total) * 100 : 0;
+    return (
+      <PageBody>
+        <div className="flex min-h-[calc(100vh-140px)] flex-col items-center justify-center gap-10 py-6 lg:flex-row lg:gap-16">
+          <div className="anim-pop"><Orb active={phase === 'cleaning'} size={260} /></div>
+          <div className="w-full max-w-md anim-page">
+            <div className="text-sm font-medium text-muted">{phase === 'cleaning' ? 'Limpando…' : 'Limpeza concluída'}</div>
+            <div className="mt-1 flex items-baseline gap-2"><span className="text-[44px] font-semibold tabular-nums tracking-tight text-fg">{fmtSize(freedT, units)}</span><span className="text-sm text-muted">liberados</span></div>
+            {phase === 'cleaning' ? (
+              <>
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-2"><div className="h-full rounded-full bg-accent transition-[width] duration-300" style={{ width: `${pct}%` }} /></div>
+                <div className="mt-2 truncate text-xs text-faint">{cleanProg.current}</div>
+              </>
+            ) : summary && (
+              <>
+                <div className="mt-2 text-sm text-muted">{fmtNum(summary.removed)} itens removidos{summary.failed.length ? ` · ${summary.failed.length} não puderam ser removidos` : ''}.</div>
+                {summary.failed.length > 0 && (
+                  <details className="mt-3 rounded-lg border border-line bg-surface p-3 text-xs">
+                    <summary className="cursor-pointer text-muted"><AlertTriangle size={12} className="mr-1 inline text-warn" />Ver itens que ficaram</summary>
+                    <div className="mt-2 max-h-48 space-y-1 overflow-y-auto">
+                      {summary.failed.slice(0, 200).map((f) => <div key={f.path} className="flex gap-2"><span className="min-w-0 flex-1 truncate text-fg" title={f.path}>{f.path}</span><span className="shrink-0 text-faint">{f.error}</span></div>)}
+                    </div>
+                  </details>
+                )}
+                <Button className="mt-6" variant="primary" icon={<RotateCcw size={14} />} onClick={start}>Analisar de novo</Button>
+              </>
+            )}
+          </div>
+        </div>
+      </PageBody>
+    );
+  }
+
+  // resultados
+  const visible = cats.filter((c) => results[c.id]);
+  return (
+    <div className="flex h-full flex-col">
+      <PageBody className="flex-1">
+        <div className="mb-6 flex flex-wrap items-end gap-4 anim-page">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl text-white" style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 50%, #ffffff))' }}><Sparkles size={26} /></div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm text-muted">Encontrados</div>
+            <div className="text-[34px] font-semibold leading-none tracking-tight text-fg tabular-nums">{fmtSize(foundT, units)}</div>
+          </div>
+          <Button variant="ghost" icon={<RotateCcw size={14} />} onClick={start}>Analisar de novo</Button>
+        </div>
+        {groups.map((g) => {
+          const list = visible.filter((c) => c.group === g);
+          if (!list.length) return null;
+          return (
+            <div key={g} className="mb-5">
+              <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-faint">{g}</div>
+              <div className="overflow-hidden rounded-xl border border-line bg-surface">
+                {list.map((c, idx) => {
+                  const r = results[c.id];
+                  const selItems = c.special ? (selCats.has(c.id) ? r.count : 0) : r.items.filter((i) => isOn(c.id, i.path)).length;
+                  const all = c.special ? r.count : r.items.length;
+                  const empty = r.size === 0;
+                  const expanded = open.has(c.id);
+                  return (
+                    <div key={c.id} className={cx(idx > 0 && 'border-t border-line', 'anim-page')} style={{ animationDelay: `${idx * 30}ms` }}>
+                      <div className={cx('flex items-center gap-3 px-4 py-3', empty && 'opacity-55')}>
+                        <Checkbox checked={!empty && selCats.has(c.id) && selItems > 0} indeterminate={!empty && selCats.has(c.id) && selItems > 0 && selItems < all} onChange={(v) => !empty && toggleCat(c.id, v)} />
+                        <button disabled={empty || c.special} onClick={() => setOpen((o) => { const n = new Set(o); n.has(c.id) ? n.delete(c.id) : n.add(c.id); return n; })} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                          {!c.special && <ChevronRight size={14} className={cx('shrink-0 text-faint transition-transform', expanded && 'rotate-90', empty && 'invisible')} />}
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 text-[14px] font-medium text-fg">{c.name}{c.risk === 'review' && <Badge tone="warn">revise</Badge>}{c.removal === 'delete' && <Badge>apaga de vez</Badge>}</div>
+                            <div className="truncate text-xs text-muted">{c.description}</div>
+                          </div>
+                        </button>
+                        <div className="shrink-0 text-right">
+                          <div className="text-[14px] font-semibold tabular-nums text-fg">{fmtSize(r.size, units)}</div>
+                          <div className="text-[11px] text-faint">{empty ? (r.denied ? 'sem acesso' : 'nada encontrado') : `${fmtNum(r.count)} itens`}</div>
+                          {r.denied && isMac && <button onClick={() => cc.openFullDiskAccess()} className="text-[11px] font-medium text-accent hover:underline">Dar acesso</button>}
+                        </div>
+                      </div>
+                      {expanded && (
+                        <div className="max-h-80 overflow-y-auto border-t border-line bg-surface-2/60 py-1 anim-fade">
+                          {r.items.slice(0, 300).map((i) => (
+                            <div key={i.path} className="group flex items-center gap-3 px-4 py-1.5 pl-11 text-[13px] hover:bg-hover">
+                              <Checkbox checked={isOn(c.id, i.path)} onChange={(v) => toggleItem(c.id, i.path, v)} />
+                              <span className="min-w-0 flex-1 truncate text-fg" title={i.path}>{i.name}</span>
+                              {i.mtime > 0 && <span className="hidden shrink-0 text-[11px] text-faint sm:inline">{fmtRelative(i.mtime)}</span>}
+                              <button title={`Mostrar no ${FILE_MANAGER}`} onClick={() => cc.showInFolder(i.path)} className="shrink-0 rounded p-0.5 text-faint opacity-0 transition-opacity hover:text-fg group-hover:opacity-100"><FolderOpen size={13} /></button>
+                              <span className="w-20 shrink-0 text-right tabular-nums text-muted">{fmtSize(i.size, units)}</span>
+                            </div>
+                          ))}
+                          {r.items.length > 300 && <div className="px-11 py-1.5 text-xs text-faint">e mais {fmtNum(r.items.length - 300)} itens menores (incluídos na seleção)</div>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </PageBody>
+      {/* barra de ação */}
+      <div className="flex shrink-0 items-center gap-4 border-t border-line bg-bg/90 px-6 py-3 backdrop-blur anim-page">
+        <div className="min-w-0 flex-1 text-sm">
+          <span className="font-semibold tabular-nums text-fg">{fmtSize(selection.size, units)}</span>
+          <span className="text-muted"> selecionados · {fmtNum(selection.count)} itens</span>
+        </div>
+        <Button variant="primary" icon={<Zap size={14} />} disabled={!selection.count} onClick={runClean}>Limpar</Button>
+      </div>
+    </div>
+  );
+}

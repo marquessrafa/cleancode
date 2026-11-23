@@ -1,0 +1,4 @@
+# Fim de linha LF em todos os sistemas (Windows e macOS editam o mesmo código)
+* text=auto eol=lf
+*.ico binary
+*.png binary

@@ -1,0 +1,126 @@
+{
+  "name": "cleancode",
+  "productName": "CleanCode",
+  "version": "1.3.0",
+  "description": "CleanCode — análise de uso do disco e desinstalador de apps para Windows e macOS",
+  "main": "dist-electron/main.js",
+  "author": "CleanCode",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "build:electron": "node scripts/build-electron.mjs",
+    "build:renderer": "vite build",
+    "build": "npm run build:electron && npm run build:renderer",
+    "start": "npm run build && electron .",
+    "dev": "vite",
+    "dist": "npm run build && electron-builder --win nsis --x64 --publish never --config.directories.output=release-build && electron-builder --win nsis --ia32 --publish never --config.directories.output=release-build && node scripts/publish-local.cjs",
+    "dist:mac": "npm run build && electron-builder --mac --publish never --config.directories.output=release-build && node scripts/publish-local.cjs",
+    "latest": "node scripts/make-latest.cjs"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "koffi": "^3.3.8"
+  },
+  "devDependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@tailwindcss/vite": "^4.3.5",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0",
+    "esbuild": "^0.28.2",
+    "lucide-react": "^1.77.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tailwindcss": "^4.3.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  },
+  "build": {
+    "appId": "com.cleancode.app",
+    "productName": "CleanCode",
+    "copyright": "CleanCode",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "build/icon.ico",
+      "build/trayTemplate.png",
+      "build/trayTemplate@2x.png",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/koffi/**/*",
+      "node_modules/@koromix/**/*",
+      "dist-electron/cc-sensors"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "CleanCode",
+      "uninstallDisplayName": "CleanCode",
+      "include": "build/installer.nsh",
+      "artifactName": "CleanCode-${version}-win-${arch}.${ext}",
+      "language": "1046"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64",
+            "universal"
+          ]
+        }
+      ],
+      "icon": "build/icon-mac.png",
+      "category": "public.app-category.utilities",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "artifactName": "CleanCode-${version}-mac-${arch}.${ext}",
+      "files": [
+        "dist/**/*",
+        "dist-electron/**/*",
+        "build/trayTemplate.png",
+        "build/trayTemplate@2x.png",
+        "package.json",
+        "!node_modules/koffi/**/*",
+        "!node_modules/@koromix/**/*"
+      ],
+      "extendInfo": {
+        "NSDesktopFolderUsageDescription": "O CleanCode lê a Mesa para mostrar o que ocupa espaço.",
+        "NSDocumentsFolderUsageDescription": "O CleanCode lê Documentos para mostrar o que ocupa espaço.",
+        "NSDownloadsFolderUsageDescription": "O CleanCode lê Transferências para mostrar o que ocupa espaço.",
+        "NSRemovableVolumesUsageDescription": "O CleanCode lê discos removíveis para mostrar o que ocupa espaço.",
+        "NSNetworkVolumesUsageDescription": "O CleanCode lê volumes de rede para mostrar o que ocupa espaço."
+      }
+    },
+    "dmg": {
+      "title": "CleanCode ${version}",
+      "artifactName": "CleanCode-${version}-mac-${arch}.${ext}"
+    }
+  }
+}

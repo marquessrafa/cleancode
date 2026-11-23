@@ -1,0 +1,191 @@
+// Leituras do sistema no Windows para o painel da bandeja.
+// Memória: os; bateria e dispositivos: CIM via PowerShell (com cache); rede: netstat -e;
+// temperatura: zona térmica ACPI (costuma exigir administrador; sem leitura, fica vazia).
+import { execFile } from 'child_process';
+import os from 'os';
+import type { MetricsApi, MemoryInfo, BatteryInfo, Temperatures, NetCounters, ConnectedDevice, MemoryDetail, BatteryHealth, NetworkInfo, HardwareInfo, HwLive } from '../types';
+
+function run(cmd: string, args: string[], timeout = 15000): Promise<string> {
+  return new Promise((resolve) => execFile(cmd, args, { encoding: 'utf8', timeout, windowsHide: true, maxBuffer: 8 * 1024 * 1024 }, (_e, out) => resolve(out || '')));
+}
+const ps = (script: string) => run('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script]);
+
+let model: string | null = null;
+async function machineName(): Promise<string> {
+  if (model) return model;
+  const out = (await ps('(Get-CimInstance Win32_ComputerSystem).Model')).trim();
+  model = out && !/system product name|to be filled/i.test(out) ? out : os.hostname();
+  return model;
+}
+
+async function memory(): Promise<MemoryInfo> {
+  const total = os.totalmem(), used = total - os.freemem();
+  const pressure = Math.round((used / total) * 100);
+  return { total, used, pressure, level: pressure >= 90 ? 'critical' : pressure >= 75 ? 'warn' : 'normal' };
+}
+
+let battCache: { at: number; value: BatteryInfo | null } | null = null;
+async function battery(): Promise<BatteryInfo | null> {
+  if (battCache && Date.now() - battCache.at < 20000) return battCache.value;
+  let value: BatteryInfo | null = null;
+  try {
+    const t = (await ps('Get-CimInstance Win32_Battery | Select-Object -First 1 EstimatedChargeRemaining,BatteryStatus,EstimatedRunTime | ConvertTo-Json -Compress')).trim();
+    if (t) {
+      const b = JSON.parse(t);
+      // BatteryStatus: 1 descarregando, 2 na tomada, 6–9 carregando
+      const st = Number(b.BatteryStatus);
+      const run = Number(b.EstimatedRunTime);
+      value = {
+        percent: Number(b.EstimatedChargeRemaining) || 0,
+        charging: st >= 6 && st <= 9, plugged: st !== 1,
+        minutesLeft: st === 1 && run > 0 && run < 71582788 ? run : undefined,
+      };
+    }
+  } catch { /* desktop sem bateria */ }
+  battCache = { at: Date.now(), value };
+  return value;
+}
+
+let tempCache: { at: number; value: Temperatures } | null = null;
+async function temperatures(): Promise<Temperatures> {
+  if (tempCache && Date.now() - tempCache.at < 15000) return tempCache.value;
+  let value: Temperatures = {};
+  try {
+    // décimos de Kelvin; muitos PCs não expõem ou exigem administrador
+    const t = (await ps('(Get-CimInstance -Namespace root/wmi MSAcpi_ThermalZoneTemperature -ErrorAction Stop | Measure-Object CurrentTemperature -Maximum).Maximum')).trim();
+    const c = Number(t) / 10 - 273.15;
+    if (Number.isFinite(c) && c > 0 && c < 150) value = { cpu: Math.round(c * 10) / 10 };
+  } catch { /* indisponível */ }
+  tempCache = { at: Date.now(), value };
+  return value;
+}
+
+async function network(): Promise<NetCounters | null> {
+  // "Bytes   123456   654321" (recebidos, enviados), soma de todas as interfaces
+  const out = await run('netstat.exe', ['-e'], 5000);
+  const m = /^\s*Bytes\s+(\d+)\s+(\d+)/m.exec(out);
+  if (!m) return null;
+  return { rx: Number(m[1]), tx: Number(m[2]), iface: 'all', kind: 'Rede' };
+}
+
+let devCache: { at: number; list: ConnectedDevice[] } | null = null;
+async function devices(): Promise<ConnectedDevice[]> {
+  if (devCache && Date.now() - devCache.at < 60000) return devCache.list;
+  const list: ConnectedDevice[] = [];
+  try {
+    const t = (await ps("Get-PnpDevice -Class Bluetooth -PresentOnly -Status OK | Where-Object { $_.FriendlyName -and ($_.InstanceId -like 'BTHENUM*' -or $_.InstanceId -like 'BTHLE*') } | Select-Object -ExpandProperty FriendlyName | ConvertTo-Json -Compress")).trim();
+    if (t) {
+      const names: string[] = [].concat(JSON.parse(t));
+      for (const n of [...new Set(names)]) if (!/enumerator|service|protocol|transport|generic/i.test(n)) list.push({ name: n, kind: 'Bluetooth' });
+    }
+  } catch { /* sem Bluetooth */ }
+  devCache = { at: Date.now(), list };
+  return list;
+}
+
+async function memoryDetail(): Promise<MemoryDetail | null> {
+  const total = os.totalmem(), free = os.freemem();
+  let swapUsed = 0, swapTotal = 0;
+  try {
+    const j = JSON.parse((await ps('Get-CimInstance Win32_PageFileUsage | Measure-Object -Property CurrentUsage,AllocatedBaseSize -Sum | Select-Object Property,Sum | ConvertTo-Json -Compress')).trim() || '[]');
+    for (const x of [].concat(j)) { if ((x as any).Property === 'CurrentUsage') swapUsed = Number((x as any).Sum) * 1048576; else swapTotal = Number((x as any).Sum) * 1048576; }
+  } catch { /* */ }
+  return { active: total - free, wired: 0, compressed: 0, available: free, swapUsed, swapTotal };
+}
+let healthCache: { at: number; value: BatteryHealth | null } | null = null;
+async function batteryHealth(): Promise<BatteryHealth | null> {
+  if (healthCache && Date.now() - healthCache.at < 5 * 60000) return healthCache.value;
+  let value: BatteryHealth | null = null;
+  try {
+    const t = (await ps("$f=(Get-CimInstance -Namespace root/wmi BatteryFullChargedCapacity -ErrorAction Stop | Select -First 1).FullChargedCapacity; $d=(Get-CimInstance -Namespace root/wmi BatteryStaticData -ErrorAction Stop | Select -First 1).DesignedCapacity; $c=(Get-CimInstance -Namespace root/wmi BatteryCycleCount -ErrorAction SilentlyContinue | Select -First 1).CycleCount; \"$f $d $c\"")).trim();
+    const [f, d, c] = t.split(/\s+/).map(Number);
+    if (f && d) { const max = Math.min(100, Math.round((f / d) * 100)); value = { maxCapacity: max, cycles: c || undefined, condition: max >= 80 ? 'Good' : 'Service Recommended' }; }
+  } catch { /* desktop */ }
+  healthCache = { at: Date.now(), value };
+  return value;
+}
+let netInfoCache: { at: number; value: NetworkInfo } | null = null;
+async function networkInfo(): Promise<NetworkInfo> {
+  if (netInfoCache && Date.now() - netInfoCache.at < 30000) return netInfoCache.value;
+  const value: NetworkInfo = {};
+  for (const list of Object.values(os.networkInterfaces())) for (const a of list || []) if (a.family === 'IPv4' && !a.internal && !value.ip) value.ip = a.address;
+  const out = await run('netsh', ['wlan', 'show', 'interfaces'], 8000);
+  const get = (k: string) => new RegExp(`^\\s*${k}\\s*:\\s*(.+)$`, 'mi').exec(out)?.[1]?.trim();
+  value.ssid = get('SSID');
+  const auth = get('Authentication') || get('Autenticação');
+  if (auth) { value.security = auth; value.securityLevel = /open|aberta/i.test(auth) ? 'open' : /wep/i.test(auth) ? 'weak' : /wpa3/i.test(auth) ? 'strong' : /wpa2/i.test(auth) ? 'good' : 'weak'; }
+  value.phy = get('Radio type') || get('Tipo de rádio');
+  value.channel = get('Channel') || get('Canal');
+  value.signal = get('Signal') || get('Sinal');
+  netInfoCache = { at: Date.now(), value };
+  return value;
+}
+async function eject(root: string) {
+  const letter = root.slice(0, 2);
+  const out = await ps(`(New-Object -ComObject Shell.Application).Namespace(17).ParseName('${letter}').InvokeVerb('Eject'); Start-Sleep -Seconds 2; if (Test-Path '${letter}\\') { 'still' } else { 'ok' }`);
+  return /ok/.test(out) ? { ok: true, message: 'Ejetado com segurança' } : { ok: false, message: 'Não foi possível ejetar: feche os arquivos abertos nesse disco' };
+}
+
+// ---------- hardware ----------
+const HW = String.raw`$ErrorActionPreference='SilentlyContinue'
+$c=Get-CimInstance Win32_Processor | Select-Object -First 1 Name,NumberOfCores,NumberOfLogicalProcessors,MaxClockSpeed,L2CacheSize,L3CacheSize
+$g=@(Get-CimInstance Win32_VideoController | ForEach-Object { $v=$_; $q=$null
+  Get-ChildItem 'HKLM:\SYSTEM\ControlSet001\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}' | ForEach-Object { $p=Get-ItemProperty $_.PSPath; if($p.DriverDesc -eq $v.Name -and $p.'HardwareInformation.qwMemorySize'){ $q=[int64]$p.'HardwareInformation.qwMemorySize' } }
+  [pscustomobject]@{name=$v.Name;driver=$v.DriverVersion;ram=$(if($q){$q}else{[int64]$v.AdapterRAM});vendor=$v.AdapterCompatibility;w=$v.CurrentHorizontalResolution;h=$v.CurrentVerticalResolution;hz=$v.CurrentRefreshRate} })
+$m=@(Get-CimInstance Win32_PhysicalMemory | Select-Object Capacity,ConfiguredClockSpeed,Speed,Manufacturer,PartNumber,DeviceLocator,SMBIOSMemoryType)
+$slots=(Get-CimInstance Win32_PhysicalMemoryArray | Measure-Object -Property MemoryDevices -Sum).Sum
+$b=Get-CimInstance Win32_BaseBoard | Select-Object -First 1 Manufacturer,Product,Version
+$bi=Get-CimInstance Win32_BIOS | Select-Object -First 1 SMBIOSBIOSVersion,ReleaseDate
+$cs=Get-CimInstance Win32_ComputerSystem | Select-Object -First 1 Manufacturer,Model
+[pscustomobject]@{cpu=$c;gpu=$g;mem=$m;slots=$slots;board=$b;bios=$bi;cs=$cs} | ConvertTo-Json -Depth 4 -Compress`;
+const MEMTYPE: Record<number, string> = { 20: 'DDR', 21: 'DDR2', 24: 'DDR3', 26: 'DDR4', 27: 'LPDDR', 28: 'LPDDR2', 29: 'LPDDR3', 30: 'LPDDR4', 34: 'DDR5', 35: 'LPDDR5' };
+let hwCache: HardwareInfo | null = null;
+async function hardware(): Promise<HardwareInfo> {
+  if (hwCache) return hwCache;
+  let j: any = {}; try { j = JSON.parse((await ps(HW)).trim() || '{}'); } catch { /* */ }
+  const arr = (x: any) => (Array.isArray(x) ? x : x ? [x] : []);
+  const c = j.cpu || {}, mem = arr(j.mem);
+  const date = /\/Date\((\d+)\)/.exec(String(j.bios?.ReleaseDate || ''))?.[1];
+  hwCache = {
+    cpu: { name: String(c.Name || os.cpus()[0]?.model || 'Processador').trim(), cores: c.NumberOfCores || os.cpus().length, threads: c.NumberOfLogicalProcessors || os.cpus().length, maxMHz: c.MaxClockSpeed, baseMHz: c.MaxClockSpeed, l2: c.L2CacheSize ? c.L2CacheSize * 1024 : undefined, l3: c.L3CacheSize ? c.L3CacheSize * 1024 : undefined, arch: process.arch === 'ia32' ? 'x86 (32 bits)' : process.arch === 'arm64' ? 'ARM64' : 'x86-64' },
+    gpus: arr(j.gpu).map((g: any) => ({ name: g.name, driver: g.driver, vram: g.ram > 0 ? g.ram : undefined, vendor: g.vendor, api: 'DirectX 12' })),
+    memory: { total: os.totalmem(), type: MEMTYPE[mem[0]?.SMBIOSMemoryType], speed: mem[0]?.ConfiguredClockSpeed || mem[0]?.Speed, manufacturer: String(mem[0]?.Manufacturer || '').trim() || undefined, slots: j.slots || undefined,
+      modules: mem.map((m: any) => ({ size: Number(m.Capacity) || 0, speed: m.ConfiguredClockSpeed || m.Speed, manufacturer: String(m.Manufacturer || '').trim(), part: String(m.PartNumber || '').trim(), slot: m.DeviceLocator })) },
+    board: { system: [j.cs?.Manufacturer, j.cs?.Model].filter(Boolean).join(' '), manufacturer: j.board?.Manufacturer, model: j.board?.Product, version: j.board?.Version, firmware: j.bios?.SMBIOSBIOSVersion, firmwareDate: date ? new Date(+date).toLocaleDateString('pt-BR') : undefined },
+    displays: arr(j.gpu).filter((g: any) => g.w).map((g: any) => ({ name: g.name, resolution: `${g.w} x ${g.h}${g.hz ? ` @ ${g.hz}Hz` : ''}` })),
+  };
+  return hwCache;
+}
+// GPU por contadores de desempenho (motor 3D de cada processo), frequência atual da CPU,
+// potência da bateria (root/wmi) e temperatura da GPU NVIDIA quando o nvidia-smi existe
+const LIVE = String.raw`$ErrorActionPreference='SilentlyContinue'
+$s=(Get-Counter '\GPU Engine(*engtype_3D)\Utilization Percentage','\GPU Adapter Memory(*)\Dedicated Usage','\Processor Information(_Total)\% Processor Performance' -ErrorAction SilentlyContinue).CounterSamples
+$by=@{}; $mem=0; $perf=$null
+foreach($x in $s){ if($x.Path -like '*gpu engine*'){ if($x.InstanceName -match 'pid_(\d+)'){ $p=[int]$matches[1]; $by[$p]=[double]$by[$p]+$x.CookedValue } } elseif($x.Path -like '*adapter memory*'){ $mem+=$x.CookedValue } else { $perf=$x.CookedValue } }
+$procs=@($by.GetEnumerator() | Where-Object { $_.Value -gt 0.5 } | Sort-Object Value -Descending | Select-Object -First 6 | ForEach-Object { [pscustomobject]@{pid=$_.Key;util=[math]::Round($_.Value,1);name=(Get-Process -Id $_.Key).ProcessName} })
+$util=[math]::Min(100,($by.Values | Measure-Object -Sum).Sum)
+$bs=Get-CimInstance -Namespace root/wmi -ClassName BatteryStatus | Select-Object -First 1 ChargeRate,DischargeRate,Voltage,PowerOnline
+$plan=(powercfg /getactivescheme) -join ' '
+$t=$null; $nv="$env:SystemRoot\System32\nvidia-smi.exe"; if(Test-Path $nv){ $t=(& $nv --query-gpu=temperature.gpu --format=csv,noheader,nounits | Select-Object -First 1) }
+[pscustomobject]@{util=$util;mem=$mem;perf=$perf;procs=$procs;bat=$bs;plan=$plan;temp=$t} | ConvertTo-Json -Depth 3 -Compress`;
+let liveCache: { at: number; value: HwLive } | null = null;
+let liveRunning: Promise<HwLive> | null = null;
+async function hwLive(): Promise<HwLive> {
+  if (liveCache && Date.now() - liveCache.at < 2500) return liveCache.value;
+  return (liveRunning ||= (async () => {
+    let j: any = {}; try { j = JSON.parse((await ps(LIVE)).trim() || '{}'); } catch { /* */ }
+    const hw = await hardware().catch(() => null);
+    const b = j.bat || {};
+    const rate = b.PowerOnline ? b.ChargeRate : -(b.DischargeRate || 0);
+    const value: HwLive = {
+      gpu: { util: typeof j.util === 'number' ? Math.round(j.util) : undefined, memUsed: j.mem || undefined, memTotal: hw?.gpus[0]?.vram, temp: j.temp ? Number(j.temp) : undefined, procs: (Array.isArray(j.procs) ? j.procs : j.procs ? [j.procs] : []).map((p: any) => ({ name: p.name || `PID ${p.pid}`, pid: p.pid, util: p.util })) },
+      power: { batteryW: rate ? rate / 1000 : undefined, voltage: b.Voltage ? b.Voltage / 1000 : undefined, plan: /\(([^)]+)\)\s*$/.exec(String(j.plan || '').trim())?.[1] },
+      cpuMHz: j.perf && hw?.cpu.baseMHz ? Math.round((j.perf / 100) * hw.cpu.baseMHz) : undefined,
+      fans: [],
+    };
+    liveCache = { at: Date.now(), value };
+    return value;
+  })().finally(() => { liveRunning = null; }));
+}
+
+export const metrics: MetricsApi = { machineName, memory, battery, temperatures, network, devices, memoryDetail, batteryHealth, networkInfo, eject, hardware, hwLive };

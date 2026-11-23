@@ -1,0 +1,141 @@
+# Gera e publica uma versão do CleanCode (Windows x64/x86 e macOS Apple Silicon/Intel).
+# Uso: crie uma tag "vX.Y.Z" (ex.: git tag v1.3.0 && git push --tags).
+# Código, Releases e feed do atualizador ficam neste mesmo repositório (público).
+# As notas do Release vêm de release-notes/<versão>.md.
+# O feed (latest.yml / latest-mac.yml) é copiado para feed/ no branch main: o app 1.3.0+ lê de lá.
+# (O antigo marquessrafa/cleancode-releases foi renomeado para este repositório; o GitHub
+#  redireciona o endereço antigo, então versões até a 1.2.1 continuam encontrando as atualizações.)
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versão (ex.: 1.3.0)'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  # fonte de atualizações embutida no app (feed no repositório de releases)
+  CLEANCODE_UPDATE_SOURCE: https://raw.githubusercontent.com/${{ github.repository }}/main/feed
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Definir versão a partir da tag
+        shell: bash
+        run: |
+          V="${{ github.event.inputs.version }}"
+          if [ -z "$V" ]; then V="${GITHUB_REF_NAME#v}"; fi
+          echo "VERSION=$V" >> "$GITHUB_ENV"
+          echo "CLEANCODE_RELEASE_BASE=https://github.com/${{ github.repository }}/releases/download/v$V" >> "$GITHUB_ENV"
+          npm version "$V" --no-git-tag-version --allow-same-version
+
+      - name: Instalar dependências
+        run: npm ci --legacy-peer-deps
+
+      # o koffi traz o binário nativo por arquitetura; o npm só instala o da máquina (x64)
+      - name: Binário nativo x86 (32 bits)
+        shell: bash
+        run: |
+          KV=$(node -p "require('./node_modules/koffi/package.json').version")
+          npm install --no-save --force --legacy-peer-deps "@koromix/koffi-win32-ia32@$KV"
+
+      - name: Gerar instaladores (x64 e x86)
+        run: npm run dist
+
+      - name: Publicar no repositório de releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: CleanCode ${{ env.VERSION }}
+          body_path: release-notes/${{ env.VERSION }}.md
+          make_latest: true
+          files: |
+            release/CleanCode-${{ env.VERSION }}-Windows-x64.exe
+            release/CleanCode-${{ env.VERSION }}-Windows-x86.exe
+            release/latest.yml
+
+  # macOS: .dmg e .zip para Apple Silicon e Intel, assinatura ad-hoc (sem conta Apple),
+  # publicados no mesmo Release depois do Windows (evita os dois jobs criarem o Release ao mesmo tempo).
+  macos:
+    needs: windows
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Definir versão a partir da tag
+        shell: bash
+        run: |
+          V="${{ github.event.inputs.version }}"
+          if [ -z "$V" ]; then V="${GITHUB_REF_NAME#v}"; fi
+          echo "VERSION=$V" >> "$GITHUB_ENV"
+          echo "CLEANCODE_RELEASE_BASE=https://github.com/${{ github.repository }}/releases/download/v$V" >> "$GITHUB_ENV"
+          npm version "$V" --no-git-tag-version --allow-same-version
+
+      - name: Instalar dependências
+        run: npm ci --legacy-peer-deps
+
+      - name: Gerar .dmg e .zip
+        run: npm run dist:mac
+
+      # o .zip universal só é necessário enquanto houver Macs com versões anteriores à 1.3.0
+      - name: Publicar no repositório de releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: CleanCode ${{ env.VERSION }}
+          body_path: release-notes/${{ env.VERSION }}.md
+          make_latest: true
+          files: |
+            release/CleanCode-${{ env.VERSION }}-macOS-Apple-Silicon.dmg
+            release/CleanCode-${{ env.VERSION }}-macOS-Intel.dmg
+            release/CleanCode-${{ env.VERSION }}-macOS-Apple-Silicon.zip
+            release/CleanCode-${{ env.VERSION }}-macOS-Intel.zip
+            release/CleanCode-${{ env.VERSION }}-macOS-Universal.zip
+            release/latest-mac.yml
+
+  # copia os feeds para feed/ no branch main (de onde o app 1.3.0+ lê)
+  feed:
+    needs: macos
+    runs-on: ubuntu-latest
+    steps:
+      - name: Definir versão
+        run: |
+          V="${{ github.event.inputs.version }}"
+          if [ -z "$V" ]; then V="${GITHUB_REF_NAME#v}"; fi
+          echo "VERSION=$V" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Atualizar feed/
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p feed
+          gh release download "v$VERSION" -R "${{ github.repository }}" -p latest.yml -p latest-mac.yml -D feed --clobber
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add feed
+          git diff --cached --quiet || git commit -m "Feed do atualizador: $VERSION"
+          git pull --rebase origin main
+          git push origin HEAD:main
