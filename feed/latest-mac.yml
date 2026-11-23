@@ -1,18 +1,18 @@
-version: 1.4.5
+version: 1.4.6
 files:
-  - url: CleanCode-1.4.5-macOS-Intel.zip
-    sha512: baKG2+wGJKVEQUJmlwtiTlMW/DWTfp6rmK21TgosD5kv9/vHWAe4CoZmtBkGsuZssBLpSlawhQGCjRqe/dK6Sw==
-    size: 133092143
-  - url: CleanCode-1.4.5-macOS-Apple-Silicon.zip
-    sha512: OqjRYoDMNPwEQt18uksSYwVItCXBSTSKrXuO9aeORzpXQ2BZxyiULLZlyvIM1274/JSQipYKF0unOCrTfYEWrQ==
-    size: 125940781
-path: CleanCode-1.4.5-macOS-Intel.zip
-sha512: baKG2+wGJKVEQUJmlwtiTlMW/DWTfp6rmK21TgosD5kv9/vHWAe4CoZmtBkGsuZssBLpSlawhQGCjRqe/dK6Sw==
-pathArm64: CleanCode-1.4.5-macOS-Apple-Silicon.zip
-sha512Arm64: OqjRYoDMNPwEQt18uksSYwVItCXBSTSKrXuO9aeORzpXQ2BZxyiULLZlyvIM1274/JSQipYKF0unOCrTfYEWrQ==
-sizeArm64: 125940781
-pathX64: CleanCode-1.4.5-macOS-Intel.zip
-sha512X64: baKG2+wGJKVEQUJmlwtiTlMW/DWTfp6rmK21TgosD5kv9/vHWAe4CoZmtBkGsuZssBLpSlawhQGCjRqe/dK6Sw==
-sizeX64: 133092143
-base: https://github.com/marquessrafa/cleancode/releases/download/v1.4.5
-releaseDate: '2026-11-23T21:11:40.075Z'
+  - url: CleanCode-1.4.6-macOS-Intel.zip
+    sha512: otp0VrT7xl/HiPBkEIb4g940Jx3+hd1u/GJ9B0i0WUsc1oM/bUunC6CcA5Oj66lcN9aaxpzub4cQi0KrvmvKhw==
+    size: 133092145
+  - url: CleanCode-1.4.6-macOS-Apple-Silicon.zip
+    sha512: jgqPj5vewTlo3bNoMW87z85MvprcKCWsGOiQ5Hm7kyQNIxXIyeneC2ajOac/OlOnS+NR7V8k2knG00GYa4iSiA==
+    size: 125940766
+path: CleanCode-1.4.6-macOS-Intel.zip
+sha512: otp0VrT7xl/HiPBkEIb4g940Jx3+hd1u/GJ9B0i0WUsc1oM/bUunC6CcA5Oj66lcN9aaxpzub4cQi0KrvmvKhw==
+pathArm64: CleanCode-1.4.6-macOS-Apple-Silicon.zip
+sha512Arm64: jgqPj5vewTlo3bNoMW87z85MvprcKCWsGOiQ5Hm7kyQNIxXIyeneC2ajOac/OlOnS+NR7V8k2knG00GYa4iSiA==
+sizeArm64: 125940766
+pathX64: CleanCode-1.4.6-macOS-Intel.zip
+sha512X64: otp0VrT7xl/HiPBkEIb4g940Jx3+hd1u/GJ9B0i0WUsc1oM/bUunC6CcA5Oj66lcN9aaxpzub4cQi0KrvmvKhw==
+sizeX64: 133092145
+base: https://github.com/marquessrafa/cleancode/releases/download/v1.4.6
+releaseDate: '2026-11-23T21:32:33.088Z'
