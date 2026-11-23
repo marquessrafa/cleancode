@@ -1,11 +1,13 @@
 # Gera e publica uma versão do CleanCode (Windows x64 e macOS Apple Silicon/Intel).
+# Uso: crie uma tag "vX.Y.Z" (ex.: git tag v1.3.3 && git push --tags).
+#
+# Os builds de Windows e macOS rodam em paralelo e guardam os arquivos como artefatos.
+# O job "publish" só roda quando os dois terminam: cria o Release com todos os downloads de uma vez
+# (notas de release-notes/<versão>.md) e publica os feeds do atualizador em feed/ no main.
 # (o Electron 45 não é mais publicado para Windows 32 bits, por isso não há build x86)
-# Uso: crie uma tag "vX.Y.Z" (ex.: git tag v1.3.0 && git push --tags).
-# Código, Releases e feed do atualizador ficam neste mesmo repositório (público).
-# As notas do Release vêm de release-notes/<versão>.md.
-# Cada job publica o próprio feed (latest.yml / latest-mac.yml) em feed/ no main assim que termina: o app 1.3.0+ lê de lá.
-# (O antigo marquessrafa/cleancode-releases foi renomeado para este repositório; o GitHub
-#  redireciona o endereço antigo, então versões até a 1.2.1 continuam encontrando as atualizações.)
+#
+# O antigo marquessrafa/cleancode-releases foi renomeado para este repositório; o GitHub
+# redireciona o endereço antigo, então versões até a 1.2.1 continuam encontrando as atualizações.
 name: Release
 
 on:
@@ -14,14 +16,14 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Versão (ex.: 1.3.0)'
+        description: 'Versão (ex.: 1.3.3)'
         required: true
 
 permissions:
   contents: write
 
 env:
-  # fonte de atualizações embutida no app (feed no repositório de releases)
+  # fonte de atualizações embutida no app (feed no próprio repositório)
   CLEANCODE_UPDATE_SOURCE: https://raw.githubusercontent.com/${{ github.repository }}/main/feed
 
 jobs:
@@ -50,35 +52,16 @@ jobs:
       - name: Gerar instalador (x64)
         run: npm run dist
 
-      - name: Publicar no repositório de releases
-        uses: softprops/action-gh-release@v2
+      - uses: actions/upload-artifact@v4
         with:
-          tag_name: v${{ env.VERSION }}
-          name: CleanCode ${{ env.VERSION }}
-          body_path: release-notes/${{ env.VERSION }}.md
-          make_latest: true
-          files: |
+          name: windows
+          if-no-files-found: error
+          path: |
             release/CleanCode-${{ env.VERSION }}-Windows-x64.exe
             release/latest.yml
 
-      # publica o feed deste sistema em feed/ no main assim que o build termina (sem esperar o outro)
-      - name: Atualizar feed/latest.yml
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          CONTENT=$(base64 < release/latest.yml | tr -d '\n\r')
-          SHA=$(gh api "repos/${{ github.repository }}/contents/feed/latest.yml?ref=main" --jq .sha 2>/dev/null || true)
-          if [ -n "$SHA" ]; then
-            gh api -X PUT "repos/${{ github.repository }}/contents/feed/latest.yml" -f message="Feed do atualizador (latest.yml): $VERSION" -f content="$CONTENT" -f branch=main -f sha="$SHA" --silent
-          else
-            gh api -X PUT "repos/${{ github.repository }}/contents/feed/latest.yml" -f message="Feed do atualizador (latest.yml): $VERSION" -f content="$CONTENT" -f branch=main --silent
-          fi
-
-  # macOS: .dmg e .zip para Apple Silicon e Intel, assinatura ad-hoc (sem conta Apple),
-  # publicados no mesmo Release depois do Windows (evita os dois jobs criarem o Release ao mesmo tempo).
+  # macOS: .dmg e .zip para Apple Silicon e Intel, assinatura ad-hoc (sem conta Apple)
   macos:
-    needs: windows
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -104,14 +87,11 @@ jobs:
         run: npm run dist:mac
 
       # o .zip universal só é necessário enquanto houver Macs com versões anteriores à 1.3.0
-      - name: Publicar no repositório de releases
-        uses: softprops/action-gh-release@v2
+      - uses: actions/upload-artifact@v4
         with:
-          tag_name: v${{ env.VERSION }}
-          name: CleanCode ${{ env.VERSION }}
-          body_path: release-notes/${{ env.VERSION }}.md
-          make_latest: true
-          files: |
+          name: macos
+          if-no-files-found: error
+          path: |
             release/CleanCode-${{ env.VERSION }}-macOS-Apple-Silicon.dmg
             release/CleanCode-${{ env.VERSION }}-macOS-Intel.dmg
             release/CleanCode-${{ env.VERSION }}-macOS-Apple-Silicon.zip
@@ -119,16 +99,46 @@ jobs:
             release/CleanCode-${{ env.VERSION }}-macOS-Universal.zip
             release/latest-mac.yml
 
-      # publica o feed deste sistema em feed/ no main assim que o build termina (sem esperar o outro)
-      - name: Atualizar feed/latest-mac.yml
-        shell: bash
+  # publica tudo de uma vez quando os dois builds terminam
+  publish:
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: release-notes
+
+      - name: Definir versão
+        run: |
+          V="${{ github.event.inputs.version }}"
+          if [ -z "$V" ]; then V="${GITHUB_REF_NAME#v}"; fi
+          echo "VERSION=$V" >> "$GITHUB_ENV"
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist-all
+          merge-multiple: true
+
+      - name: Publicar o Release (Windows e macOS juntos)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: CleanCode ${{ env.VERSION }}
+          body_path: release-notes/${{ env.VERSION }}.md
+          make_latest: true
+          files: dist-all/*
+
+      # feeds do atualizador em feed/ no main (de onde o app 1.3.0+ lê)
+      - name: Atualizar feed/
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          CONTENT=$(base64 < release/latest-mac.yml | tr -d '\n\r')
-          SHA=$(gh api "repos/${{ github.repository }}/contents/feed/latest-mac.yml?ref=main" --jq .sha 2>/dev/null || true)
-          if [ -n "$SHA" ]; then
-            gh api -X PUT "repos/${{ github.repository }}/contents/feed/latest-mac.yml" -f message="Feed do atualizador (latest-mac.yml): $VERSION" -f content="$CONTENT" -f branch=main -f sha="$SHA" --silent
-          else
-            gh api -X PUT "repos/${{ github.repository }}/contents/feed/latest-mac.yml" -f message="Feed do atualizador (latest-mac.yml): $VERSION" -f content="$CONTENT" -f branch=main --silent
-          fi
+          for f in latest.yml latest-mac.yml; do
+            CONTENT=$(base64 < "dist-all/$f" | tr -d '\n\r')
+            SHA=$(gh api "repos/${{ github.repository }}/contents/feed/$f?ref=main" --jq .sha 2>/dev/null || true)
+            if [ -n "$SHA" ]; then
+              gh api -X PUT "repos/${{ github.repository }}/contents/feed/$f" -f message="Feed do atualizador ($f): $VERSION" -f content="$CONTENT" -f branch=main -f sha="$SHA" --silent
+            else
+              gh api -X PUT "repos/${{ github.repository }}/contents/feed/$f" -f message="Feed do atualizador ($f): $VERSION" -f content="$CONTENT" -f branch=main --silent
+            fi
+          done
