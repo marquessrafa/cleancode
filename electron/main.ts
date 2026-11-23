@@ -8,6 +8,8 @@ import path from 'path';
 import fs from 'fs';
 import zlib from 'zlib';
 import { system, drives, isAdmin, isMac } from './platform';
+import { setupFdaAssistant } from './fdaAssistant';
+import * as AppData from './appdata';
 import type { AppEntry } from './platform';
 import { toCSV, toXLSX, toHTML, writeText } from './exporter';
 import { snapshot as metricsSnapshot, speedTest, details as metricsDetails, eject as ejectDrive , hardwareInfo, hardwareLive } from './metrics';
@@ -46,6 +48,8 @@ const DEFAULTS = {
   lastSeenVersion: '',
   // 1.3.1: a 1.3.0 não mostrava as novidades para quem atualizava; marca que a correção já rodou
   whatsNewFixed: false,
+  // Modo Jogo: pastas extras onde procurar jogos
+  gameDirs: [] as string[],
 };
 type Settings = typeof DEFAULTS;
 let settings: Settings = { ...DEFAULTS };
@@ -102,6 +106,11 @@ function createTray() {
   tray.setToolTip('CleanCode: monitorando discos');
   const menu = () => Menu.buildFromTemplate([
     { label: 'Abrir CleanCode', click: showMain },
+    { type: 'separator' },
+    { label: 'Liberar memória', click: async () => {
+      const r = await system.game.freeMemory(false).catch(() => ({ ok: false, freed: 0, message: 'Não foi possível liberar a memória' }));
+      showNotification({ kind: 'update', title: r.ok ? 'Memória liberada' : 'Liberar memória', detail: r.message } as MonitorEvent);
+    } },
     { type: 'separator' },
     { label: 'Notificações', type: 'checkbox', checked: settings.notifyEnabled, click: (i) => { settings.notifyEnabled = i.checked; saveSettings(); applyMonitor(); broadcastSettings(); } },
     { label: `Iniciar com o ${system.osName}`, type: 'checkbox', checked: settings.startWithWindows, enabled: app.isPackaged, click: (i) => { settings.startWithWindows = i.checked; saveSettings(); applyLoginItem(); broadcastSettings(); } },
@@ -182,7 +191,7 @@ ipcMain.handle('hardware:advanced', async (_e, on: boolean) => {
 // ---------- limpeza ----------
 const activityFile = path.join(userDir, 'activity.json');
 ipcMain.handle('cleanup:categories', () => Cleanup.categories());
-ipcMain.handle('cleanup:scan', (e) => Cleanup.scan((ch, d) => { if (!e.sender.isDestroyed()) e.sender.send(ch, d); }));
+ipcMain.handle('cleanup:scan', (e, opts?: { aggressive?: boolean }) => Cleanup.scan((ch, d) => { if (!e.sender.isDestroyed()) e.sender.send(ch, d); }, opts || {}));
 ipcMain.handle('cleanup:cancel', () => { Cleanup.cancelScan(); return true; });
 ipcMain.handle('cleanup:clean', (e, paths: string[], specials: string[], mode: 'trash' | 'delete') =>
   Cleanup.clean(paths, specials, mode, (ch, d) => { if (!e.sender.isDestroyed()) e.sender.send(ch, d); }, activityFile));
@@ -290,7 +299,24 @@ ipcMain.handle('browsers:close', (_e, id: string) => Browsers.closeBrowser(id));
 let gameSession: { at: number; options: import('./platform').GameSessionOptions } | null = null;
 ipcMain.handle('game:status', async () => ({ ...(await system.game.status()), session: gameSession }));
 ipcMain.handle('game:toggle', (_e, id: string, on: boolean) => system.game.setToggle(id, on));
-ipcMain.handle('game:games', () => system.game.games());
+ipcMain.handle('game:games', () => system.game.games(settings.gameDirs));
+ipcMain.handle('game:dirs', () => settings.gameDirs);
+ipcMain.handle('game:addDir', async (e) => {
+  const r = await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender)!, { title: 'Pasta com jogos', properties: ['openDirectory'] });
+  const dir = r.canceled ? null : r.filePaths[0];
+  if (dir && !settings.gameDirs.includes(dir)) { settings.gameDirs = [...settings.gameDirs, dir]; saveSettings(); }
+  return settings.gameDirs;
+});
+ipcMain.handle('game:removeDir', (_e, dir: string) => { settings.gameDirs = settings.gameDirs.filter((d) => d !== dir); saveSettings(); return settings.gameDirs; });
+// liberar memória (Memória do Monitor de hardware, painel da bandeja e menu do ícone)
+ipcMain.handle('mem:free', (_e, deep?: boolean) => system.game.freeMemory(!!deep));
+// análise do AppData (dados que os programas guardam no perfil)
+ipcMain.handle('appdata:scan', async (e) => {
+  if (!appsCache) appsCache = await system.listApps().catch(() => []);
+  return AppData.scan(appsCache, (ch, d) => { if (!e.sender.isDestroyed()) e.sender.send(ch, d); });
+});
+ipcMain.handle('appdata:cancel', () => { AppData.cancel(); return true; });
+ipcMain.handle('appdata:clean', (_e, req: { safe: string[]; trash: string[] }) => AppData.clean(req));
 ipcMain.handle('game:start', async (_e, o: import('./platform').GameSessionOptions) => {
   const r = await system.game.start(o);
   gameSession = { at: Date.now(), options: o };
@@ -750,6 +776,7 @@ ipcMain.handle('app:info', () => ({
 ipcMain.handle('drives:list', () => drives());
 ipcMain.handle('app:fullDiskAccess', () => system.fullDiskAccess());
 ipcMain.handle('app:openFullDiskAccess', () => { system.openFullDiskAccessSettings(); return true; });
+if (isMac) setupFdaAssistant({ isDev, mainWindow: () => mainWin });
 ipcMain.handle('drives:hardware', (_e, force?: boolean) => system.driveHardware(!!force));
 ipcMain.handle('dialog:pickFolder', async (e) => {
   const r = await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender)!, { properties: ['openDirectory'] });

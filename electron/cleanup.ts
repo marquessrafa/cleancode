@@ -19,14 +19,14 @@ export function categories() {
   return lastCats.map(({ targets, ...c }) => ({ ...c, paths: targets.map((t) => t.path) }));
 }
 
-export function scan(send: Send): Promise<CategoryResult[]> {
+export function scan(send: Send, opts: { aggressive?: boolean } = {}): Promise<CategoryResult[]> {
   running?.terminate();
   lastCats = system.junk.categories();
   allowed = new Map();
   const results: CategoryResult[] = [];
   const claimed = new Set<string>();
   return new Promise((resolve) => {
-    const w = new Worker(path.join(__dirname, 'junkWorker.js'), { workerData: { categories: lastCats } });
+    const w = new Worker(path.join(__dirname, 'junkWorker.js'), { workerData: { categories: lastCats, aggressive: !!opts.aggressive } });
     running = w;
     w.on('message', async (m: any) => {
       if (m.type === 'start') send('cleanup:progress', { type: 'start', id: m.id });

@@ -28,6 +28,7 @@ await build({
     scanWorker: 'electron/scanWorker.ts',
     sizeWorker: 'electron/sizeWorker.ts',
     junkWorker: 'electron/junkWorker.ts',
+    appdataWorker: 'electron/appdataWorker.ts',
     clutterWorker: 'electron/clutterWorker.ts',
   },
   outdir: 'dist-electron',

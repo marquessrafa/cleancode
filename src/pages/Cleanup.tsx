@@ -5,7 +5,7 @@ import { Sparkles, ChevronRight, Loader2, CheckCircle2, AlertTriangle, RotateCcw
 import { useApp, useRunning } from '../lib/store';
 import { cc, JunkCategoryInfo, JunkResult, FILE_MANAGER, isMac } from '../lib/api';
 import { fmtSize, fmtNum, fmtRelative } from '../lib/format';
-import { Badge, Button, Checkbox, cx } from '../components/ui';
+import { Badge, Button, Checkbox, Toggle, cx } from '../components/ui';
 import { Float3D } from './maint';
 import { PageBody } from './common';
 
@@ -47,6 +47,9 @@ export default function Cleanup() {
   const [cleanProg, setCleanProg] = useState({ done: 0, total: 0, freed: 0, current: '' });
   const [summary, setSummary] = useState<{ freed: number; removed: number; failed: { path: string; error: string }[] } | null>(null);
   const [last, setLast] = useState<{ at: number; freed: number } | null>(null);
+  // modo agressivo: temporários com mais de 1 hora (em vez de 1 dia); a escolha fica salva neste computador
+  const [aggressive, setAggressive] = useState(() => { try { return localStorage.getItem('cc.cleanup.aggressive') === '1'; } catch { return false; } });
+  const toggleAggressive = (v: boolean) => { setAggressive(v); try { localStorage.setItem('cc.cleanup.aggressive', v ? '1' : '0'); } catch { /* */ } };
 
   useEffect(() => {
     cc.cleanupCategories().then((c) => { setCats(c); setSelCats(new Set(c.filter((x) => x.selected).map((x) => x.id))); });
@@ -63,7 +66,7 @@ export default function Cleanup() {
     setResults({}); setDeselected(new Set()); setOpen(new Set()); setSummary(null);
     setSelCats(new Set(cats.filter((x) => x.selected).map((x) => x.id)));
     setPhase('scanning');
-    await cc.cleanupScan();
+    await cc.cleanupScan({ aggressive: !isMac && aggressive });
   };
 
   const found = useMemo(() => Object.values(results).reduce((s, r) => s + r.size, 0), [results]);
@@ -153,6 +156,10 @@ export default function Cleanup() {
                   <span className="absolute inset-0 rounded-full anim-ping-soft" style={{ boxShadow: '0 0 0 2px var(--accent)' }} />
                   Analisar
                 </button>
+                {!isMac && <div className="mt-6 max-w-[340px] text-left">
+                  <Toggle checked={aggressive} onChange={toggleAggressive} label="Modo agressivo"
+                    hint="Inclui temporários com mais de 1 hora (em vez de 1 dia). Arquivos em uso são pulados na limpeza." />
+                </div>}
               </>
             ) : (
               <div className="mt-6">

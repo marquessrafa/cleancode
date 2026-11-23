@@ -331,6 +331,25 @@ function StorageDetail({ open }: { open: Open }) {
   );
 }
 
+/** Botão de liberar memória (como o "Liberar RAM" do CleanMyMac). */
+function FreeMemory() {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const run = async () => {
+    setBusy(true); setMsg('');
+    try { const r = await cc.freeMemory(false); setMsg(r.message); } catch { setMsg('Não foi possível liberar a memória'); }
+    setBusy(false);
+  };
+  return (
+    <div className="mt-4 flex items-center gap-3">
+      <button onClick={run} disabled={busy} className="flex items-center gap-2 rounded-full bg-[var(--p-accent)] px-4 py-1.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60">
+        {busy ? <Loader2 size={14} className="animate-spin" /> : <MemoryStick size={14} />}{busy ? 'Liberando…' : 'Liberar memória'}
+      </button>
+      <span className="text-[12px] text-[var(--p-muted)]">{msg || (isMac ? 'Pede sua senha (purge).' : 'Esvazia a memória parada dos programas.')}</span>
+    </div>
+  );
+}
+
 function MemoryDetail({ open }: { open: Open }) {
   const d = useDetails('memory', 2500);
   const m = d?.memory, det = d?.detail;
@@ -351,7 +370,8 @@ function MemoryDetail({ open }: { open: Open }) {
         </Donut>
         <Legend items={parts.map((p) => ({ label: p.label, value: fmtSize(p.value, 'auto', 2), color: p.color }))} delay={120} />
       </div>
-      <div className="mt-5 grid grid-cols-2 gap-3">
+      <FreeMemory />
+      <div className="mt-4 grid grid-cols-2 gap-3">
         <InfoCard delay={200} title="Pressão" value={m ? `${m.pressure}%` : '…'} tone={lvl === 'critical' ? 'var(--p-danger)' : lvl === 'warn' ? 'var(--p-warn)' : undefined} tint={lvl === 'critical' ? 'var(--p-danger)' : undefined}
           text={lvl === 'critical' ? 'A memória está no limite. Feche apps que você não está usando.' : lvl === 'warn' ? 'A memória está ficando apertada.' : `O ${isMac ? 'Mac' : 'PC'} está pronto para aceitar mais tarefas.`} onLink={() => open('performance')} />
         <InfoCard delay={260} title={isMac ? 'Arquivo de troca' : 'Arquivo de paginação'} value={det && det.swapTotal > 0 ? fmtSize(det.swapUsed, 'auto', 2) : '—'}

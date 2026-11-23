@@ -6,6 +6,7 @@
 //   Daí em diante o app só lê o arquivo, sem pedir permissão de novo.
 import { app } from 'electron';
 import { execFile, spawn, ChildProcess } from 'child_process';
+import crypto from 'crypto';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -16,6 +17,10 @@ export interface LhmSnapshot { at: number; admin: boolean; hardware: LhmHardware
 
 const TASK = 'CleanCodeSensors';
 const DATA = path.join(process.env.ProgramData || 'C:\\ProgramData', 'CleanCode', 'sensors.json');
+// cópia do helper usada pela tarefa elevada: em Arquivos de Programas (só administradores alteram),
+// fora da pasta do app. Assim a atualização do app nunca encontra o helper travado e um programa comum
+// do usuário não consegue trocar o executável que roda elevado.
+const SENSORS_DIR = path.join(process.env.ProgramW6432 || process.env.ProgramFiles || 'C:\\Program Files', 'CleanCode', 'Sensors');
 const PAWNIO_URL = 'https://github.com/namazso/PawnIO.Setup/releases/latest/download/PawnIO_setup.exe';
 
 function run(cmd: string, args: string[], timeout = 60000): Promise<{ ok: boolean; out: string; err: string }> {
@@ -60,8 +65,14 @@ async function readTaskFile(): Promise<LhmSnapshot | null> {
   } catch { return null; }
 }
 let taskInstalled: boolean | null = null;
+const sha = (f: string) => { try { return crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex'); } catch { return ''; } };
+/** A cópia em Arquivos de Programas é a mesma versão do helper deste app? (senão, é preciso ativar de novo) */
+function copyCurrent(): boolean {
+  const exe = helperPath(); if (!exe) return false;
+  const a = sha(exe); return !!a && a === sha(path.join(SENSORS_DIR, 'cc-lhm.exe'));
+}
 export async function advancedActive(): Promise<boolean> {
-  if (taskInstalled === null) taskInstalled = (await run('schtasks.exe', ['/Query', '/TN', TASK], 15000)).ok;
+  if (taskInstalled === null) taskInstalled = (await run('schtasks.exe', ['/Query', '/TN', TASK], 15000)).ok && copyCurrent();
   return taskInstalled;
 }
 /** Última leitura (tarefa elevada, se ativa; senão o helper comum). */
@@ -72,9 +83,13 @@ export async function snapshot(): Promise<LhmSnapshot | null> {
 }
 
 // ---------- ativação ----------
+// mesma checagem da LibreHardwareMonitorLib: chave de desinstalação do PawnIO (valor DisplayVersion)
 export async function pawnioInstalled(): Promise<boolean> {
-  const r = await run('sc.exe', ['query', 'PawnIO'], 10000);
-  return r.ok && /SERVICE_NAME|STATE/i.test(r.out);
+  for (const key of ['HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\PawnIO', 'HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\PawnIO']) {
+    const r = await run('reg.exe', ['query', key, '/v', 'DisplayVersion'], 10000);
+    if (r.ok && /DisplayVersion/i.test(r.out)) return true;
+  }
+  return false;
 }
 export async function activate(): Promise<{ ok: boolean; message: string }> {
   const exe = helperPath();
@@ -89,11 +104,18 @@ export async function activate(): Promise<{ ok: boolean; message: string }> {
     if (!dl.ok || status !== 'Valid') { try { fs.unlinkSync(setup); } catch { /* */ } return { ok: false, message: `O instalador do driver não passou na verificação de assinatura (${status || dl.err.slice(0, 80)})` }; }
     void subject;
   }
-  const taskXmlAction = `New-ScheduledTaskAction -Execute ${psq(exe)} -Argument ${psq(`--loop --out "${DATA}"`)}`;
+  const taskXmlAction = `New-ScheduledTaskAction -Execute ${psq(path.join(SENSORS_DIR, 'cc-lhm.exe'))} -Argument ${psq(`--loop --out "${DATA}"`)}`;
   const script = [
     "$ErrorActionPreference='Stop'",
-    needPawn ? `Start-Process -FilePath ${psq(setup)} -Wait` : '',
     `New-Item -ItemType Directory -Force -Path ${psq(path.dirname(DATA))} | Out-Null`,
+    `Remove-Item -Force -ErrorAction SilentlyContinue -Path ${psq(path.join(path.dirname(DATA), 'reboot'))}`,
+    // instalação silenciosa (-install -silent: sem janela, nem em erro); 0 = ok, 3010 = ok, reiniciar depois
+    needPawn ? `$i = Start-Process -FilePath ${psq(setup)} -ArgumentList '-install','-silent' -Wait -PassThru; if ($i.ExitCode -ne 0 -and $i.ExitCode -ne 3010) { exit 20 }; if ($i.ExitCode -eq 3010) { New-Item -ItemType File -Force -Path ${psq(path.join(path.dirname(DATA), 'reboot'))} | Out-Null }` : '',
+    // para a tarefa antiga (se houver) e copia o helper para Arquivos de Programas
+    `Stop-ScheduledTask -TaskName ${psq(TASK)} -ErrorAction SilentlyContinue`,
+    "Get-Process cc-lhm -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue",
+    `New-Item -ItemType Directory -Force -Path ${psq(SENSORS_DIR)} | Out-Null`,
+    `Copy-Item -Path ${psq(path.join(path.dirname(exe), '*'))} -Destination ${psq(SENSORS_DIR)} -Recurse -Force`,
     `$a = ${taskXmlAction}`,
     "$t = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME",
     "$p = New-ScheduledTaskPrincipal -UserId $env:USERNAME -RunLevel Highest -LogonType Interactive",
@@ -103,12 +125,14 @@ export async function activate(): Promise<{ ok: boolean; message: string }> {
   ].filter(Boolean).join('; ');
   const r = await psAdmin(script);
   taskInstalled = null;
-  if (!r.ok) return { ok: false, message: 'Cancelado ou sem permissão de administrador' };
+  try { fs.unlinkSync(setup); } catch { /* */ }
+  if (!r.ok) return { ok: false, message: /cancel/i.test(r.err) ? 'Cancelado' : needPawn && !(await pawnioInstalled()) ? 'O driver PawnIO não pôde ser instalado' : 'Sem permissão de administrador' };
   child?.kill(); child = null;
-  return { ok: true, message: needPawn ? 'Driver instalado e monitoramento avançado ativo' : 'Monitoramento avançado ativo' };
+  const reboot = fs.existsSync(path.join(path.dirname(DATA), 'reboot'));
+  return { ok: true, message: needPawn ? (reboot ? 'Driver instalado: reinicie o Windows para ler todos os sensores' : 'Driver instalado e monitoramento avançado ativo') : 'Monitoramento avançado ativo' };
 }
 export async function deactivate() {
-  const r = await psAdmin(`Unregister-ScheduledTask -TaskName ${psq(TASK)} -Confirm:$false`);
+  const r = await psAdmin(`Stop-ScheduledTask -TaskName ${psq(TASK)} -ErrorAction SilentlyContinue; Get-Process cc-lhm -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Unregister-ScheduledTask -TaskName ${psq(TASK)} -Confirm:$false; Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path ${psq(SENSORS_DIR)}`);
   taskInstalled = null;
   return { ok: r.ok, message: r.ok ? 'Monitoramento avançado desativado (o driver PawnIO pode ser removido em Aplicativos instalados)' : 'Cancelado' };
 }

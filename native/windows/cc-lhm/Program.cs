@@ -2,12 +2,15 @@
 //   cc-lhm --once                  imprime uma leitura e sai
 //   cc-lhm --loop                  imprime uma leitura por linha a cada segundo (stdout)
 //   cc-lhm --loop --out <arquivo>  grava a leitura no arquivo a cada segundo (tarefa agendada elevada)
+//                                  e sai sozinho quando o CleanCode fecha (o app reabre a tarefa ao precisar).
+//                                  Assim nada fica rodando à toa e o instalador consegue atualizar o helper.
 using System;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Diagnostics;
 using LibreHardwareMonitor.Hardware;
 
 class UpdateVisitor : IVisitor
@@ -52,6 +55,11 @@ static class Program
         return sb.ToString();
     }
 
+    static bool AppRunning()
+    {
+        try { return Process.GetProcessesByName("CleanCode").Length > 0; } catch { return true; }
+    }
+
     static int Main(string[] args)
     {
         bool once = args.Contains("--once");
@@ -64,6 +72,7 @@ static class Program
         };
         try { c.Open(); } catch (Exception e) { Console.Error.WriteLine(e.Message); }
         if (outFile != null) Directory.CreateDirectory(Path.GetDirectoryName(outFile));
+        var started = Stopwatch.StartNew(); int missing = 0;
         var stdout = new StreamWriter(Console.OpenStandardOutput(), new UTF8Encoding(false)) { AutoFlush = true };
         do
         {
@@ -77,6 +86,13 @@ static class Program
             }
             else stdout.WriteLine(json);
             if (!once) Thread.Sleep(1000);
+            // modo tarefa: encerra quando o CleanCode não está mais aberto (duas checagens seguidas),
+            // com uma folga no início para o app abrir depois do logon
+            if (outFile != null && started.Elapsed.TotalSeconds > 30)
+            {
+                missing = AppRunning() ? 0 : missing + 1;
+                if (missing >= 2) break;
+            }
         } while (!once);
         c.Close();
         return 0;

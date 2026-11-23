@@ -4,6 +4,7 @@ import { useApp } from '../lib/store';
 import { cc, Drive, DriveHardware, isMac } from '../lib/api';
 import { fmtSize, fmtNum, fmtPct, PALETTE, driveTag } from '../lib/format';
 import { Button, Empty, ProgressBar, cx } from '../components/ui';
+import { openFdaAssistant } from '../components/FdaAssistant';
 
 export function PageBody({ children, className }: { children: React.ReactNode; className?: string }) {
   return <div className={cx('h-full overflow-y-auto', className)}><div className="mx-auto max-w-[1400px] px-6 py-6">{children}</div></div>;
@@ -151,9 +152,9 @@ export function FullDiskAccessBanner({ className }: { className?: string }) {
       <ShieldAlert size={18} className="shrink-0 text-warn" />
       <div className="min-w-0 flex-1 text-[13px]">
         <div className="font-medium text-fg">O CleanCode não tem Acesso Total ao Disco</div>
-        <div className="text-xs text-muted">Sem ele, pastas como ~/Library, Mail, Mensagens e a Lixeira aparecem como “Acesso negado” e ficam fora dos totais. Ative o CleanCode em Ajustes do Sistema › Privacidade e Segurança › Acesso Total ao Disco e reabra o app.</div>
+        <div className="text-xs text-muted">Sem ele, pastas como ~/Library, Mail, Mensagens e a Lixeira aparecem como “Acesso negado” e ficam fora dos totais. O assistente guia você em menos de um minuto.</div>
       </div>
-      <Button size="sm" variant="primary" icon={<ShieldAlert size={13} />} onClick={() => cc.openFullDiskAccess()}>Abrir Ajustes</Button>
+      <Button size="sm" variant="primary" icon={<ShieldAlert size={13} />} onClick={openFdaAssistant}>Liberar acesso</Button>
     </div>
   );
 }

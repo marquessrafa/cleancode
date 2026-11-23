@@ -5,7 +5,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Cpu, Gpu, MemoryStick, CircuitBoard, Zap, Thermometer, LayoutGrid, HardDrive, Download, ShieldCheck, Loader2, Activity, Fan } from 'lucide-react';
 import { cc, isMac, HardwareInfo, HardwareLive, DiskDetail } from '../lib/api';
 import { fmtSize } from '../lib/format';
-import { cx } from '../components/ui';
+import { Button, cx } from '../components/ui';
 import { useApp } from '../lib/store';
 import { PageBody } from './common';
 import Viewer3D, { LiveInput } from '../hw3d/Viewer';
@@ -168,6 +168,26 @@ function Stage({ build, buildKey, live, height = 400, children }: { build: () =>
   );
 }
 
+/** Liberar memória. Windows: rápido (programas do usuário) ou completo (também a memória em espera, com administrador). */
+function FreeMemoryCard() {
+  const [busy, setBusy] = useState<'' | 'quick' | 'deep'>('');
+  const [msg, setMsg] = useState('');
+  const run = async (deep: boolean) => {
+    setBusy(deep ? 'deep' : 'quick'); setMsg('');
+    try { setMsg((await cc.freeMemory(deep)).message); } catch { setMsg('Não foi possível liberar a memória'); }
+    setBusy('');
+  };
+  return (
+    <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="primary" size="sm" loading={busy === 'quick'} disabled={!!busy} icon={<MemoryStick size={14} />} onClick={() => run(false)}>Liberar memória</Button>
+        {!isMac && <Button size="sm" loading={busy === 'deep'} disabled={!!busy} onClick={() => run(true)}>Completa (administrador)</Button>}
+      </div>
+      <div className="mt-2 text-[12px] text-muted">{msg || (isMac ? 'Descarta o cache inativo da memória (pede sua senha).' : 'Esvazia a memória parada dos programas. A completa também limpa a memória em espera do Windows.')}</div>
+    </div>
+  );
+}
+
 // ---------- modelo 3D de cada peça conforme a máquina ----------
 // Mac (Apple Silicon): CPU, GPU e memória ficam no mesmo chip; a placa é a placa lógica do MacBook.
 // Notebook Windows: processador soldado (BGA) com GPU integrada, GPU dedicada como chip na placa,
@@ -277,6 +297,7 @@ export default function Hardware() {
               <Stage build={m.ram} buildKey={`ram-${m.key}`} live={lv} />
               <div className="space-y-3">
                 <Metric label="Em uso" value={live ? `${fmtSize(live.memory.used, 'auto', 1)}` : '—'} sub={live ? `de ${fmtSize(live.memory.total, 'auto', 0)} · pressão ${live.memory.pressure}%` : ''} data={hist.mem} color={C.ram} />
+                <FreeMemoryCard />
                 {live?.memoryDetail && <Spec rows={[['Apps (ativa)', fmtSize(live.memoryDetail.active, 'auto', 1)], ['Fixa', fmtSize(live.memoryDetail.wired, 'auto', 1)], ['Comprimida', live.memoryDetail.compressed ? fmtSize(live.memoryDetail.compressed, 'auto', 1) : undefined], ['Disponível', fmtSize(live.memoryDetail.available, 'auto', 1)], ['Swap', live.memoryDetail.swapTotal ? `${fmtSize(live.memoryDetail.swapUsed, 'auto', 1)} de ${fmtSize(live.memoryDetail.swapTotal, 'auto', 1)}` : undefined]]} />}
               </div>
             </div>

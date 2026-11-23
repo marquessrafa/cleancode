@@ -28,13 +28,13 @@ const browserRoots = [
 const categories: JunkCategory[] = [
   {
     id: 'user-temp', name: 'Temporários do usuário', group: 'Sistema', selected: true, risk: 'safe',
-    description: 'Arquivos que programas criam e esquecem em %TEMP%, com mais de 1 dia.',
-    targets: [{ path: os.tmpdir(), mode: 'children', minAgeDays: 1 }],
+    description: 'Arquivos que programas criam e esquecem em %TEMP%, com mais de 1 dia (no modo agressivo, mais de 1 hora). Pastas em uso são abertas e só o que está parado entra.',
+    targets: [{ path: os.tmpdir(), mode: 'children', minAgeDays: 1, aggressiveMinAgeDays: 0.04 }],
   },
   {
     id: 'win-temp', name: 'Temporários do Windows', group: 'Sistema', selected: true, risk: 'safe',
     description: 'Pasta Windows\\Temp (exige executar como administrador).',
-    targets: [{ path: path.join(WIN, 'Temp'), mode: 'children', minAgeDays: 1 }],
+    targets: [{ path: path.join(WIN, 'Temp'), mode: 'children', minAgeDays: 1, aggressiveMinAgeDays: 0.04 }],
   },
   {
     id: 'browser-caches', name: 'Caches de navegadores', group: 'Sistema', selected: true, risk: 'safe',

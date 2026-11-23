@@ -2,7 +2,8 @@
   <!-- Helper de sensores do CleanCode no Windows: usa a LibreHardwareMonitorLib (MPL 2.0) e escreve JSON.
        .NET Framework 4.7.2 já vem no Windows 10/11, então não é preciso instalar runtime. -->
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <!-- WinExe: sem janela de console (a tarefa agendada roda na sessão do usuário); a saída por pipe continua funcionando -->
+    <OutputType>WinExe</OutputType>
     <TargetFramework>net472</TargetFramework>
     <AssemblyName>cc-lhm</AssemblyName>
     <LangVersion>latest</LangVersion>

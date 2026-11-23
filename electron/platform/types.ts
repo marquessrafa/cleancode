@@ -157,6 +157,8 @@ export interface JunkTarget {
   mode: 'children' | 'self';
   /** só itens sem modificação há N dias */
   minAgeDays?: number;
+  /** no modo agressivo, usa esta idade mínima (dias; 0.04 ≈ 1 hora) no lugar de minAgeDays */
+  aggressiveMinAgeDays?: number;
   /** só arquivos com estas extensões (minúsculas, sem ponto) */
   exts?: string[];
   /** nomes ignorados; aceita prefixo com * no fim ("com.apple.*") */
@@ -280,19 +282,23 @@ export interface RepairsApi {
 }
 
 // ---------- modo jogo ----------
-export interface GameInfo { id: string; name: string; store: 'steam' | 'epic' | 'gog' | 'app'; dir?: string; size?: number; launch: string; icon?: string }
+export interface GameInfo { id: string; name: string; store: 'steam' | 'epic' | 'gog' | 'app' | 'custom'; dir?: string; size?: number; launch: string; icon?: string }
 export interface GameToggle { id: string; label: string; detail: string; on: boolean; needsAdmin?: boolean; needsRestart?: boolean; recommended: boolean }
 export interface GameStatus { toggles: GameToggle[]; powerPlan?: string; shaderCache: number; memory: { total: number; free: number } }
 export interface GameSessionOptions { close: { pids: number[]; name: string }[]; power: boolean; freeMemory: boolean; boostDir?: string }
 export interface GameApi {
   status(): Promise<GameStatus>;
   setToggle(id: string, on: boolean): Promise<{ ok: boolean; message: string }>;
-  games(): Promise<GameInfo[]>;
+  /** jogos das lojas e das pastas escolhidas pelo usuário */
+  games(extraDirs?: string[]): Promise<GameInfo[]>;
   start(o: GameSessionOptions): Promise<{ steps: { label: string; ok: boolean; message: string }[] }>;
   stop(): Promise<{ steps: { label: string; ok: boolean; message: string }[] }>;
   /** prioridade alta para os processos do jogo (pasta de instalação) */
   boost(dir: string): Promise<number>;
   cleanShaders(): Promise<{ freed: number; message: string }>;
+  /** libera RAM. Windows: rápido = memória dos programas do usuário, sem administrador; completo = também
+   *  a memória em espera (administrador). macOS: purge (pede a senha) */
+  freeMemory(deep: boolean): Promise<{ ok: boolean; freed: number; message: string }>;
 }
 
 export interface SystemApi {

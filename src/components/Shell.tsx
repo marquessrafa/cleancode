@@ -3,6 +3,7 @@ import {
   LayoutDashboard, FolderTree, LayoutGrid, FileType2, CalendarClock, Users, ArrowDownWideNarrow, Copy, Search, History,
   Radar, PackageX, Settings as Cog, PanelLeftClose, PanelLeftOpen, Sun, Moon, Monitor, X, HardDrive, ShieldCheck, ShieldAlert,
   CheckCircle2, AlertCircle, Info, Plus, Loader2, ArrowUpCircle, Sparkles, Gauge, Activity, Shield, HeartPulse, Layers, Wrench, Globe, Gamepad2, CircuitBoard, FolderOpen, RefreshCw,
+  FolderCog,
 } from 'lucide-react';
 import { Page, useApp } from '../lib/store';
 import { cc, isMac } from '../lib/api';
@@ -35,6 +36,7 @@ const NAV: { group: string; items: { page: Page; label: string; icon: React.Reac
       { page: 'protection', label: 'Proteção', icon: <Shield size={17} /> },
       { page: 'repairs', label: isMac ? 'Reparos' : 'Registro', icon: <Wrench size={17} /> },
       { page: 'browsers', label: 'Navegadores', icon: <Globe size={17} /> },
+      { page: 'appdata', label: isMac ? 'Dados de apps' : 'AppData', icon: <FolderCog size={17} /> },
       { page: 'game', label: 'Modo Jogo', icon: <Gamepad2 size={17} /> },
       { page: 'activity', label: 'Atividades', icon: <Activity size={17} /> },
     ],

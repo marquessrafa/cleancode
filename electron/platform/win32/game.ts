@@ -5,6 +5,7 @@ import { execFile } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { scanGameDirs } from '../gameDirs';
 import type { GameApi, GameInfo, GameStatus, GameSessionOptions } from '../types';
 
 function run(cmd: string, args: string[], timeout = 60000): Promise<{ ok: boolean; out: string; err: string }> {
@@ -80,7 +81,7 @@ async function setToggle(id: string, on: boolean) {
 // ---------- jogos instalados ----------
 function vdfPaths(text: string): string[] { return [...text.matchAll(/"path"\s+"([^"]+)"/g)].map((m) => m[1].replace(/\\\\/g, '\\')); }
 function acf(text: string, key: string) { return new RegExp(`"${key}"\\s+"([^"]*)"`, 'i').exec(text)?.[1]; }
-async function games(): Promise<GameInfo[]> {
+async function games(extraDirs: string[] = []): Promise<GameInfo[]> {
   const out: GameInfo[] = [];
   // Steam
   const sp = json((await ps(`(Get-ItemProperty 'HKCU:\\Software\\Valve\\Steam').SteamPath | ConvertTo-Json`, 15000)).out);
@@ -116,6 +117,9 @@ async function games(): Promise<GameInfo[]> {
   const gog = json((await ps(String.raw`$ErrorActionPreference='SilentlyContinue'
 Get-ChildItem 'HKLM:\SOFTWARE\WOW6432Node\GOG.com\Games' | ForEach-Object { $p=Get-ItemProperty $_.PSPath; [pscustomobject]@{id=$p.gameID;name=$p.gameName;dir=$p.path;exe=$p.exe} } | ConvertTo-Json -Compress`, 15000)).out);
   for (const g of (Array.isArray(gog) ? gog : gog ? [gog] : [])) if (g?.name && g.exe) out.push({ id: `gog:${g.id}`, name: g.name, store: 'gog', dir: g.dir, launch: g.exe });
+  // pastas escolhidas pelo usuário (sem repetir jogos das lojas)
+  const known = new Set(out.map((g) => (g.dir || '').toLowerCase()).filter(Boolean));
+  for (const g of scanGameDirs(extraDirs, false)) if (!known.has((g.dir || '').toLowerCase())) out.push(g);
   return out.sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -201,4 +205,21 @@ async function cleanShaders() {
   return { freed, message: 'Os jogos recompilam os shaders na próxima vez (a primeira partida pode engasgar um pouco).' };
 }
 
-export const game: GameApi = { status, setToggle, games, start, stop, boost, cleanShaders };
+// liberar RAM sem administrador: esvazia o conjunto de trabalho dos processos do próprio usuário
+// (o Windows devolve as páginas ao disco/cache; elas voltam sob demanda)
+const TRIM_MEM = String.raw`$ErrorActionPreference='SilentlyContinue'
+Add-Type -TypeDefinition @"
+using System; using System.Runtime.InteropServices;
+public static class CCTrim { [DllImport("psapi.dll")] public static extern bool EmptyWorkingSet(IntPtr h); }
+"@
+$n=0; foreach($p in Get-Process){ try { if([CCTrim]::EmptyWorkingSet($p.Handle)){ $n++ } } catch {} }; $n`;
+async function freeMemory(deep: boolean) {
+  const before = os.freemem();
+  const r = deep ? await psAdmin(FREE_MEM, 120000) : await ps(TRIM_MEM, 120000);
+  await new Promise((res) => setTimeout(res, 800));
+  const freed = Math.max(0, os.freemem() - before);
+  if (!r.ok && deep) return { ok: false, freed: 0, message: 'Cancelado (a limpeza completa precisa de administrador)' };
+  return { ok: true, freed, message: `${Math.round(freed / 1048576)} MB liberados` };
+}
+
+export const game: GameApi = { status, setToggle, games, start, stop, boost, cleanShaders, freeMemory };

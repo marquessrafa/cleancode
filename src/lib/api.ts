@@ -98,7 +98,9 @@ export interface DiskDetail {
 export interface RepairItem { id: string; category: string; title: string; detail: string; target?: string; fixable: boolean; needsAdmin?: boolean; optional?: boolean }
 export type BrowserItemId = 'cache' | 'gpu' | 'history' | 'downloads' | 'cookies' | 'sessions' | 'autofill';
 export interface BrowserProfile { id: string; browserId: string; browser: string; name: string; path: string; running: boolean; items: { id: BrowserItemId; label: string; detail: string; safe: boolean; size: number; count?: number }[] }
-export interface GameInfo { id: string; name: string; store: 'steam' | 'epic' | 'gog' | 'app'; dir?: string; size?: number; launch: string }
+export type AppDataStatus = 'installed' | 'orphan' | 'unknown' | 'system';
+export interface AppDataItem { path: string; name: string; root: string; parent?: string; size: number; files: number; mtime: number; safe: number; safePaths: { path: string; size: number; reason: string }[]; status: AppDataStatus; program?: string }
+export interface GameInfo { id: string; name: string; store: 'steam' | 'epic' | 'gog' | 'app' | 'custom'; dir?: string; size?: number; launch: string }
 export interface GameToggle { id: string; label: string; detail: string; on: boolean; needsAdmin?: boolean; needsRestart?: boolean; recommended: boolean }
 export interface GameSessionOptions { close: { pids: number[]; name: string }[]; power: boolean; freeMemory: boolean; boostDir?: string }
 export interface GameStatus { toggles: GameToggle[]; powerPlan?: string; shaderCache: number; memory: { total: number; free: number }; session: { at: number; options: GameSessionOptions } | null }
@@ -115,7 +117,7 @@ interface CC {
   metricsDetails(kind: 'cpu' | 'memory' | 'battery' | 'storage' | 'network' | 'devices' | 'gpu' | 'power'): Promise<any>;
   metricsEject(root: string): Promise<{ ok: boolean; message: string }>;
   cleanupCategories(): Promise<JunkCategoryInfo[]>;
-  cleanupScan(): Promise<JunkResult[]>;
+  cleanupScan(opts?: { aggressive?: boolean }): Promise<JunkResult[]>;
   cleanupCancel(): Promise<boolean>;
   cleanupClean(paths: string[], specials: string[], mode: 'trash' | 'delete'): Promise<{ freed: number; removed: number; failed: { path: string; error: string }[] }>;
   perfStartup(): Promise<StartupItem[]>;
@@ -138,6 +140,14 @@ interface CC {
   gameStatus(): Promise<GameStatus>;
   gameToggle(id: string, on: boolean): Promise<{ ok: boolean; message: string }>;
   gameGames(): Promise<GameInfo[]>;
+  gameDirs(): Promise<string[]>;
+  gameAddDir(): Promise<string[]>;
+  gameRemoveDir(dir: string): Promise<string[]>;
+  freeMemory(deep?: boolean): Promise<{ ok: boolean; freed: number; message: string }>;
+  appdataScan(): Promise<AppDataItem[]>;
+  appdataCancel(): Promise<boolean>;
+  appdataClean(req: { safe: string[]; trash: string[] }): Promise<{ freed: number; removed: number; failed: number }>;
+  onAppdataProgress(cb: (d: { type: string; label?: string; name?: string; count?: number; total?: number }) => void): () => void;
   gameStart(o: GameSessionOptions): Promise<{ steps: GameStep[] }>;
   gameStop(): Promise<{ steps: GameStep[] }>;
   gameShaders(): Promise<{ freed: number; message: string }>;
@@ -165,6 +175,12 @@ interface CC {
   panelOpenMain(page?: string): Promise<boolean>;
   /** macOS: tem "Acesso Total ao Disco"? null no Windows */
   fullDiskAccess(): Promise<boolean | null>;
+  fdaStart(): Promise<boolean>;
+  fdaStop(): Promise<boolean>;
+  fdaIcon(): Promise<string | null>;
+  fdaRelaunch(): Promise<void>;
+  fdaDrag(): void;
+  onFdaGranted(cb: () => void): () => void;
   openFullDiskAccess(): Promise<boolean>;
   drivesHardware(force?: boolean): Promise<DriveHardware[]>;
   pickFolder(): Promise<string | null>;

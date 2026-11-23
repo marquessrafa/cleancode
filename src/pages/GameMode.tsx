@@ -2,7 +2,7 @@
 // sistema em desempenho máximo; ao encerrar, restaura o que foi mudado. Mais ajustes do SO para jogos,
 // limpeza dos caches de shaders e a lista de jogos instalados (Steam, Epic, GOG, apps de jogos).
 import React, { useEffect, useMemo, useState } from 'react';
-import { Gamepad2, Zap, MemoryStick, Power, Play, Square, Loader2, CheckCircle2, XCircle, Sparkles, RotateCcw, Rocket } from 'lucide-react';
+import { Gamepad2, Zap, MemoryStick, Power, Play, Square, Loader2, CheckCircle2, XCircle, Sparkles, RotateCcw, Rocket, FolderPlus, Folder, X } from 'lucide-react';
 import { useApp, useRunning } from '../lib/store';
 import { cc, isMac, GameInfo, GameStatus, GameStep } from '../lib/api';
 import { fmtSize } from '../lib/format';
@@ -16,6 +16,11 @@ export default function GameMode() {
   const { toast } = useApp();
   const [status, setStatus] = useState<GameStatus | null>(null);
   const [games, setGames] = useState<GameInfo[]>([]);
+  const [dirs, setDirs] = useState<string[]>([]);
+  useEffect(() => { cc.gameDirs().then(setDirs).catch(() => {}); }, []);
+  const refreshGames = () => cc.gameGames().then(setGames).catch(() => {});
+  const addDir = async () => { const d = await cc.gameAddDir(); setDirs(d); refreshGames(); };
+  const removeDir = async (dir: string) => { setDirs(await cc.gameRemoveDir(dir)); refreshGames(); };
   const [apps, setApps] = useState<{ name: string; mem: number; cpu: number; pids: number[] }[]>([]);
   const [close, setClose] = useState<Set<string>>(new Set());
   const [power, setPower] = useState(true);
@@ -134,7 +139,7 @@ export default function GameMode() {
                 <div className="mb-1 text-[12px] text-muted">Jogo (abre ao ativar{isMac ? '' : ' e ganha prioridade alta'})</div>
                 <select value={game} onChange={(e) => setGame(e.target.value)} className="h-9 w-full rounded-lg border border-[var(--line)] bg-[var(--surface-2)] px-2 text-[13px]">
                   <option value="">Nenhum (só ativar)</option>
-                  {games.map((g) => <option key={g.id} value={g.id}>{g.name} · {g.store === 'app' ? 'App' : g.store.toUpperCase()}</option>)}
+                  {games.map((g) => <option key={g.id} value={g.id}>{g.name} · {(g.store === 'app' ? 'App' : g.store === 'custom' ? 'Pasta' : g.store.toUpperCase())}</option>)}
                 </select>
               </div>
             )}
@@ -163,20 +168,30 @@ export default function GameMode() {
         </div>
       </div>
 
+      <div className="mt-4 rounded-xl border border-[var(--line)] bg-[var(--surface)]">
+        <div className="flex flex-wrap items-center gap-2 border-b border-[var(--line)] px-4 py-3">
+          <div className="text-[14px] font-semibold">Jogos instalados <span className="ml-1 text-[12px] font-normal text-muted">{games.length}</span></div>
+          <div className="ml-auto"><Button size="sm" icon={<FolderPlus size={13} />} onClick={addDir}>Adicionar pasta de jogos</Button></div>
+          <div className="w-full text-[12px] text-muted">Steam, Epic e GOG entram sozinhos. Para jogos instalados em outro lugar, adicione a pasta: cada subpasta com {isMac ? 'um app' : 'um executável'} vira um jogo.</div>
+          {dirs.length > 0 && <div className="flex w-full flex-wrap gap-1.5">{dirs.map((d) => (
+            <span key={d} className="flex max-w-full items-center gap-1.5 rounded-lg bg-[var(--surface-2)] py-1 pl-2.5 pr-1 text-[12px]"><Folder size={12} className="shrink-0 text-muted" /><span className="truncate">{d}</span>
+              <button className="rounded p-0.5 text-muted hover:bg-[var(--hover)] hover:text-[var(--fg)]" title="Remover pasta" onClick={() => removeDir(d)}><X size={12} /></button></span>
+          ))}</div>}
+        </div>
       {games.length > 0 && (
-        <div className="mt-4 rounded-xl border border-[var(--line)] bg-[var(--surface)]">
-          <div className="border-b border-[var(--line)] px-4 py-3 text-[14px] font-semibold">Jogos instalados <span className="ml-1 text-[12px] font-normal text-muted">{games.length}</span></div>
+        <div>
           <div className="grid gap-px sm:grid-cols-2 xl:grid-cols-3">
             {games.map((g) => (
               <div key={g.id} className={cx('flex items-center gap-3 px-4 py-2.5', game === g.id && 'bg-[var(--accent-soft)]')}>
                 <Gamepad2 size={16} className="shrink-0 text-muted" />
-                <div className="min-w-0 flex-1"><div className="truncate text-[13px] font-medium">{g.name}</div><div className="text-[11px] text-muted">{g.store === 'app' ? 'App' : g.store.toUpperCase()}{g.size ? ` · ${fmtSize(g.size)}` : ''}</div></div>
+                <div className="min-w-0 flex-1"><div className="truncate text-[13px] font-medium">{g.name}</div><div className="text-[11px] text-muted">{(g.store === 'app' ? 'App' : g.store === 'custom' ? 'Pasta' : g.store.toUpperCase())}{g.size ? ` · ${fmtSize(g.size)}` : ''}</div></div>
                 <Button size="sm" variant="ghost" icon={<Zap size={13} />} onClick={() => setGame(g.id)}>Escolher</Button>
               </div>
             ))}
           </div>
         </div>
       )}
+      </div>
     </PageBody>
   );
 }

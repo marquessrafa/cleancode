@@ -8,6 +8,7 @@ import type { JunkCategory, JunkTarget } from './platform/fs';
 export interface JunkItem { path: string; name: string; size: number; mtime: number; dir: boolean }
 const port = parentPort!;
 const cats: JunkCategory[] = workerData.categories;
+const aggressive: boolean = !!workerData.aggressive;
 const MAX_ITEMS = 3000;
 
 function sizeOf(p: string, isDir: boolean, alloc: number): { size: number; mtime: number } {
@@ -62,15 +63,24 @@ function scanTarget(t: JunkTarget, out: JunkItem[], seen: Set<string>): boolean 
     walk(t.path, 0);
     return false;
   }
-  const err = W.listDir(t.path, (e) => {
-    if (excluded(e.name, t.exclude)) return;
+  const ageDays = aggressive && t.aggressiveMinAgeDays !== undefined ? t.aggressiveMinAgeDays : t.minAgeDays;
+  const maxAge = ageDays ? ageDays * 86400000 : 0;
+  // Com idade mínima, uma pasta com algo recente não é descartada inteira: entra nela e pega o que está
+  // parado (antes, um único arquivo novo escondia gigabytes antigos em %TEMP%).
+  const scanDir = (dir: string, label: string, depth: number): number => W.listDir(dir, (e) => {
+    if (depth === 0 && excluded(e.name, t.exclude)) return;
     if (e.name === '.DS_Store' || e.name === '.localized' || e.name === 'desktop.ini') return;
-    const dir = !!(e.attr & W.ATTR.DIRECTORY);
-    if (e.attr & W.ATTR.REPARSE && dir) return; // links/junções: nunca entra
-    if (t.exts && (dir || !t.exts.includes(extOf(e.name)))) return;
-    if (t.minAgeDays && now - e.mtime < t.minAgeDays * 86400000) return;
-    add(W.join(t.path, e.name), e.name, dir, e.alloc ?? e.size, e.mtime);
+    const isDir = !!(e.attr & W.ATTR.DIRECTORY);
+    if (e.attr & W.ATTR.REPARSE && isDir) return; // links/junções: nunca entra
+    if (t.exts && (isDir || !t.exts.includes(extOf(e.name)))) return;
+    const p = W.join(dir, e.name), name = label ? `${label} › ${e.name}` : e.name;
+    if (!maxAge) { add(p, name, isDir, e.alloc ?? e.size, e.mtime); return; }
+    if (!isDir) { if (now - e.mtime >= maxAge) add(p, name, false, e.alloc ?? e.size, e.mtime); return; }
+    const m = sizeOf(p, true, 0);
+    if (now - Math.max(e.mtime, m.mtime) >= maxAge) add(p, name, true, 0, e.mtime);
+    else if (depth < 6) scanDir(p, name, depth + 1);
   });
+  const err = scanDir(t.path, '', 0);
   return err === 5; // acesso negado (no macOS: falta Acesso Total ao Disco)
 }
 

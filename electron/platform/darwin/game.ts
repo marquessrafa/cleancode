@@ -5,6 +5,7 @@ import { execFile } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { scanGameDirs } from '../gameDirs';
 import type { GameApi, GameInfo, GameStatus, GameSessionOptions } from '../types';
 
 function run(cmd: string, args: string[], timeout = 30000): Promise<{ ok: boolean; out: string; err: string }> {
@@ -50,7 +51,7 @@ async function setToggle(id: string, on: boolean) {
 }
 
 function acf(text: string, key: string) { return new RegExp(`"${key}"\\s+"([^"]*)"`, 'i').exec(text)?.[1]; }
-async function games(): Promise<GameInfo[]> {
+async function games(extraDirs: string[] = []): Promise<GameInfo[]> {
   const out: GameInfo[] = [];
   // Steam
   const steam = path.join(H, 'Library/Application Support/Steam');
@@ -74,6 +75,8 @@ async function games(): Promise<GameInfo[]> {
     if (!p.startsWith('/Applications') && !p.startsWith(path.join(H, 'Applications'))) continue;
     out.push({ id: `app:${p}`, name: path.basename(p, '.app'), store: 'app', dir: p, launch: p });
   }
+  const known = new Set(out.map((g) => g.launch));
+  for (const g of scanGameDirs(extraDirs, true)) if (!known.has(g.launch)) out.push(g);
   return out.sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -117,4 +120,11 @@ async function cleanShaders() {
   return { freed, message: 'Os jogos recompilam os shaders na próxima vez (a primeira partida pode engasgar um pouco).' };
 }
 
-export const game: GameApi = { status, setToggle, games, start, stop, boost, cleanShaders };
+async function freeMemory() {
+  const before = os.freemem();
+  const r = await runAsAdmin('/usr/sbin/purge');
+  const freed = Math.max(0, os.freemem() - before);
+  return r.ok ? { ok: true, freed, message: `${Math.round(freed / 1048576)} MB liberados` } : { ok: false, freed: 0, message: 'Cancelado' };
+}
+
+export const game: GameApi = { status, setToggle, games, start, stop, boost, cleanShaders, freeMemory };

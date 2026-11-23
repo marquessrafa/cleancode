@@ -24,16 +24,19 @@ import SmartCare from './pages/SmartCare';
 import Clutter from './pages/Clutter';
 import Repairs from './pages/Repairs';
 import Browsers from './pages/Browsers';
+import AppDataPage from './pages/AppData';
 import GameMode from './pages/GameMode';
 import Hardware from './pages/Hardware';
 import SettingsPage from './pages/Settings';
 import { NeedsScan } from './pages/common';
+import FdaHelper from './pages/FdaHelper';
+import { FdaAssistantHost } from './components/FdaAssistant';
 import Panel from './panel/Panel';
 import WhatsNew from './components/WhatsNew';
 
 // telas com tarefas longas ficam montadas depois da primeira visita: trocar de tela não perde o
 // progresso nem o resultado (e a execução continua aparecendo no menu e na central do topo)
-const KEEP_ALIVE = new Set<string>(['smartcare', 'cleanup', 'clutter', 'performance', 'protection', 'repairs', 'browsers', 'game', 'uninstall', 'discover']);
+const KEEP_ALIVE = new Set<string>(['smartcare', 'cleanup', 'clutter', 'performance', 'protection', 'repairs', 'browsers', 'appdata', 'game', 'uninstall', 'discover']);
 
 function Content({ page: forced }: { page?: string } = {}) {
   const { page: current, active, settings } = useApp();
@@ -62,6 +65,7 @@ function Content({ page: forced }: { page?: string } = {}) {
     case 'clutter': return <Clutter />;
     case 'repairs': return <Repairs />;
     case 'browsers': return <Browsers />;
+    case 'appdata': return <AppDataPage />;
     case 'game': return <GameMode />;
     case 'hardware': return <Hardware />;
     case 'settings': return <SettingsPage />;
@@ -88,15 +92,16 @@ function App() {
       <ConfirmDialog />
       <ContextMenuHost />
       <WhatsNew />
+      <FdaAssistantHost />
     </div>
   );
 }
 
 // a mesma página serve a janela principal e o painel da barra de menus (#panel)
 // (a classe entra antes do primeiro quadro: sem ela o fundo do app aparece por um instante)
-if (location.hash === '#panel') document.body.classList.add('panel-body');
+if (location.hash === '#panel' || location.hash === '#fda-helper') document.body.classList.add('panel-body');
 createRoot(document.getElementById('root')!).render(
-  location.hash === '#panel' ? <Panel /> : (
+  location.hash === '#panel' ? <Panel /> : location.hash === '#fda-helper' ? <FdaHelper /> : (
     <AppProvider>
       <App />
     </AppProvider>
