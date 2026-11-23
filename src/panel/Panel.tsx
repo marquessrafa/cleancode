@@ -331,6 +331,22 @@ function StorageDetail({ open }: { open: Open }) {
   );
 }
 
+/** "Liberar" direto no quadrado da Memória, sem abrir o detalhe; mostra o resultado por alguns segundos. */
+function QuickFreeMemory() {
+  const [state, setState] = useState<'idle' | 'busy' | string>('idle');
+  const run = async () => {
+    if (state === 'busy') return;
+    setState('busy');
+    let msg = 'Não liberou';
+    try { const r = await cc.freeMemory(false); msg = r.ok ? `${fmtSize(r.freed, 'auto', 0)} livres` : 'Cancelado'; } catch { /* */ }
+    setState(msg);
+    setTimeout(() => setState('idle'), 4000);
+  };
+  if (state === 'busy') return <span className="flex items-center gap-1 text-[13px] font-semibold text-[var(--p-accent)]"><Loader2 size={12} className="animate-spin" />Liberando</span>;
+  if (state !== 'idle') return <span className="text-[12px] font-semibold text-[var(--p-accent)]">{state}</span>;
+  return <Action onClick={run}>Liberar</Action>;
+}
+
 /** Botão de liberar memória (como o "Liberar RAM" do CleanMyMac). */
 function FreeMemory() {
   const [busy, setBusy] = useState(false);
@@ -805,7 +821,10 @@ export default function Panel() {
                 <div className="min-w-0 flex-1"><div className="text-[14px] font-semibold">Memória</div><div className="text-xs text-[var(--p-muted)]">Pressão: <span className="tabular-nums text-[var(--p-fg)]">{s ? `${Math.round(pressT)}%` : '…'}</span></div></div>
               </div>
               {s && <Bar value={s.memory.pressure} tone={s.memory.level === 'critical' ? 'var(--p-danger)' : s.memory.level === 'warn' ? 'var(--p-warn)' : undefined} className="mt-3" />}
-              <div className="mt-2.5 text-right text-[11px] tabular-nums text-[var(--p-muted)]">{s ? `${fmtSize(s.memory.used, 'auto', 1)} de ${fmtSize(s.memory.total, 'auto', 0)}` : ''}</div>
+              <div className="mt-2.5 flex items-center justify-between gap-2">
+                <QuickFreeMemory />
+                <span className="text-[11px] tabular-nums text-[var(--p-muted)]">{s ? `${fmtSize(s.memory.used, 'auto', 1)} de ${fmtSize(s.memory.total, 'auto', 0)}` : ''}</span>
+              </div>
             </Card>
 
             <Card delay={160} onClick={() => toggle('battery')} active={active('battery')}>

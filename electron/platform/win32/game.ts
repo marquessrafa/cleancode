@@ -207,7 +207,7 @@ async function cleanShaders() {
 
 // liberar RAM sem administrador: esvazia o conjunto de trabalho dos processos do próprio usuário
 // (o Windows devolve as páginas ao disco/cache; elas voltam sob demanda)
-const TRIM_MEM = String.raw`$ErrorActionPreference='SilentlyContinue'
+export const TRIM_MEM = String.raw`$ErrorActionPreference='SilentlyContinue'
 Add-Type -TypeDefinition @"
 using System; using System.Runtime.InteropServices;
 public static class CCTrim { [DllImport("psapi.dll")] public static extern bool EmptyWorkingSet(IntPtr h); }

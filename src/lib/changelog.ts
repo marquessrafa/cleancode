@@ -5,6 +5,15 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.2', date: '2026-11-23', headline: 'Liberar memória com um clique',
+    groups: [
+      { title: 'Memória', icon: 'wrench', items: [
+        'Liberar direto no quadrado da Memória do painel, sem abrir o detalhe, mostrando quanto ficou livre.',
+        'Windows: Liberar memória também em Desempenho › Manutenção.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.1', date: '2026-11-23', headline: 'AppData, liberar memória e permissões que não se perdem',
     groups: [
       { title: 'Nova tela: AppData', icon: 'sparkles', items: [

@@ -5,6 +5,7 @@
 import { shell } from 'electron';
 import { execFile } from 'child_process';
 import os from 'os';
+import { TRIM_MEM } from './game';
 import type { PerfApi, StartupItem, MaintenanceTask, ProcInfo } from '../types';
 
 function run(cmd: string, args: string[], timeout = 60000): Promise<{ ok: boolean; out: string; err: string }> {
@@ -57,6 +58,7 @@ async function setStartupItem(item: StartupItem, enabled: boolean) {
 }
 
 const TASKS: (MaintenanceTask & { cmd: string })[] = [
+  { id: 'free-ram', name: 'Liberar memória', description: 'Esvazia a memória parada dos programas abertos. Eles recarregam o que precisarem.', admin: false, duration: 'segundos', recommended: true, cmd: TRIM_MEM },
   { id: 'flush-dns', name: 'Limpar cache de DNS', description: 'Resolve sites que não abrem depois de mudanças de rede ou de DNS.', admin: false, duration: 'segundos', recommended: true, cmd: 'ipconfig /flushdns' },
   { id: 'optimize', name: 'Otimizar unidades', description: 'Envia TRIM aos SSDs e desfragmenta HDs (o mesmo do "Otimizar unidades" do Windows).', admin: true, duration: 'alguns minutos', recommended: true, cmd: 'Optimize-Volume -DriveLetter $env:SystemDrive[0] -Verbose' },
   { id: 'sfc', name: 'Reparar arquivos do sistema', description: 'Verifica e corrige arquivos do Windows corrompidos (SFC).', admin: true, duration: '10 a 30 minutos', cmd: 'sfc /scannow' },
