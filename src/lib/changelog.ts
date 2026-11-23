@@ -10,6 +10,8 @@ export const CHANGELOG: Release[] = [
       { title: 'Modelos 3D de verdade', icon: 'chip', items: [
         'Placa de vídeo, processador, memória RAM, placa-mãe, SSD e energia em 3D com luz, reflexos e LEDs neon (three.js).',
         'A visão geral mostra o seu computador: PC em gabinete de vidro com water cooler, MacBook ou notebook Windows.',
+        'Cada máquina com as peças certas: no Mac, o chip com CPU, GPU e memória unificada e a placa lógica do MacBook; no notebook, processador soldado, memória SO-DIMM ou soldada e placa de notebook.',
+        'Fundo tecnológico com grade neon e partículas.',
         'Ventoinhas giram com o uso, os LEDs acompanham a cor de destaque, a RAM aparece nos slots e o water cooler mostra a temperatura.',
       ] },
       { title: 'Monitoramento completo', icon: 'sparkles', items: [
