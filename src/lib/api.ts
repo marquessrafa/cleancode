@@ -179,8 +179,6 @@ interface CC {
   fdaStop(): Promise<boolean>;
   fdaIcon(): Promise<string | null>;
   fdaRelaunch(): Promise<void>;
-  fdaDrag(): void;
-  fdaReveal(): Promise<boolean>;
   fdaCopyPath(): Promise<string | null>;
   onFdaGranted(cb: () => void): () => void;
   openFullDiskAccess(): Promise<boolean>;

@@ -23,8 +23,8 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'power', label: 'Energia', icon: <Zap size={15} /> },
   { id: 'sensors', label: 'Sensores', icon: <Thermometer size={15} /> },
 ];
-const GROUP_LABEL: Record<string, string> = { temp: 'Temperaturas', volt: 'Tensões', current: 'Correntes', power: 'Consumo', clock: 'Frequências', load: 'Uso', fan: 'Ventoinhas', control: 'Controle das ventoinhas', level: 'Níveis', data: 'Dados', throughput: 'Transferência', energy: 'Energia', factor: 'Fatores', time: 'Tempo' };
-const GROUP_ORDER = ['temp', 'power', 'volt', 'current', 'clock', 'load', 'fan', 'control', 'level', 'data', 'throughput', 'energy', 'factor', 'time'];
+const GROUP_LABEL: Record<string, string> = { temp: 'Temperaturas', volt: 'Tensões', current: 'Correntes', power: 'Consumo', clock: 'Frequências', load: 'Uso', fan: 'Ventoinhas', control: 'Controle das ventoinhas', level: 'Níveis', data: 'Dados', throughput: 'Transferência', energy: 'Energia', factor: 'Fatores', time: 'Tempo', limit: 'Limites (de fábrica)' };
+const GROUP_ORDER = ['temp', 'power', 'volt', 'current', 'clock', 'load', 'fan', 'control', 'level', 'data', 'throughput', 'energy', 'factor', 'time', 'limit'];
 const KIND_LABEL: Record<string, string> = { cpu: 'Processador', gpu: isMac ? 'GPU' : 'Placa de vídeo', ram: 'Memória', board: isMac ? 'Placa lógica' : 'Placa-mãe', disk: 'Armazenamento', battery: 'Bateria', psu: 'Energia' };
 const n = (v?: number, d = 1) => (v === undefined || v === null || isNaN(v) ? '—' : v.toLocaleString('pt-BR', { maximumFractionDigits: d }));
 const fmtVal = (v: number | undefined, unit = '') => {

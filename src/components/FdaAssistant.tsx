@@ -73,11 +73,11 @@ export function FdaAssistantHost() {
           </div>
           <div className="text-[12px] font-semibold uppercase tracking-wider text-muted">Como liberar</div>
           <div className="space-y-3.5">
-            <Step n={1} title="Adicione o CleanCode à lista" icon={<Hand size={13} className="text-accent" />}>
-              Os Ajustes abrem em Privacidade e Segurança: clique em <b className="font-medium text-fg">Acesso Total ao Disco</b> se ele não abrir sozinho. Ao lado aparece uma janelinha que copia o caminho do app: clique no + embaixo da lista, aperte ⌘⇧G, cole e clique em Abrir. Depois ligue a chave do CleanCode.
+            <Step n={1} title="Adicione o CleanCode pelo +" icon={<Hand size={13} className="text-accent" />}>
+              Os Ajustes abrem em Privacidade e Segurança: clique em <b className="font-medium text-fg">Acesso Total ao Disco</b>. Ao lado aparece uma janelinha com o caminho do app já copiado: clique no <Key>+</Key> embaixo da lista, aperte <Key>⌘⇧G</Key>, cole e clique em <Key>Abrir</Key>. Depois ligue a chave do CleanCode.
             </Step>
             <Step n={2} title="Confirme os avisos do macOS" icon={<MousePointer2 size={13} className="text-accent" />}>
-              O macOS mostra dois avisos padrão, iguais para qualquer app com esse acesso (antivírus, backup, limpeza): em “Escolher pastas”, clique em <Key>Ignorar Proteções do Sistema</Key>; no alerta vermelho, clique em <Key tone="danger">Ativar Acesso Total ao Disco</Key>. Eles parecem assustadores, mas são o texto fixo da Apple.
+              Em “Choose Folders”, clique em <Key>Ignorar Proteções do Sistema</Key>. No alerta vermelho, clique nos três <Key tone="danger">OK</Key> (cada um vira “Desfazer”) e depois em <Key tone="danger">Ativar Acesso Total ao Disco</Key>. São os textos padrão da Apple, iguais para qualquer app com esse acesso (antivírus, backup, limpeza).
             </Step>
             <Step n={3} title="Digite sua senha ou use o Touch ID" icon={<Lock size={13} className="text-accent" />}>
               Pronto: o CleanCode percebe sozinho e volta para a frente. Isso só precisa ser feito uma vez.

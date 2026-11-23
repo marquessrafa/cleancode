@@ -76,8 +76,6 @@ contextBridge.exposeInMainWorld('cc', {
   fdaStop: () => inv('fda:stop'),
   fdaIcon: () => inv('fda:icon'),
   fdaRelaunch: () => inv('fda:relaunch'),
-  fdaDrag: () => ipcRenderer.send('fda:drag'),
-  fdaReveal: () => inv('fda:reveal'),
   fdaCopyPath: () => inv('fda:copyPath'),
   onFdaGranted: (cb: () => void) => on('fda:granted', cb),
   drivesHardware: (force?: boolean) => inv('drives:hardware', force),

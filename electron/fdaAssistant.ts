@@ -1,14 +1,14 @@
 // Assistente de "Acesso Total ao Disco" (macOS). A Apple não deixa nenhum app ligar esse acesso sozinho
 // (nem com senha): só o usuário, em Ajustes do Sistema. O assistente deixa isso o mais simples possível:
 // - abre a página certa dos Ajustes;
-// - mostra uma janelinha flutuante com o ícone do CleanCode para arrastar direto para a lista
-//   (sem procurar o app pelo botão "+");
+// - mostra uma janelinha flutuante com o passo a passo e o botão que copia o caminho do app para o "+"
+//   da lista (⌘⇧G e colar), incluindo os avisos que o macOS 27 mostra;
 // - confere o acesso a cada segundo e avisa a janela principal assim que for liberado.
-import { app, BrowserWindow, clipboard, ipcMain, nativeImage, screen, shell } from 'electron';
+import { app, BrowserWindow, clipboard, ipcMain, nativeImage, screen } from 'electron';
 import path from 'path';
 import { system } from './platform';
 
-const W = 470, H = 430;
+const W = 480, H = 560;
 let helper: BrowserWindow | null = null;
 let timer: ReturnType<typeof setInterval> | null = null;
 let iconCache: Electron.NativeImage | null = null;
@@ -76,15 +76,8 @@ export function setupFdaAssistant(opts: { isDev: boolean; mainWindow: () => Brow
   ipcMain.handle('fda:stop', () => { stopWatching(); closeHelper(); return true; });
   ipcMain.handle('fda:icon', async () => { const i = await appIcon(); return i.isEmpty() ? null : i.toDataURL(); });
   ipcMain.handle('fda:relaunch', () => { app.relaunch(); app.exit(0); });
-  // arrastar o ícone: o macOS recebe o .app como se viesse do Finder
-  // (startDrag precisa ser chamado na hora do dragstart: o ícone já fica carregado ao abrir a janelinha)
-  ipcMain.on('fda:drag', (e) => {
-    const b = bundle(); if (!b || !iconCache || iconCache.isEmpty()) return;
-    try { e.sender.startDrag({ file: b, icon: iconCache.resize({ width: 72, height: 72 }) }); } catch { /* sem arraste: usa o Finder ou o botão + */ }
-  });
-  // caminhos garantidos (no macOS 27 a lista pode não aceitar o arraste vindo do app):
-  // o Finder com o CleanCode selecionado (arraste nativo) e o caminho copiado para o botão + (⌘⇧G e colar)
-  ipcMain.handle('fda:reveal', () => { const b = bundle(); if (b) shell.showItemInFolder(b); return !!b; });
+  // o caminho do pacote vai para a área de transferência: no seletor do + da lista, ⌘⇧G e colar
+  // (a lista do Acesso Total ao Disco no macOS 27 não aceita arrastar, nem do app nem do Finder)
   ipcMain.handle('fda:copyPath', () => { const b = bundle(); if (b) clipboard.writeText(b); return b; });
   app.on('before-quit', () => { stopWatching(); closeHelper(); });
 }

@@ -256,15 +256,29 @@ async function disks(): Promise<DiskDetail[]> {
   let j: any = []; try { j = JSON.parse((await ps(DISKINFO)).trim() || '[]'); } catch { /* */ }
   const list: any[] = Array.isArray(j) ? j : j ? [j] : [];
   const flat = Lhm.flatten(await Lhm.snapshot().catch(() => null)).filter((x) => x.kind === 'disk');
+  // cada disco do LibreHardwareMonitor tem um identificador "/nvme/N" ou "/hdd/N", com N = número do disco
+  // físico (o mesmo DeviceId do Get-PhysicalDisk). Dois SSDs iguais têm o mesmo nome: casar pelo nome
+  // misturava os sensores dos dois.
+  const byId = new Map<string, typeof flat>();
+  for (const x of flat) { const k = x.hwId; if (!byId.has(k)) byId.set(k, []); byId.get(k)!.push(x); }
+  const idxOf = (id: string) => /\/(\d+)$/.exec(id)?.[1];
   return list.map((d) => {
-    const mine = flat.filter((x) => d.name && (x.hw.includes(d.name) || d.name.includes(x.hw)));
+    const exact = [...byId.entries()].find(([id]) => idxOf(id) === String(d.id))?.[1];
+    const mine = exact || flat.filter((x) => d.name && (x.hw.includes(d.name) || d.name.includes(x.hw)));
     const f = (re: RegExp, g?: string) => mine.find((x) => re.test(x.name) && (!g || x.group === g))?.value;
-    const lifeLeft = f(/Remaining Life|Percentage Used|Life/i, 'level');
+    // temperatura de verdade: a composta do NVMe ("Temperature"/"Composite Temperature") ou o primeiro sensor;
+    // os limites "Warning/Critical Temperature" ficam no grupo 'limit'
+    const temps = mine.filter((x) => x.group === 'temp' && x.value > 0 && x.value < 125);
+    const temp = (temps.find((x) => /^(composite temperature|temperature)$/i.test(x.name)) || temps.find((x) => /^temperature( #?\d+)?$/i.test(x.name)) || temps[0])?.value;
+    // vida restante: "Remaining Life" (SATA) ou 100 − "Percentage Used" (NVMe: é o desgaste, começa em 0)
+    const remaining = f(/Remaining Life/i, 'level');
+    const used = f(/Percentage Used/i, 'level');
+    const lifeLeft = remaining ?? (used !== undefined ? Math.max(0, 100 - used) : undefined);
     return {
       id: d.id, name: d.name || d.model || `Disco ${d.id}`, model: d.model, firmware: d.fw, bus: d.bus, media: d.media === 'Unspecified' ? undefined : d.media, size: d.size,
       health: d.health === 'Healthy' ? 'Saudável' : d.health === 'Warning' ? 'Atenção' : d.health === 'Unhealthy' ? 'Falhando' : d.health || undefined,
       healthPct: lifeLeft !== undefined ? Math.round(lifeLeft) : typeof d.wear === 'number' ? 100 - d.wear : undefined,
-      temp: f(/Temperature/i, 'temp') ?? (d.temp > 0 ? d.temp : undefined), powerOnHours: f(/Power.?On Hours/i) ?? (d.hours || undefined), powerCycles: f(/Power Cycle/i) ?? (d.cycles || undefined),
+      temp: temp ?? (d.temp > 0 ? d.temp : undefined), powerOnHours: f(/Power.?On Hours/i) ?? (d.hours || undefined), powerCycles: f(/Power Cycle/i) ?? (d.cycles || undefined),
       written: (f(/Data Written|Total Bytes Written|Host Writes/i, 'data') ?? 0) * 1073741824 || undefined, read: (f(/Data Read|Total Bytes Read|Host Reads/i, 'data') ?? 0) * 1073741824 || undefined,
       unsafeShutdowns: f(/Unsafe Shutdown/i), mediaErrors: f(/Media Errors/i), spare: f(/Available Spare$/i),
       partitions: (Array.isArray(d.parts) ? d.parts : d.parts ? [d.parts] : []).map((p: any) => ({ name: p.name, size: p.size, fs: p.fs || undefined, mount: p.mount || undefined })),

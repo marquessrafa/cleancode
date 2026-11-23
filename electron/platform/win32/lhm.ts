@@ -144,7 +144,7 @@ const GROUP: Record<string, { g: string; unit: string }> = {
   Load: { g: 'load', unit: '%' }, Fan: { g: 'fan', unit: 'RPM' }, Control: { g: 'control', unit: '%' }, Level: { g: 'level', unit: '%' }, Data: { g: 'data', unit: 'GB' }, SmallData: { g: 'data', unit: 'MB' },
   Throughput: { g: 'throughput', unit: 'B/s' }, Energy: { g: 'energy', unit: 'mWh' }, Frequency: { g: 'clock', unit: 'Hz' }, Factor: { g: 'factor', unit: '' }, TimeSpan: { g: 'time', unit: 's' },
 };
-export interface FlatSensor { kind: string; group: string; hw: string; name: string; value: number; min?: number; max?: number; unit: string }
+export interface FlatSensor { kind: string; group: string; hw: string; hwId: string; name: string; value: number; min?: number; max?: number; unit: string }
 export function flatten(s: LhmSnapshot | null): FlatSensor[] {
   const out: FlatSensor[] = [];
   const walk = (h: LhmHardware, parent?: LhmHardware) => {
@@ -152,7 +152,9 @@ export function flatten(s: LhmSnapshot | null): FlatSensor[] {
     for (const x of h.sensors || []) {
       if (x.value === null || x.value === undefined) continue;
       const g = GROUP[x.type]; if (!g) continue;
-      out.push({ kind, group: g.g, hw: h.name, name: x.name, value: x.value, min: x.min ?? undefined, max: x.max ?? undefined, unit: g.unit });
+      // limites de fábrica ("Warning/Critical Temperature" dos SSDs NVMe, "Thermal Sensor High Limit"…) não são leituras
+      const group = g.g === 'temp' && /warning|critical|limit|alarm|threshold/i.test(x.name) ? 'limit' : g.g;
+      out.push({ kind, group, hw: h.name, hwId: h.id, name: x.name, value: x.value, min: x.min ?? undefined, max: x.max ?? undefined, unit: g.unit });
     }
     (h.sub || []).forEach((c) => walk(c, h));
   };

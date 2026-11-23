@@ -5,6 +5,18 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.6', date: '2026-11-23', headline: 'Temperatura certa dos SSDs e passo a passo do Acesso Total ao Disco',
+    groups: [
+      { title: 'Windows', icon: 'chip', items: [
+        'SSDs NVMe: a temperatura mostrada agora é a leitura real. Antes podia aparecer o limite de fábrica do SSD (acima de 100 °C) como se fosse a temperatura.',
+        'Dois SSDs iguais não misturam mais os sensores, e a saúde do NVMe passou a ser calculada certo.',
+      ] },
+      { title: 'Mac', icon: 'panel', items: [
+        'O assistente de Acesso Total ao Disco mostra os seis passos do macOS, incluindo os avisos "Ignorar Proteções do Sistema" e os três OK do alerta vermelho, com o caminho do app já copiado para o +.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.5', date: '2026-11-23', headline: 'Acesso Total ao Disco pelo botão +',
     groups: [
       { title: 'Mac', icon: 'panel', items: [
