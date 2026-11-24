@@ -5,6 +5,27 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.7', date: '2026-11-24', headline: 'Dossiê de cada programa, mapa do armazenamento e visual novo',
+    groups: [
+      { title: 'Programas', icon: 'sparkles', items: [
+        'Dossiê de cada programa e jogo: quem criou, licença, lançamento, versão mais recente, assinatura, permissões, tecnologias e as pastas de dados que ele deixa no seu perfil.',
+        'Instalados recentemente na Visão geral e no Desinstalador, com atalho para abrir a pasta na árvore. A notificação de app instalado abre o dossiê dele.',
+        'Os apps aparecem com o ícone de verdade, maior e sem caixa.',
+      ] },
+      { title: 'Navegação', icon: 'panel', items: [
+        'Voltar e avançar entre as telas e entre as pastas do Explorador, com os botões laterais do mouse, o teclado, o gesto do trackpad ou as setas no topo.',
+        'Menu lateral flutuante, brilho na cor de destaque no topo e as telas centralizadas.',
+      ] },
+      { title: 'Visão geral', icon: 'download', items: [
+        'Mapa do armazenamento: mostra o que ocupa o disco (apps, documentos, downloads, caches, desenvolvimento…) com o atalho certo para cada parte.',
+      ] },
+      { title: 'Monitor de hardware', icon: 'chip', items: [
+        '3D mais fosco e sem serrilhado, solto da moldura, com circuito animado ao fundo e câmera que passeia sozinha, com aproximações nas partes de cada peça.',
+        'MacBook com tela, Dock e barra de menu, e a tampa abrindo e fechando. Energia do notebook/Mac com um modelo novo.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.6', date: '2026-11-23', headline: 'Temperatura certa dos SSDs e passo a passo do Acesso Total ao Disco',
     groups: [
       { title: 'Windows', icon: 'chip', items: [
