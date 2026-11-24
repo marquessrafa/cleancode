@@ -286,6 +286,15 @@ body.panel-body, body.panel-body #root { background: transparent !important; hei
 .side-scrollbar { width: 6px; border-radius: 6px; cursor: default; }
 .side-thumb { position: absolute; left: 0; right: 0; border-radius: 6px; background: color-mix(in srgb, var(--fg) 26%, transparent); }
 .side-thumb:hover, .side-thumb:active { background: color-mix(in srgb, var(--fg) 40%, transparent); }
+/* O painel desliza ao abrir e ao fechar. Esta regra precisa vir depois de "body, aside, header, main", que só anima
+   as cores do tema e, sem isto, anulava a transição de largura do menu. */
+aside.side-panel { transition: width .32s cubic-bezier(.2,.8,.2,1), box-shadow .32s ease, background-color .35s ease, border-color .35s ease; }
+/* itens do menu: a mesma forma aberto e recolhido. No recolhido, o recuo centraliza o ícone de 17 px no item de 42 px,
+   e o texto some por fade. Ao abrir, o texto aparece um pouco depois, enquanto o painel desliza. */
+.side-row { padding-left: 10px; padding-right: 10px; transition: background-color .18s ease, color .18s ease, transform .18s cubic-bezier(.2,.8,.2,1), padding .3s cubic-bezier(.2,.8,.2,1); }
+.side-panel.side-collapsed .side-row { padding-left: 12.5px; }
+.side-label { transition: opacity .22s ease .08s; }
+.side-panel.side-collapsed .side-label { transition: opacity .12s ease; }
 /* menu recolhido: sem o deslocamento do hover, para o ícone ficar no centro do fundo */
 .side-panel.side-collapsed .side-item:hover, .side-panel.side-collapsed .side-item:active { transform: none; }
 /* menu recolhido aberto pelo mouse: fica por cima do conteúdo, com sombra mais forte */

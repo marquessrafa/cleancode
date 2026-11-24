@@ -73,6 +73,17 @@ export function Sidebar() {
   const navRef = useRef<HTMLElement>(null);
   const [bar, setBar] = useState({ can: false, top: 0, size: 0, trackTop: 0, trackH: 0 });
   const [barOn, setBarOn] = useState(false);
+  // o painel terminou de deslizar? A barra só aparece depois disso, para não surgir no lugar antigo e pular
+  const [settled, setSettled] = useState(true);
+  const settleTimer = useRef<number | undefined>(undefined);
+  const firstOpen = useRef(true);
+  useEffect(() => {
+    if (firstOpen.current) { firstOpen.current = false; return; }
+    setSettled(false);
+    window.clearTimeout(settleTimer.current);
+    settleTimer.current = window.setTimeout(() => { setSettled(true); measure(); }, 340); // reserva, se o transitionend não chegar
+    return () => window.clearTimeout(settleTimer.current);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const measure = useCallback(() => {
     const a = asideRef.current, n = navRef.current; if (!a || !n) return;
     const { scrollTop, scrollHeight, clientHeight } = n;
@@ -116,18 +127,19 @@ export function Sidebar() {
         ref={asideRef}
         onMouseEnter={() => { enter(); setBarOn(true); }}
         onMouseLeave={() => { leave(); setBarOn(false); }}
-        className={cx('side-panel absolute bottom-2.5 left-2.5 top-1.5 flex flex-col overflow-hidden transition-[width,box-shadow] duration-300 ease-[cubic-bezier(.2,.8,.2,1)]', peek && collapsed ? 'side-peek z-40' : 'z-20', !open && 'side-collapsed')}
+        className={cx('side-panel absolute bottom-2.5 left-2.5 top-1.5 flex flex-col overflow-hidden', peek && collapsed ? 'side-peek z-40' : 'z-20', !open && 'side-collapsed')}
         style={{ width }}
-        onTransitionEnd={measure}
+        onTransitionEnd={(e) => { if (e.target === e.currentTarget && e.propertyName === 'width') { window.clearTimeout(settleTimer.current); setSettled(true); measure(); } }}
       >
         <nav ref={navRef} onScroll={onScroll} className="side-nav relative flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
           <div>
         {NAV.map((g, gi) => (
           <div key={gi} className={gi ? 'mt-4' : ''}>
             {g.group && (
-              open
-                ? <div className="mb-1 h-5 px-2.5 text-[11px] font-medium uppercase tracking-wide text-faint whitespace-nowrap">{tr(g.group)}</div>
-                : <div className="mb-1 flex h-5 items-center justify-center" aria-label={tr(g.group)}><span className="h-px w-6 rounded-full bg-[var(--line-strong)]" /></div>
+              <div className="relative mb-1 h-5" aria-label={tr(g.group)}>
+                <span className={cx('side-label absolute inset-y-0 left-0 flex items-center px-2.5 text-[11px] font-medium uppercase tracking-wide text-faint whitespace-nowrap', !open && 'opacity-0')}>{tr(g.group)}</span>
+                <span className={cx('absolute left-1/2 top-1/2 h-px w-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--line-strong)] transition-opacity duration-200', open && 'opacity-0')} />
+              </div>
             )}
             {g.items.map((it) => {
               const on = page === it.page;
@@ -138,7 +150,7 @@ export function Sidebar() {
                   onClick={() => go(it.page)}
                   className={cx(
                     'side-item group mb-0.5 flex h-9 items-center overflow-hidden rounded-[10px] text-[13px]',
-                    open ? 'w-full gap-2.5 px-2.5' : 'mx-auto w-10 justify-center gap-0 px-0',
+                    'side-row w-full gap-2.5',
                     on ? 'on text-fg font-medium' : 'text-muted hover:bg-[var(--hover)] hover:text-fg',
                   )}
                 >
@@ -146,7 +158,7 @@ export function Sidebar() {
                     {it.icon}
                     {busyPages.has(it.page) && !open && <span className="absolute -right-1 -top-1 h-2 w-2 animate-pulse rounded-full bg-accent ring-2 ring-surface" />}
                   </span>
-                  {open && <span className="truncate whitespace-nowrap">{it.label}</span>}
+                  <span className={cx('side-label truncate whitespace-nowrap', !open && 'opacity-0')}>{it.label}</span>
                   {busyPages.has(it.page) && open
                     ? <span className="ml-auto flex shrink-0 items-center" title={running[it.page]?.label || tr("Em andamento")}><span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent" /></span></span>
                     : it.needsScan && !active && open && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-line-strong" title={tr("Requer uma varredura")} />}
@@ -161,24 +173,24 @@ export function Sidebar() {
           <button
             onClick={() => go('settings')}
             title={!open ? tr("Configurações") : undefined}
-            className={cx('side-item mb-0.5 flex h-9 items-center overflow-hidden rounded-[10px] text-[13px]', open ? 'w-full gap-2.5 px-2.5' : 'mx-auto w-10 justify-center gap-0 px-0', page === 'settings' ? 'on text-fg font-medium' : 'text-muted hover:bg-[var(--hover)] hover:text-fg')}
+            className={cx('side-item mb-0.5 flex h-9 items-center overflow-hidden rounded-[10px] text-[13px]', 'side-row w-full gap-2.5', page === 'settings' ? 'on text-fg font-medium' : 'text-muted hover:bg-[var(--hover)] hover:text-fg')}
           >
             <Cog size={17} className="side-icon shrink-0" />
-            {open && <span className="truncate whitespace-nowrap">{tr("Configurações")}</span>}
+            <span className={cx('side-label truncate whitespace-nowrap', !open && 'opacity-0')}>{tr("Configurações")}</span>
           </button>
           <button
             onClick={() => { setPeek(false); setSettings({ sidebarCollapsed: !collapsed }); }}
             title={collapsed ? tr("Expandir menu") : tr("Recolher menu")}
-            className={cx('side-item flex h-9 items-center overflow-hidden rounded-[10px] text-[13px] text-muted hover:bg-[var(--hover)] hover:text-fg', open ? 'w-full gap-2.5 px-2.5' : 'mx-auto w-10 justify-center gap-0 px-0')}
+            className={cx('side-item flex h-9 items-center overflow-hidden rounded-[10px] text-[13px] text-muted hover:bg-[var(--hover)] hover:text-fg', 'side-row w-full gap-2.5')}
           >
             {collapsed ? <PanelLeftOpen size={17} className="shrink-0" /> : <PanelLeftClose size={17} className="shrink-0" />}
-            {open && <span className="truncate whitespace-nowrap">{collapsed ? tr("Expandir menu") : tr("Recolher menu")}</span>}
+            <span className={cx('side-label truncate whitespace-nowrap', !open && 'opacity-0')}>{collapsed ? tr("Expandir menu") : tr("Recolher menu")}</span>
           </button>
         </div>
       </aside>
       {bar.can && (
         <div
-          className={cx('side-scrollbar absolute transition-[left] duration-300 ease-[cubic-bezier(.2,.8,.2,1)]', peek && collapsed ? 'z-40' : 'z-20', barOn ? 'visible' : 'invisible')}
+          className={cx('side-scrollbar absolute transition-opacity duration-150 ease-out', peek && collapsed ? 'z-40' : 'z-20', barOn && settled && open ? 'opacity-100' : 'pointer-events-none opacity-0')}
           style={{ left: 10 + width + 4, top: bar.trackTop, height: bar.trackH }}
           onMouseEnter={() => { enter(); setBarOn(true); }}
           onMouseLeave={() => { leave(); setBarOn(false); }}
