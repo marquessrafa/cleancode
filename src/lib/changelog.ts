@@ -5,6 +5,14 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.8', date: '2026-11-24', headline: 'Processador certo na placa-mãe do desktop',
+    groups: [
+      { title: 'Monitor de hardware', icon: 'chip', items: [
+        'A placa-mãe do desktop agora mostra no soquete o mesmo processador da aba Processador, com o nome do seu processador gravado, tanto sozinha quanto dentro do gabinete.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.7', date: '2026-11-24', headline: 'Dossiê de cada programa, mapa do armazenamento e visual novo',
     groups: [
       { title: 'Programas', icon: 'sparkles', items: [

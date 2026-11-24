@@ -7,9 +7,9 @@ import { gpuModel, cpuModel, ramModel, boardModel, ssdModel, powerModel, pcModel
 const MODELS: { id: string; label: string; build: () => any }[] = [
   { id: 'pc', label: 'PC (gabinete)', build: () => pcModel({ sticks: 2 }) },
   { id: 'gpu', label: 'Placa de vídeo', build: () => gpuModel({ fans: 3 }) },
-  { id: 'cpu', label: 'Processador', build: () => cpuModel({ name: 'Processador' }) },
+  { id: 'cpu', label: 'Processador', build: () => cpuModel({ name: 'Ryzen 7 7800X3D', sub: 'x64', cores: 8 }) },
   { id: 'ram', label: 'Memória', build: () => ramModel({ count: 2 }) },
-  { id: 'board', label: 'Placa-mãe', build: () => boardModel({ dimms: 4, sticks: 2 }) },
+  { id: 'board', label: 'Placa-mãe', build: () => boardModel({ dimms: 4, sticks: 2, cpu: { name: 'Ryzen 7 7800X3D', sub: 'x64', cores: 8 } }) },
   { id: 'psu', label: 'Fonte', build: () => powerModel({}) },
   { id: 'ssd', label: 'SSD NVMe', build: () => ssdModel({ kind: 'nvme', label: 'SSD NVMe' }) },
   { id: 'laptop', label: 'Notebook (Windows)', build: () => laptopModel({}) },

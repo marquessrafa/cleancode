@@ -144,7 +144,7 @@ function hexEmblemTexture(accent: string) {
     c.font = '800 58px "SF Pro Display", "Segoe UI", sans-serif'; c.fillStyle = '#e8ecf2'; c.shadowBlur = 18; c.fillText('CLEAN', 250, 120); c.fillStyle = accent; c.fillText('CODE', 250, 178);
   });
 }
-export function boardModel(opts: { dimms?: number; sticks?: number; mac?: boolean } = {}): Model {
+export function boardModel(opts: { dimms?: number; sticks?: number; mac?: boolean; cpu?: { name?: string; sub?: string; cores?: number } } = {}): Model {
   const g = new THREE.Group();
   const W = 0.61, H = 0.49, mkTex = pcbTexture('#0a0b0e', 'rgba(70,82,96,0.45)', 7);
   const pcb = slab(W, H, 0.008, 0.008, new THREE.MeshStandardMaterial({ map: mkTex, metalness: 0.3, roughness: 0.55 })); g.add(pcb);
@@ -168,11 +168,14 @@ export function boardModel(opts: { dimms?: number; sticks?: number; mac?: boolea
   const frame = new THREE.Mesh(new THREE.ExtrudeGeometry(sockFrame, { depth: 0.006, bevelEnabled: true, bevelSize: 0.0015, bevelThickness: 0.0015, bevelSegments: 2 }), mat.metal(0xd2d6db, 0.22)); add(frame, -0.03, 0.06, z0 + 0.004);
   const pads = new THREE.Mesh(new THREE.PlaneGeometry(0.078, 0.068), new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, (c) => { c.fillStyle = '#3a3420'; c.fillRect(0, 0, 256, 256); c.fillStyle = '#c9a54a'; for (let y = 4; y < 256; y += 8) for (let x = 4; x < 256; x += 8) c.fillRect(x, y, 3, 3); }), metalness: 0.8, roughness: 0.4 })); add(pads, -0.03, 0.06, z0 + 0.0045);
   const lever = cyl(0.0025, 0.0025, 0.12, mat.metal(0xd8dce0, 0.2), 12); add(lever, 0.033, 0.055, z0 + 0.008);
-  // processador instalado no soquete: substrato verde e tampa metálica (IHS) com gravação
+  // processador instalado no soquete: o mesmo modelo da aba Processador (mesmo nome gravado), em escala,
+  // deitado na placa (o "topo" do modelo aponta para fora da placa)
+  let socketCpu: Model | null = null;
   if (!opts.mac) {
-    add(box(0.074, 0.064, 0.0018, new THREE.MeshStandardMaterial({ color: 0x1d4a34, metalness: 0.2, roughness: 0.6 })), -0.03, 0.06, z0 + 0.0062);
-    const ihs = rbox(0.058, 0.05, 0.0045, 0.006, new THREE.MeshStandardMaterial({ map: labelTexture([{ text: 'CPU', size: 120 }, { text: '8-CORE', size: 70, weight: 600, alpha: 0.6 }], 512, 512), metalness: 0.85, roughness: 0.32 }));
-    add(ihs, -0.03, 0.06, z0 + 0.0094);
+    socketCpu = cpuModel(opts.cpu || {});
+    socketCpu.group.scale.setScalar(0.16);
+    socketCpu.group.rotation.x = Math.PI / 2;
+    add(socketCpu.group, -0.03, 0.06, z0 + 0.0055);
   }
   // slots de memória (com pentes, quando houver)
   const dimms = opts.dimms ?? 4, sticks = Math.min(dimms, opts.sticks ?? 2);
@@ -230,6 +233,7 @@ export function boardModel(opts: { dimms?: number; sticks?: number; mac?: boolea
       lightMat.emissiveIntensity = 1.3 + Math.sin(t * 1.5) * 0.35 + (live.load ?? 0) * 0.8;
       emblemMat.emissiveIntensity = 1.2 + Math.sin(t * 2.2) * 0.3;
       ramSticks.forEach((s, i) => s.update(t, live.accent, 0.8, i * 0.1));
+      socketCpu?.update?.(live, t, 0);
     },
   };
 }
@@ -340,7 +344,7 @@ export function powerModel(opts: { laptop?: boolean } = {}): Model {
 }
 
 // ======================= PC MONTADO =======================
-export function pcModel(opts: { sticks?: number } = {}): Model {
+export function pcModel(opts: { sticks?: number; cpu?: { name?: string; sub?: string; cores?: number } } = {}): Model {
   const g = new THREE.Group();
   const W = 0.5, H = 0.5, D = 0.32;
   const frameMat = mat.dark(0x0d0e11, 0.45);
@@ -357,7 +361,7 @@ export function pcModel(opts: { sticks?: number } = {}): Model {
   // cobertura da fonte
   const shroud = box(W - 0.02, 0.09, D - 0.02, mat.dark(0x15171b, 0.5)); shroud.position.set(0, 0.075, 0); g.add(shroud);
   // placa-mãe na traseira
-  const board = boardModel({ sticks: opts.sticks ?? 2 }); board.group.scale.setScalar(0.62); board.group.position.set(-0.04, 0.29, -D / 2 + 0.012); g.add(board.group);
+  const board = boardModel({ sticks: opts.sticks ?? 2, cpu: opts.cpu }); board.group.scale.setScalar(0.62); board.group.position.set(-0.04, 0.29, -D / 2 + 0.012); g.add(board.group);
   // placa de vídeo horizontal (ventoinhas para baixo)
   const gpu = gpuModel(); gpu.group.scale.setScalar(0.95); gpu.group.rotation.set(Math.PI / 2, 0, 0); gpu.group.position.set(-0.03, 0.17, -D / 2 + 0.09); g.add(gpu.group);
   // water cooler: bomba no soquete, tubos e radiador no topo

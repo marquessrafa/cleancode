@@ -205,6 +205,8 @@ function machineProfile(info: HardwareInfo | null, laptop: boolean) {
   const gddr = dg?.vram ? Math.max(2, Math.min(8, Math.round(dg.vram / 2 ** 31))) : 4;
   const apple = (highlight: 'cpu' | 'gpu' | 'mem') => socModel({ vendor: 'apple', pCores: info?.cpu.pCores, eCores: info?.cpu.eCores, gpuCores: info?.gpus[0]?.cores, memChips, memLabel, highlight });
   const x86 = (highlight: 'cpu' | 'gpu') => socModel({ vendor, cores: info?.cpu.cores, highlight });
+  // o processador do soquete da placa-mãe é o mesmo da aba Processador
+  const cpuInfo = { name: (info?.cpu.name || 'Processador').replace(/\(R\)|\(TM\)|CPU|@.*$/gi, '').replace(/\s+/g, ' ').trim(), sub: info?.cpu.arch, cores: info?.cpu.cores };
   return {
     key: `${appleSi ? 'asi' : isMac ? 'imac' : laptop ? 'nb' : 'pc'}-${dgpu}-${soldered}-${mods.length}-${info?.cpu.cores || 0}-${info?.gpus[0]?.cores || 0}`,
     cpu: (name: string) => (appleSi ? apple('cpu') : laptop || isMac ? x86('cpu') : cpuModel({ name, sub: info?.cpu.arch, cores: info?.cpu.cores })),
@@ -212,7 +214,7 @@ function machineProfile(info: HardwareInfo | null, laptop: boolean) {
     ram: () => (appleSi ? apple('mem') : laptop || isMac ? (soldered || isMac ? solderedMemModel({ chips: 4, label: total ? fmtSize(total / 4, 'auto', 0) : '' }) : soDimmModel({ count: Math.max(1, mods.length) })) : ramModel({ count: Math.max(1, mods.length || 2) })),
     board: () => (appleSi ? macLogicBoardModel({ pro: /pro|max/i.test(`${info?.board.system || ''} ${info?.board.chip || ''}`), pCores: info?.cpu.pCores, eCores: info?.cpu.eCores, gpuCores: info?.gpus[0]?.cores, memChips, memLabel })
       : laptop || isMac ? laptopBoardModel({ vendor, cores: info?.cpu.cores, dgpu, sodimm: mods.length, soldered: soldered || isMac })
-      : boardModel({ sticks: mods.length || 2, dimms: Math.max(2, info?.memory.slots || 4) })),
+      : boardModel({ sticks: mods.length || 2, dimms: Math.max(2, info?.memory.slots || 4), cpu: cpuInfo })),
   };
 }
 
@@ -245,7 +247,7 @@ export default function Hardware() {
       <div key={tab} className="anim-fade-in mt-4 space-y-4">
         {tab === 'overview' && (
           <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
-            <Stage build={() => (isMac ? laptopModel({ mac: true }) : laptop ? laptopModel({}) : pcModel({ sticks: info?.memory.modules.length || 2 }))} buildKey={`dev-${isMac}-${laptop}-${info?.memory.modules.length || 0}`} live={lv} height={520}>
+            <Stage build={() => (isMac ? laptopModel({ mac: true }) : laptop ? laptopModel({}) : pcModel({ sticks: info?.memory.modules.length || 2, cpu: { name: cpuShort, sub: info?.cpu.arch, cores: info?.cpu.cores } }))} buildKey={`dev-${isMac}-${laptop}-${info?.memory.modules.length || 0}`} live={lv} height={520}>
               <div className="text-[12px] font-semibold uppercase tracking-wider text-muted">{isMac ? info?.board.system || 'Mac' : laptop ? 'Notebook' : 'Computador'}</div>
               <div className="text-[18px] font-semibold">{info?.board.model || ''}</div>
             </Stage>
