@@ -5,6 +5,14 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.10', date: '2026-11-24', headline: 'Atualizações aparecem poucos minutos depois de saírem',
+    groups: [
+      { title: 'Atualizações', icon: 'download', items: [
+        'O CleanCode procura versão nova a cada 3 minutos (antes eram 30) e também ao acordar o computador, ao abrir a janela e ao abrir o painel. O aviso aparece uma vez por versão.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.9', date: '2026-11-24', headline: 'Notebook Windows renovado no Monitor de hardware',
     groups: [
       { title: 'Monitor de hardware', icon: 'chip', items: [

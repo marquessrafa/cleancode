@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, shell, clipboard, nativeTheme, nativeImage, Tray, Menu, screen } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, shell, clipboard, nativeTheme, nativeImage, Tray, Menu, screen, powerMonitor } from 'electron';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import crypto from 'crypto';
@@ -169,6 +169,7 @@ function createPanel() {
 }
 function togglePanel() {
   if (panelWin && !panelWin.isDestroyed() && panelWin.isVisible()) { panelWin.hide(); return; }
+  checkUpdatesSoon(1500);
   // o clique no ícone tira o foco do painel antes de chegar aqui: não reabrir no mesmo clique
   if (Date.now() - panelHiddenAt < 250) return;
   if (!panelWin || panelWin.isDestroyed()) panelWin = createPanel();
@@ -522,11 +523,15 @@ function pushUpdate(patch: Partial<typeof updateState>) {
   for (const w of windows) if (!w.isDestroyed()) w.webContents.send('update:state', updateState);
 }
 const busyUpdating = () => ['checking', 'downloading', 'installing'].includes(updateState.status);
+let availableNotified = '';   // versão já avisada no popup (as verificações automáticas não repetem o aviso)
+let lastUpdateCheck = 0;
 async function runUpdateCheck(silent: boolean) {
   if (busyUpdating()) return updateState;
   // já baixada? não baixa de novo, só reavalia se pode instalar
   if (updateState.status === 'ready' && readyFile) { maybeInstallReady(); return updateState; }
-  pushUpdate({ status: 'checking', error: undefined });
+  lastUpdateCheck = Date.now();
+  // as verificações automáticas são silenciosas: o botão do topo não fica piscando "verificando"
+  if (!silent) pushUpdate({ status: 'checking', error: undefined });
   const src = await resolveSource();
   if (!src) { pushUpdate({ status: 'idle', info: null, checkedAt: Date.now() }); return updateState; }
   try {
@@ -535,11 +540,14 @@ async function runUpdateCheck(silent: boolean) {
     if (info && settings.autoInstallUpdates && app.isPackaged) {
       await downloadReady(info);          // baixa em segundo plano
       maybeInstallReady();
-    } else if (info && silent) {
+    } else if (info && silent && availableNotified !== info.version) {
+      availableNotified = info.version;
       showNotification({ kind: 'update', title: `CleanCode ${info.version} disponível`, drive: '', amount: 0, detail: 'Clique para abrir e atualizar com um clique, sem abrir o instalador.' });
     }
   } catch (err: any) {
-    pushUpdate({ status: 'error', error: String(err?.message || err), checkedAt: Date.now() });
+    // sem internet numa verificação automática: só tenta de novo depois (sem mostrar erro)
+    if (silent && updateState.status !== 'checking') pushUpdate({ checkedAt: Date.now() });
+    else pushUpdate({ status: 'error', error: String(err?.message || err), checkedAt: Date.now() });
   }
   return updateState;
 }
@@ -591,9 +599,22 @@ ipcMain.handle('update:install', async () => {
   }
 });
 
-// verificação: 15 s após abrir, a cada 30 min e assim que a pasta de atualizações mudar
+// verificação: 15 s após abrir, a cada 3 min (o feed é um arquivo minúsculo) e também ao acordar o computador,
+// ao abrir a janela e ao abrir o painel da barra de menus (no máximo uma vez a cada 2 min). Uma versão nova
+// aparece no popup e no botão do topo poucos minutos depois de o Release sair.
 setTimeout(() => { if (settings.autoCheckUpdates) runUpdateCheck(true); }, 15000);
-setInterval(() => { if (settings.autoCheckUpdates) runUpdateCheck(true); }, 30 * 60000);
+setInterval(() => { if (settings.autoCheckUpdates) runUpdateCheck(true); }, 3 * 60000);
+function checkUpdatesSoon(delay = 0) {
+  if (!settings.autoCheckUpdates || Date.now() - lastUpdateCheck < 2 * 60000) return;
+  lastUpdateCheck = Date.now();
+  setTimeout(() => runUpdateCheck(true), delay);
+}
+app.whenReady().then(() => {
+  // a rede demora alguns segundos para voltar depois do repouso
+  powerMonitor.on('resume', () => { lastUpdateCheck = 0; checkUpdatesSoon(8000); });
+  powerMonitor.on('unlock-screen', () => checkUpdatesSoon(3000));
+  app.on('browser-window-focus', (_e, w) => { if (w !== panelWin) checkUpdatesSoon(); });
+});
 let sourceWatcher: fs.FSWatcher | null = null;
 let watchDebounce: NodeJS.Timeout | null = null;
 function watchUpdateSource() {
