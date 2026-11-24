@@ -1,0 +1,76 @@
+# Teste ponta a ponta da atualização no Windows (não publica nada).
+# Instala uma versão do CleanCode, abre o app, deixa ele encontrar a versão nova e clica em "Atualizar"
+# pelo próprio app. Guarda capturas da tela, a linha do tempo dos processos e os logs como artefato.
+# - Branch test/update-*: modo "reproduzir" (instala a 1.4.11 e atualiza para a versão publicada no feed).
+# - Com BUILD=1 no commit: compila o branch apontando para um feed local e atualiza para ele mesmo.
+name: Atualização no Windows (ponta a ponta)
+on:
+  push:
+    branches: ['test/update-*']
+permissions:
+  contents: read
+jobs:
+  e2e:
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Modo do teste
+        shell: bash
+        run: |
+          if git log -1 --pretty=%B | grep -q 'BUILD=1'; then echo "MODE=build" >> "$GITHUB_ENV"; else echo "MODE=repro" >> "$GITHUB_ENV"; fi
+      - name: Baixar a 1.4.11 (modo reproduzir)
+        if: env.MODE == 'repro'
+        shell: bash
+        run: gh release download v1.4.11 -R ${{ github.repository }} --pattern '*Windows-x64.exe' -D inst
+      - name: Compilar o branch com feed local (modo build)
+        if: env.MODE == 'build'
+        shell: bash
+        env:
+          CLEANCODE_UPDATE_SOURCE: 'C:\feed'
+        run: |
+          npm version 1.4.90 --no-git-tag-version --allow-same-version
+          npm ci --legacy-peer-deps
+          dotnet build native/windows/cc-lhm/cc-lhm.csproj -c Release -o native/windows/cc-lhm/bin/Release/net472
+          npm run dist
+          mkdir -p inst && cp release/CleanCode-1.4.90-Windows-x64.exe inst/
+      - name: Instalar
+        shell: pwsh
+        run: |
+          $inst = (Get-ChildItem inst\*.exe | Select-Object -First 1).FullName
+          Start-Process -FilePath $inst -ArgumentList '/S','/currentuser' -Wait
+          $exe = Join-Path $env:LOCALAPPDATA 'Programs\CleanCode\CleanCode.exe'
+          if (-not (Test-Path $exe)) { Get-ChildItem (Join-Path $env:LOCALAPPDATA 'Programs') -Recurse -Filter CleanCode.exe | Select -First 3 | % FullName; throw 'CleanCode.exe não encontrado' }
+          "EXE=$exe" | Out-File -Append $env:GITHUB_ENV
+          "instalado: " + (Get-Item $exe).VersionInfo.ProductVersion
+      - name: Feed local com uma versão nova (modo build)
+        if: env.MODE == 'build'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force C:\feed | Out-Null
+          $f = Get-Item inst\CleanCode-1.4.90-Windows-x64.exe
+          Copy-Item $f.FullName C:\feed\CleanCode-9.9.9-Windows-x64.exe
+          $sha = [Convert]::ToBase64String([Security.Cryptography.SHA512]::Create().ComputeHash([IO.File]::ReadAllBytes('C:\feed\CleanCode-9.9.9-Windows-x64.exe')))
+          @("version: 9.9.9", "files:", "  - url: CleanCode-9.9.9-Windows-x64.exe", "    sha512: $sha", "    size: $($f.Length)", "path: CleanCode-9.9.9-Windows-x64.exe", "sha512: $sha", "releaseDate: '2026-11-24T00:00:00.000Z'") | Set-Content C:\feed\latest.yml
+          Get-Content C:\feed\latest.yml
+      - name: Abrir o CleanCode e clicar em Atualizar
+        shell: pwsh
+        run: |
+          Start-Process -FilePath $env:EXE -ArgumentList '--remote-debugging-port=9333'
+          $w = Start-Process pwsh -ArgumentList '-NoProfile','-File','.github/e2e/watch.ps1','-Exe',$env:EXE,'-Out','e2e-out','-Seconds','170' -PassThru
+          node .github/e2e/trigger-update.mjs
+          $w.WaitForExit()
+          "--- versão no fim: " + (Get-Item $env:EXE).VersionInfo.ProductVersion
+          "--- CleanCode rodando no fim: " + ((Get-Process CleanCode -ErrorAction SilentlyContinue | Measure-Object).Count)
+          Get-Content e2e-out\timeline.txt | Select-Object -Last 120
+          Get-ChildItem $env:TEMP -Filter 'cleancode-update*' -ErrorAction SilentlyContinue | % { "--- $($_.Name)"; if ($_.Extension -eq '.log') { Get-Content $_.FullName } }
+          Copy-Item (Join-Path $env:TEMP 'cleancode-update*.log') e2e-out -ErrorAction SilentlyContinue
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-out-${{ env.MODE }}
+          path: e2e-out
