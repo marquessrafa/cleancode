@@ -191,7 +191,7 @@ export default function Visual() {
   const total = (kids || []).reduce((s, r) => s + r.size, 0);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="mx-auto flex h-full max-w-[1400px] flex-col">
       <div className="px-6 pt-6">
         <PageHeader title="Visualizações" icon={<LayoutGrid size={18} />} description="Mapa de árvore (treemap), gráfico de pizza e de barras da pasta selecionada. Clique numa pasta para entrar nela."
           actions={<Segmented value={tab} onChange={setTab} options={[

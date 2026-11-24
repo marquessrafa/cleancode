@@ -9,12 +9,13 @@ import { cc, Drive, Row, isMac, joinPath } from '../lib/api';
 import { fmtSize, fmtPct, fmtNum, fmtDate, fmtRelative, categoryOf, baseName, driveTag, PALETTE } from '../lib/format';
 import { Badge, Button, Card, cx, PageHeader, ProgressBar } from '../components/ui';
 import { BarList, Donut, DriveBadges, FullDiskAccessBanner, Legend, PageBody, useDriveHardware } from './common';
-import { AppIcon, useApps } from './appsShared';
+import { StorageMapCard } from '../components/StorageMap';
+import { AppIcon, cancelPrefetch, openUninstaller, prefetchDossier, RecentInstalls, useApps } from './appsShared';
 
 const DAY = 86400000;
 
 export default function Overview() {
-  const { startScan, settings, go, active, info, select, tick } = useApp();
+  const { startScan, settings, go, active, info, select, tick, openDossier } = useApp();
   const units = settings?.units || 'auto';
   const [drives, setDrives] = useState<Drive[] | null>(null);
   const [history, setHistory] = useState<any[]>([]);
@@ -95,18 +96,9 @@ export default function Overview() {
         <Kpi icon={<Radar size={16} />} label="Apps sem uso" value={apps ? fmtNum(stale.length) : null} sub={apps ? `${fmtSize(staleSize, units)} recuperáveis · ${settings?.staleMonths}+ meses` : 'lendo programas…'} tone="warn" onClick={() => go('discover')} />
       </div>
 
-      {/* Distribuição */}
+      {/* Mapa do armazenamento: o que ocupa o disco do sistema, por tipo de conteúdo */}
       <div className="mt-4">
-        <Card title="Distribuição do espaço">
-          {drives ? (
-            <div className="flex flex-col items-center gap-6 md:flex-row md:items-center">
-              <Donut size={190} thickness={30}
-                data={[...real.map((d, i) => ({ label: `${driveTag(d.root)} usado`, value: d.used, color: PALETTE[i % PALETTE.length] })), { label: 'Livre', value: free, color: 'var(--line-strong)' }]}
-                center={<><div className="text-xs text-muted">Usado</div><div className="text-base font-semibold">{fmtPct(total ? used / total : 0, 0)}</div></>} />
-              <div className="w-full md:flex-1"><Legend items={[...real.map((d, i) => ({ label: `${d.label || 'Disco'} (${driveTag(d.root)})${hw.byRoot(d.root) ? ` · ${hw.byRoot(d.root)!.media === 'Desconhecido' ? '' : hw.byRoot(d.root)!.media + ' '}${hw.byRoot(d.root)!.bus}` : ''}`, color: PALETTE[i % PALETTE.length], value: fmtSize(d.used, units) })), { label: 'Livre (todas)', color: 'var(--line-strong)', value: fmtSize(free, units) }]} /></div>
-            </div>
-          ) : <div className="skeleton mx-auto h-[190px] w-[190px] rounded-full" />}
-        </Card>
+        <StorageMapCard drives={drives} apps={apps} />
       </div>
 
       {/* Insights da varredura ativa */}
@@ -124,20 +116,23 @@ export default function Overview() {
       )}
 
       {/* Tendência + apps + recentes */}
-      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-4">
         <Trend history={history} root={active?.root || settings?.recent[0]} units={units} onOpen={() => go('history')} />
-        <Card title={<span className="flex items-center gap-2"><PackageX size={14} /> Maiores programas</span>} actions={<Button size="sm" variant="ghost" onClick={() => go('uninstall')}>Ver todos <ArrowRight size={12} /></Button>}>
+        <Card title={<span className="flex items-center gap-2"><PackageX size={14} /> Maiores programas</span>} actions={<Button size="sm" variant="ghost" onClick={() => openUninstaller(go, 'size:false')}>Ver todos <ArrowRight size={12} /></Button>}>
           {!apps ? <div className="space-y-2">{[0, 1, 2, 3].map((i) => <div key={i} className="skeleton h-9 rounded-md" />)}</div> : (
             <div className="-mx-1 space-y-0.5">
               {bigApps.map((a) => (
-                <button key={a.id} onClick={() => go('uninstall')} className="flex w-full items-center gap-2.5 rounded-md px-1 py-1.5 text-left transition-colors hover:bg-hover">
-                  <AppIcon app={a} size={26} />
+                <button key={a.id} onClick={() => openDossier({ kind: 'app', app: a })} onMouseEnter={() => prefetchDossier(a)} onMouseLeave={cancelPrefetch} title="Ver o dossiê" className="flex w-full items-center gap-2.5 rounded-md px-1 py-1.5 text-left transition-colors hover:bg-hover">
+                  <AppIcon app={a} size={34} />
                   <span className="min-w-0 flex-1"><span className="block truncate text-[13px] text-fg">{a.name}</span><span className="block truncate text-[11px] text-faint">Último uso: {fmtRelative(a.lastUsed)}</span></span>
                   <span className="text-xs font-medium text-fg tnum">{fmtSize(a.size, units)}</span>
                 </button>
               ))}
             </div>
           )}
+        </Card>
+        <Card title={<span className="flex items-center gap-2"><Sparkles size={14} /> Instalados recentemente</span>} actions={<Button size="sm" variant="ghost" onClick={() => openUninstaller(go, 'installDate:false')}>Ver todos <ArrowRight size={12} /></Button>}>
+          <RecentInstalls apps={apps} n={5} compact />
         </Card>
         <Card title={<span className="flex items-center gap-2"><Clock size={14} /> Varreduras recentes</span>}>
           {settings?.recent.length ? (

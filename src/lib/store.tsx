@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { cc, Progress, Settings, AppEntry, UpdateState, AppInfo } from './api';
+import { cc, Progress, Settings, AppEntry, UpdateState, AppInfo, DossierTarget } from './api';
 
 /** Tarefa em segundo plano que sobrevive à troca de tela. */
 export interface BgTask {
@@ -13,7 +13,7 @@ export interface BgTask {
 
 export type Page =
   | 'overview' | 'explorer' | 'visual' | 'types' | 'age' | 'owners' | 'top' | 'duplicates' | 'search' | 'history'
-  | 'discover' | 'uninstall' | 'cleanup' | 'performance' | 'protection' | 'activity' | 'smartcare' | 'clutter' | 'settings' | 'repairs' | 'browsers' | 'game' | 'hardware' | 'appdata';
+  | 'discover' | 'uninstall' | 'cleanup' | 'performance' | 'protection' | 'activity' | 'smartcare' | 'clutter' | 'settings' | 'repairs' | 'browsers' | 'game' | 'hardware' | 'appdata' | 'dossier';
 
 export interface ScanState { id: number; root: string; progress: Progress | null; done: boolean; stopped?: boolean; selected: number; selectedPath: string; comparing?: string | null }
 export interface Toast { id: number; kind: 'ok' | 'error' | 'info'; text: string }
@@ -25,6 +25,12 @@ export interface ConfirmOpts {
 interface Ctx {
   settings: Settings | null; setSettings: (p: Partial<Settings>) => void; dark: boolean;
   page: Page; go: (p: Page) => void;
+  /** dossiê aberto e a tela de onde veio (para o Voltar) */
+  dossier: { target: DossierTarget; from: Page } | null; openDossier: (t: DossierTarget) => void;
+  /** histórico de telas: voltar/avançar (botões laterais do mouse, ⌘[ ⌘], Alt+←/→, gesto) */
+  navBack: () => void; navForward: () => void; canBack: boolean; canForward: boolean;
+  /** histórico interno de uma tela (Explorador: pastas): voltar/avançar usa ele primeiro, depois o de telas */
+  registerNav: (page: Page, n: PageNav | null) => void;
   scans: ScanState[]; active: ScanState | null; activeId: number | null; setActive: (id: number) => void;
   startScan: (root: string) => Promise<number>; closeScan: (id: number) => void; stopScan: () => void; refreshScan: () => void;
   select: (id: number, path?: string) => void; tick: number; bump: () => void;
@@ -45,12 +51,106 @@ interface Ctx {
   update: UpdateState;
   installUpdate: () => Promise<void>;
 }
+export interface PageNav { canBack: boolean; canForward: boolean; back: () => void; forward: () => void }
 const C = createContext<Ctx>(null as any);
 export const useApp = () => useContext(C);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [settings, setS] = useState<Settings | null>(null);
   const [page, setPage] = useState<Page>('overview');
+  const [dossier, setDossier] = useState<Ctx['dossier']>(null);
+  const pageRef = useRef<Page>(page);
+  pageRef.current = page;
+  // histórico: cada troca de tela (ou de dossiê) vira uma entrada; voltar/avançar só move o ponteiro
+  const hist = useRef<{ list: { page: Page; dossier: Ctx['dossier'] }[]; i: number; moving: boolean }>({ list: [], i: -1, moving: false });
+  const [navTick, setNavTick] = useState(0);
+  useEffect(() => {
+    const h = hist.current;
+    if (h.moving) { h.moving = false; return; }
+    const cur = h.list[h.i];
+    if (cur && cur.page === page && (page !== 'dossier' || cur.dossier?.target === dossier?.target)) return;
+    h.list = [...h.list.slice(0, h.i + 1), { page, dossier }].slice(-60);
+    h.i = h.list.length - 1;
+    setNavTick((t) => t + 1);
+  }, [page, dossier]);
+  const moveNav = useCallback((d: number) => {
+    const h = hist.current;
+    const j = h.i + d;
+    if (j < 0 || j >= h.list.length) return;
+    h.i = j; h.moving = true;
+    const e = h.list[j];
+    if (e.page === 'dossier') setDossier(e.dossier);
+    setPage(e.page);
+    setNavTick((t) => t + 1);
+  }, []);
+  const [pageNav, setPageNav] = useState<Partial<Record<Page, PageNav>>>({});
+  const pageNavRef = useRef(pageNav);
+  pageNavRef.current = pageNav;
+  const registerNav = useCallback((p: Page, n: PageNav | null) => setPageNav((m) => {
+    const x = { ...m };
+    if (n) x[p] = n; else delete x[p];
+    return x;
+  }), []);
+  // primeiro o histórico da tela (pastas do Explorador); quando ele acaba, o de telas
+  const step = useCallback((d: number) => {
+    const h = pageNavRef.current[pageRef.current];
+    if (h && (d < 0 ? h.canBack : h.canForward)) { if (d < 0) h.back(); else h.forward(); return; }
+    moveNav(d);
+  }, [moveNav]);
+  const navBack = useCallback(() => step(-1), [step]);
+  const navForward = useCallback(() => step(1), [step]);
+  void navTick;
+  const inner = pageNav[page];
+  const canBack = hist.current.i > 0 || !!inner?.canBack, canForward = hist.current.i < hist.current.list.length - 1 || !!inner?.canForward;
+  // botões laterais do mouse, teclado e comandos nativos (Windows: app-command; macOS: gesto de deslizar)
+  useEffect(() => {
+    let last = 0;
+    const nav = (d: number) => { const t = Date.now(); if (t - last < 300) return; last = t; step(d); };
+    const down = (e: MouseEvent) => { if (e.button === 3 || e.button === 4) e.preventDefault(); };
+    const up = (e: MouseEvent) => { if (e.button === 3) { e.preventDefault(); nav(-1); } else if (e.button === 4) { e.preventDefault(); nav(1); } };
+    const key = (e: KeyboardEvent) => {
+      const typing = /^(INPUT|TEXTAREA|SELECT)$/.test((e.target as HTMLElement)?.tagName) || (e.target as HTMLElement)?.isContentEditable;
+      if (e.key === 'BrowserBack') { e.preventDefault(); nav(-1); return; }
+      if (e.key === 'BrowserForward') { e.preventDefault(); nav(1); return; }
+      const mac = navigator.platform.startsWith('Mac');
+      if (mac ? e.metaKey && !e.shiftKey && !e.altKey : e.altKey && !e.ctrlKey) {
+        if (mac ? e.key === '[' : e.key === 'ArrowLeft' && !typing) { e.preventDefault(); nav(-1); }
+        else if (mac ? e.key === ']' : e.key === 'ArrowRight' && !typing) { e.preventDefault(); nav(1); }
+      }
+    };
+    // trackpad: deslizar dois dedos na horizontal (onde nada rola na horizontal)
+    let acc = 0, accAt = 0, fired = 0;
+    const canScrollX = (el: Element | null, dx: number) => {
+      for (; el && el !== document.body; el = el.parentElement) {
+        const st = getComputedStyle(el);
+        if (!/(auto|scroll)/.test(st.overflowX) || el.scrollWidth <= el.clientWidth + 1) continue;
+        if (dx < 0 ? el.scrollLeft > 0 : el.scrollLeft + el.clientWidth < el.scrollWidth - 1) return true;
+      }
+      return false;
+    };
+    const wheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) < Math.abs(e.deltaY) * 2 || e.ctrlKey) { acc = 0; return; }
+      const t = Date.now();
+      if (t - fired < 900) return; // um gesto por vez (o trackpad continua mandando a inércia)
+      if (t - accAt > 250) acc = 0;
+      accAt = t;
+      if (canScrollX(e.target as Element, e.deltaX)) { acc = 0; return; }
+      acc += e.deltaX;
+      if (Math.abs(acc) > 160) { fired = t; const d = acc < 0 ? -1 : 1; acc = 0; nav(d); }
+    };
+    window.addEventListener('wheel', wheel, { passive: true });
+    window.addEventListener('mousedown', down, true);
+    window.addEventListener('mouseup', up, true);
+    window.addEventListener('keydown', key);
+    const off = cc.on.nav((d: 'back' | 'forward') => nav(d === 'back' ? -1 : 1));
+    return () => { window.removeEventListener('mousedown', down, true); window.removeEventListener('mouseup', up, true); window.removeEventListener('keydown', key); window.removeEventListener('wheel', wheel); off(); };
+  }, [step]);
+
+  const openDossier = useCallback((target: DossierTarget) => {
+    const from = pageRef.current;
+    setDossier((d) => ({ target, from: from === 'dossier' ? d?.from || 'uninstall' : from }));
+    setPage('dossier');
+  }, []);
   const [scans, setScans] = useState<ScanState[]>([]);
   const [activeId, setActiveId] = useState<number | null>(null);
   const [tick, setTick] = useState(0);
@@ -153,6 +253,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => cc.on.openPath((p) => { startScan(p); }), [startScan]);
   // painel da barra de menus pede para abrir uma tela específica
   useEffect(() => cc.on.navigate((p) => setPage(p as Page)), []);
+  // clique na notificação de app instalado: abre o dossiê dele
+  useEffect(() => cc.on.openDossier((app: AppEntry) => openDossier({ kind: 'app', app })), [openDossier]);
   // mudanças feitas pelo menu da bandeja
   useEffect(() => cc.on.settingsChanged((s) => setS(s)), []);
   // estado do atualizador
@@ -238,7 +340,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const value: Ctx = {
     update, installUpdate,
     tasks, findTask, startScanTask, cancelTask, updateTaskResult, clearFinishedTasks, startUninstall,
-    settings, setSettings, dark, page, go: setPage, scans, active, activeId, setActive: setActiveId,
+    settings, setSettings, dark, page, go: setPage, dossier, openDossier, navBack, navForward, canBack, canForward, registerNav, scans, active, activeId, setActive: setActiveId,
     startScan, closeScan, stopScan, refreshScan, select, tick: tickEff, bump: () => setTick((t) => t + 1),
     toast, toasts, confirm, confirmState, info, setComparing, running, setRunning,
   };

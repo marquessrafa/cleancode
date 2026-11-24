@@ -58,7 +58,7 @@ async function describeInstalledApp(key: string): Promise<MonitorEvent> {
   const loc = (v.InstallLocation || v.PackageRootFolder || '').replace(/^"|"$/g, '');
   const drive = /^[a-zA-Z]:/.test(loc) ? loc.slice(0, 2).toUpperCase() : 'C:';
   const kb = parseInt(v.EstimatedSize || '', 16);
-  return { kind: 'app', title: 'Novo programa instalado', drive, amount: isNaN(kb) ? 0 : kb * 1024, detail: name };
+  return { kind: 'app', title: 'Novo programa instalado', drive, amount: isNaN(kb) ? 0 : kb * 1024, detail: name, app: { key, name } };
 }
 
 // ---------- menu de contexto do Explorer ----------

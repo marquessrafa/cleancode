@@ -3,7 +3,7 @@ import {
   LayoutDashboard, FolderTree, LayoutGrid, FileType2, CalendarClock, Users, ArrowDownWideNarrow, Copy, Search, History,
   Radar, PackageX, Settings as Cog, PanelLeftClose, PanelLeftOpen, Sun, Moon, Monitor, X, HardDrive, ShieldCheck, ShieldAlert,
   CheckCircle2, AlertCircle, Info, Plus, Loader2, ArrowUpCircle, Sparkles, Gauge, Activity, Shield, HeartPulse, Layers, Wrench, Globe, Gamepad2, CircuitBoard, FolderOpen, RefreshCw,
-  FolderCog,
+  FolderCog, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Page, useApp } from '../lib/store';
 import { cc, isMac } from '../lib/api';
@@ -62,8 +62,8 @@ export function Sidebar() {
   Object.keys(running).forEach((p) => busyPages.add(p));
   if (scans.some((s) => !s.done)) busyPages.add('explorer');
   return (
-    <aside className={cx('flex shrink-0 flex-col overflow-hidden border-r border-line bg-surface transition-[width] duration-300 ease-[cubic-bezier(.2,.8,.2,1)]', collapsed ? 'w-[56px]' : 'w-[228px]')}>
-      <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
+    <aside className={cx('side-panel absolute bottom-2.5 left-2.5 top-1.5 z-20 flex flex-col overflow-hidden transition-[width] duration-300 ease-[cubic-bezier(.2,.8,.2,1)]', collapsed ? 'w-[60px]' : 'w-[232px]')}>
+      <nav className="relative flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
         {NAV.map((g, gi) => (
           <div key={gi} className={gi ? 'mt-4' : ''}>
             {g.group && (
@@ -77,11 +77,11 @@ export function Sidebar() {
                   title={collapsed ? it.label : undefined}
                   onClick={() => go(it.page)}
                   className={cx(
-                    'group relative mb-0.5 flex h-8 w-full items-center gap-2.5 overflow-hidden rounded-md px-2.5 text-[13px] transition-colors duration-150',
-                    on ? 'bg-hover text-fg font-medium' : 'text-muted hover:bg-hover hover:text-fg',
+                    'side-item group mb-0.5 flex h-9 w-full items-center gap-2.5 overflow-hidden rounded-[10px] px-2.5 text-[13px]',
+                    on ? 'on text-fg font-medium' : 'text-muted hover:bg-[var(--hover)] hover:text-fg',
                   )}
                 >
-                  <span className={cx('relative shrink-0 transition-colors', on ? 'text-accent' : '')}>
+                  <span className="side-icon relative shrink-0 transition-[color,filter] duration-200">
                     {it.icon}
                     {busyPages.has(it.page) && collapsed && <span className="absolute -right-1 -top-1 h-2 w-2 animate-pulse rounded-full bg-accent ring-2 ring-surface" />}
                   </span>
@@ -95,19 +95,19 @@ export function Sidebar() {
           </div>
         ))}
       </nav>
-      <div className="overflow-hidden border-t border-line px-2 py-2">
+      <div className="relative overflow-hidden border-t border-[color-mix(in_srgb,var(--line)_80%,transparent)] px-2 py-2">
         <button
           onClick={() => go('settings')}
           title={collapsed ? 'Configurações' : undefined}
-          className={cx('mb-0.5 flex h-8 w-full items-center gap-2.5 overflow-hidden rounded-md px-2.5 text-[13px] transition-colors', page === 'settings' ? 'bg-hover text-fg font-medium' : 'text-muted hover:bg-hover hover:text-fg')}
+          className={cx('side-item mb-0.5 flex h-9 w-full items-center gap-2.5 overflow-hidden rounded-[10px] px-2.5 text-[13px]', page === 'settings' ? 'on text-fg font-medium' : 'text-muted hover:bg-[var(--hover)] hover:text-fg')}
         >
-          <Cog size={17} className={cx('shrink-0', page === 'settings' && 'text-accent')} />
+          <Cog size={17} className="side-icon shrink-0" />
           <span className={cx('truncate whitespace-nowrap transition-opacity duration-200', collapsed && 'opacity-0')}>Configurações</span>
         </button>
         <button
           onClick={() => setSettings({ sidebarCollapsed: !collapsed })}
           title={collapsed ? 'Expandir menu' : 'Recolher menu'}
-          className="flex h-8 w-full items-center gap-2.5 overflow-hidden rounded-md px-2.5 text-[13px] text-muted transition-colors hover:bg-hover hover:text-fg"
+          className="side-item flex h-9 w-full items-center gap-2.5 overflow-hidden rounded-[10px] px-2.5 text-[13px] text-muted hover:bg-[var(--hover)] hover:text-fg"
         >
           {collapsed ? <PanelLeftOpen size={17} className="shrink-0" /> : <PanelLeftClose size={17} className="shrink-0" />}
           <span className={cx('truncate whitespace-nowrap transition-opacity duration-200', collapsed && 'opacity-0')}>Recolher menu</span>
@@ -118,7 +118,7 @@ export function Sidebar() {
 }
 
 export function TopBar() {
-  const { scans, active, setActive, closeScan, settings, setSettings, info, startScan, toast } = useApp();
+  const { scans, active, setActive, closeScan, settings, setSettings, info, startScan, toast, navBack, navForward, canBack, canForward } = useApp();
   const theme = settings?.theme || 'system';
   const nextTheme = theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system';
   const pick = async () => { const p = await cc.pickFolder(); if (p) startScan(p); };
@@ -136,10 +136,14 @@ export function TopBar() {
   const scanDrive = (root: string) => { setAddOpen(false); startScan(root); };
   return (
     // Windows: espaço à direita para os botões do overlay; macOS: à esquerda para os botões de semáforo
-    <header className="drag flex h-10 shrink-0 items-center border-b border-line bg-bg" style={isMac ? { paddingLeft: 84, paddingRight: 12 } : { paddingLeft: 12, paddingRight: 150 }}>
+    <header className="drag relative z-10 flex h-10 shrink-0 items-center" style={isMac ? { paddingLeft: 84, paddingRight: 12 } : { paddingLeft: 12, paddingRight: 150 }}>
       <div className="flex items-center gap-2 pr-3">
         <img src="./icon.png" className="h-5 w-5" alt="" />
         <span className="text-[13px] font-semibold tracking-tight text-fg">CleanCode</span>
+        <div className="no-drag ml-1 flex items-center">
+          <button className="rounded p-1 text-muted hover:bg-[var(--hover)] hover:text-fg disabled:opacity-30 disabled:hover:bg-transparent" disabled={!canBack} onClick={navBack} title={isMac ? 'Voltar (⌘[)' : 'Voltar (Alt+←)'}><ChevronLeft size={16} /></button>
+          <button className="rounded p-1 text-muted hover:bg-[var(--hover)] hover:text-fg disabled:opacity-30 disabled:hover:bg-transparent" disabled={!canForward} onClick={navForward} title={isMac ? 'Avançar (⌘])' : 'Avançar (Alt+→)'}><ChevronRight size={16} /></button>
+        </div>
       </div>
       {/* o contêiner continua arrastável; só as abas e botões são "no-drag" */}
       <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">

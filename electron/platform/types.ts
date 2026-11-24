@@ -90,6 +90,8 @@ export interface MonitorEvent {
   driveLabel?: string;
   amount: number;         // bytes consumidos (0 se desconhecido)
   detail?: string;
+  /** app recém-instalado: o clique abre o dossiê dele (key = caminho do .app ou chave do registro) */
+  app?: { key: string; name: string };
 }
 
 // ---------- proteção ----------
@@ -359,4 +361,37 @@ export interface SystemApi {
   metrics: MetricsApi;
   /** instala uma atualização já baixada e verificada e encerra o app */
   installUpdate(file: string, quit: () => void, relaunch: boolean): void;
+}
+
+// ---------- dossiê de um programa ----------
+export type DossierGroup = 'about' | 'install' | 'usage' | 'tech' | 'security';
+export interface DossierFact {
+  group: DossierGroup; label: string; value: string | number;
+  kind?: 'text' | 'date' | 'size' | 'path' | 'url' | 'mono'; tone?: 'ok' | 'warn' | 'danger'; hint?: string;
+}
+export interface DossierFile { path: string; size: number; kind: string }
+export interface DossierLocal {
+  facts: DossierFact[];
+  badges: { label: string; tone?: 'ok' | 'warn' | 'danger'; hint?: string }[];
+  /** tecnologias detectadas (Electron, Qt, Unity, .NET…) */
+  tech: string[];
+  /** arquivos de licença, EULA e avisos de terceiros dentro do app */
+  licenses: DossierFile[];
+  /** pastas e arquivos de dados do app no perfil do usuário */
+  data: DossierFile[];
+  /** pasta para abrir na árvore */
+  folder?: string;
+  running?: boolean;
+  /** pistas para a busca online */
+  query: DossierQuery;
+  /** outros nomes do programa (nome interno, executável), para achar as pastas de dados */
+  aliases?: string[];
+}
+export interface DossierQuery { name: string; bundleId?: string; adamId?: string; steamId?: string; publisher?: string; kind: 'app' | 'game'; mas?: boolean }
+export interface DossierOnline {
+  summary?: string; summarySource?: { label: string; url: string };
+  facts: DossierFact[]; sources: { label: string; url: string }[];
+  /** versão mais recente conhecida (para comparar com a instalada) */
+  latest?: string;
+  error?: string;
 }

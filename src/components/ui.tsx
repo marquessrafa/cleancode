@@ -71,7 +71,7 @@ export function Stat({ label, value, sub, icon, tone }: { label: string; value: 
 
 export function Segmented<T extends string>({ value, onChange, options, size = 'md' }: { value: T; onChange: (v: T) => void; options: { value: T; label: React.ReactNode; title?: string }[]; size?: 'sm' | 'md' }) {
   return (
-    <div className="inline-flex rounded-md border border-line bg-surface-2 p-0.5">
+    <div className="seg-glass inline-flex rounded-md border border-line p-0.5">
       {options.map((o) => (
         <button
           key={o.value}
@@ -80,7 +80,7 @@ export function Segmented<T extends string>({ value, onChange, options, size = '
           className={cx(
             'rounded-[5px] px-2.5 font-medium transition-all duration-150 inline-flex items-center gap-1.5',
             size === 'sm' ? 'h-6 text-xs' : 'h-7 text-xs',
-            value === o.value ? 'bg-surface text-fg shadow-sm' : 'text-muted hover:text-fg',
+            value === o.value ? 'seg-on text-fg' : 'text-muted hover:text-fg',
           )}
         >
           {o.label}

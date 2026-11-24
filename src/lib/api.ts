@@ -17,7 +17,7 @@ export interface AppEntry {
   id: string; source: 'win32' | 'store' | 'mac'; name: string; version?: string; publisher?: string; installDate?: number;
   size?: number; sizeSource?: string; location?: string; lastUsed?: number; lastUsedSource?: string; runCount?: number;
   uninstall?: string; quiet?: string; icon?: string; hive?: string; arch?: string; regPath?: string;
-  packageFullName?: string; family?: string; msi?: boolean; canUninstall: boolean; background?: boolean; orphan?: boolean;
+  packageFullName?: string; family?: string; msi?: boolean; canUninstall: boolean; background?: boolean; orphan?: boolean; exes?: string[];
   bundleId?: string; origin?: string;
 }
 export interface Settings {
@@ -100,6 +100,15 @@ export type BrowserItemId = 'cache' | 'gpu' | 'history' | 'downloads' | 'cookies
 export interface BrowserProfile { id: string; browserId: string; browser: string; name: string; path: string; running: boolean; items: { id: BrowserItemId; label: string; detail: string; safe: boolean; size: number; count?: number }[] }
 export type AppDataStatus = 'installed' | 'orphan' | 'unknown' | 'system';
 export interface AppDataItem { path: string; name: string; root: string; parent?: string; size: number; files: number; mtime: number; safe: number; safePaths: { path: string; size: number; reason: string }[]; status: AppDataStatus; program?: string }
+export type DossierGroup = 'about' | 'install' | 'usage' | 'tech' | 'security';
+export interface DossierFact { group: DossierGroup; label: string; value: string | number; kind?: 'text' | 'date' | 'size' | 'path' | 'url' | 'mono'; tone?: 'ok' | 'warn' | 'danger'; hint?: string }
+export interface DossierFile { path: string; size: number; kind: string }
+export interface DossierQuery { name: string; bundleId?: string; adamId?: string; steamId?: string; publisher?: string; kind: 'app' | 'game'; mas?: boolean }
+export interface DossierLocal { facts: DossierFact[]; badges: { label: string; tone?: 'ok' | 'warn' | 'danger'; hint?: string }[]; tech: string[]; licenses: DossierFile[]; data: DossierFile[]; folder?: string; running?: boolean; query: DossierQuery }
+export interface DossierOnline { summary?: string; summarySource?: { label: string; url: string }; facts: DossierFact[]; sources: { label: string; url: string }[]; latest?: string; error?: string }
+export interface StorageCat { id: string; label: string; paths: string[]; size: number; done: boolean; partial?: boolean }
+export interface StorageMap { root: string; at: number; done: boolean; cats: StorageCat[] }
+export type DossierTarget = { kind: 'app'; app: AppEntry } | { kind: 'game'; game: GameInfo };
 export interface GameInfo { id: string; name: string; store: 'steam' | 'epic' | 'gog' | 'app' | 'custom'; dir?: string; size?: number; launch: string }
 export interface GameToggle { id: string; label: string; detail: string; on: boolean; needsAdmin?: boolean; needsRestart?: boolean; recommended: boolean }
 export interface GameSessionOptions { close: { pids: number[]; name: string }[]; power: boolean; freeMemory: boolean; boostDir?: string }
@@ -222,6 +231,12 @@ interface CC {
   appsUninstall(ids: string[], silent: boolean): Promise<{ id: string; ok: boolean; code?: number; message: string }[]>;
   openLocation(p: string): Promise<string>;
   appRemoveEntry(id: string): Promise<{ ok: boolean; message: string }>;
+  openLink(url: string): Promise<boolean>;
+  dossierLocal(t: DossierTarget, refresh?: boolean): Promise<DossierLocal>;
+  dossierSizes(paths: string[]): Promise<Record<string, number>>;
+  storageMap(refresh?: boolean): Promise<StorageMap>;
+  dossierGatekeeper(p: string): Promise<{ fact: DossierFact; badge: { label: string; tone?: 'ok' | 'warn' | 'danger'; hint?: string } } | null>;
+  dossierOnline(q: DossierQuery, refresh?: boolean): Promise<DossierOnline>;
   exportRun(scanId: number, nodeId: number, format: string, opts?: any): Promise<string | null>;
   exportList(rows: any[], format: string, name: string, cols?: { key: string; label: string }[]): Promise<string | null>;
   on: {
@@ -231,6 +246,9 @@ interface CC {
     task(cb: (d: { scanId: number; method: string; progress: { phase: string; done: number; total: number } }) => void): () => void;
     openPath(cb: (p: string) => void): () => void;
     navigate(cb: (page: string) => void): () => void;
+    nav(cb: (d: 'back' | 'forward') => void): () => void;
+    storageProgress(cb: (m: StorageMap) => void): () => void;
+    openDossier(cb: (app: AppEntry) => void): () => void;
     cleanupProgress(cb: (d: { type: 'start' | 'category' | 'done' | 'error'; id?: string; error?: string } & Partial<JunkResult>) => void): () => void;
     clutterProgress(cb: (d: { phase: string; scanned?: number; done?: number; total?: number; current?: string; error?: string }) => void): () => void;
     cleanProgress(cb: (d: { done: number; total: number; freed: number; current: string }) => void): () => void;

@@ -1,20 +1,20 @@
 import React, { useMemo, useState } from 'react';
-import { PackageX, RefreshCw, Search, Trash2, FolderOpen, Download, Copy, Eraser, Unlink } from 'lucide-react';
+import { PackageX, RefreshCw, Search, Trash2, FolderOpen, Download, Copy, Eraser, Unlink, FileSearch, FolderTree, Sparkles } from 'lucide-react';
 import { useApp } from '../lib/store';
 import { cc, AppEntry, isMac, OS_NAME, FILE_MANAGER } from '../lib/api';
 import { fmtSize, fmtDate, fmtRelative, fmtNum } from '../lib/format';
 import { DataTable } from '../components/DataTable';
 import { Badge, Button, Card, Input, openContextMenu, PageHeader, Segmented, Select, Stat } from '../components/ui';
 import { PageBody } from './common';
-import { AppIcon, sourceLabel, useApps, useRemoveEntry, useUninstall } from './appsShared';
+import { AppIcon, appFolder, RecentInstalls, sourceLabel, useApps, useRemoveEntry, useUninstall, useUninstallSort, prefetchDossier, cancelPrefetch } from './appsShared';
 
 export default function Uninstaller() {
-  const { settings, toast } = useApp();
+  const { settings, toast, openDossier, startScan, go } = useApp();
   const units = settings!.units;
   const { apps, loading, reload, remove } = useApps();
   const [q, setQ] = useState('');
   const [src, setSrc] = useState<'all' | 'win32' | 'store' | 'mac'>('all');
-  const [sort, setSort] = useState({ key: 'size', asc: false });
+  const [sort, setSort] = useUninstallSort();
   const [sel, setSel] = useState<Set<string | number>>(new Set());
   const un = useUninstall((ids) => { remove(ids); setSel(new Set()); });
   const removeEntry = useRemoveEntry((ids) => { remove(ids); setSel(new Set()); });
@@ -28,7 +28,11 @@ export default function Uninstaller() {
 
   const menu = (e: React.MouseEvent, a: AppEntry) => {
     const rs = sel.has(a.id) && sel.size > 1 ? selRows : [a];
+    const dir = appFolder(a);
     openContextMenu(e, [
+      { label: 'Ver dossiê', icon: <FileSearch />, onClick: () => openDossier({ kind: 'app', app: a }) },
+      { label: 'Abrir a pasta na árvore', icon: <FolderTree />, disabled: !dir, onClick: async () => { if (dir) { await startScan(dir); go('explorer'); } } },
+      { separator: true },
       { label: rs.length > 1 ? `Desinstalar ${rs.length} programas…` : 'Desinstalar…', icon: <Trash2 />, danger: true, onClick: () => un.start(rs), disabled: !rs.some((x) => x.canUninstall && !x.orphan) },
       ...(isMac ? [
         { separator: true },
@@ -75,12 +79,15 @@ export default function Uninstaller() {
         <Stat label={isMac ? 'App Store' : 'Store / MSIX'} value={apps ? fmtNum(apps.filter((a) => a.source === 'store').length) : '…'} />
         <Stat label="Espaço conhecido" value={fmtSize(totalSize, units)} sub={isMac ? 'tamanho dos pacotes .app' : 'registro + cálculo da pasta'} />
       </div>
+      <Card className="mb-4" title={<span className="flex items-center gap-2"><Sparkles size={14} /> Instalados recentemente</span>}>
+        <RecentInstalls apps={apps} n={8} />
+      </Card>
       <Card pad={false}>
         <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2">
           <Input className="w-72" icon={<Search size={14} />} placeholder="Buscar por nome ou fabricante" value={q} onChange={(e) => setQ(e.target.value)} />
           <Segmented value={src} onChange={setSrc} options={isMac ? [{ value: 'all', label: 'Todos' }, { value: 'mac', label: 'Apps' }, { value: 'store', label: 'App Store' }] : [{ value: 'all', label: 'Todos' }, { value: 'win32', label: 'Win32' }, { value: 'store', label: 'Store' }]} />
           <Select className="w-52" value={`${sort.key}:${sort.asc}`} onChange={(v) => { const [k, a] = v.split(':'); setSort({ key: k, asc: a === 'true' }); }} options={[
-            { value: 'size:false', label: 'Maiores primeiro' }, { value: 'installDate:true', label: 'Mais antigos primeiro' },
+            { value: 'size:false', label: 'Maiores primeiro' }, { value: 'installDate:false', label: 'Instalados mais recentes' }, { value: 'installDate:true', label: 'Mais antigos primeiro' },
             { value: 'lastUsed:true', label: 'Menos usados primeiro' }, { value: 'name:true', label: 'Nome (A–Z)' },
           ]} />
           <div className="flex-1" />
@@ -88,11 +95,11 @@ export default function Uninstaller() {
           <Button variant="danger" size="sm" icon={<Trash2 size={13} />} disabled={!sel.size || un.busy} onClick={() => un.start(selRows)}>Desinstalar selecionados</Button>
         </div>
         <div style={{ height: Math.max(380, window.innerHeight - 360) }}>
-          <DataTable className="h-full" rows={rows} rowKey={(a) => a.id} rowHeight={44} selectable selected={sel} onSelect={setSel} sort={sort} onSort={setSort}
-            onRowContext={menu} empty={loading ? 'Lendo programas instalados…' : 'Nenhum programa encontrado'}
+          <DataTable className="h-full" rows={rows} rowKey={(a) => a.id} rowHeight={54} selectable selected={sel} onSelect={setSel} sort={sort} onSort={setSort}
+            onRowContext={menu} onRowDoubleClick={(a) => openDossier({ kind: 'app', app: a })} empty={loading ? 'Lendo programas instalados…' : 'Nenhum programa encontrado'}
             columns={[
               { key: 'name', label: 'Programa', width: 300, flex: true, sortable: true, sortValue: (a) => a.name.toLowerCase(), render: (a) => (
-                <span className="flex items-center gap-2.5"><AppIcon app={a} /><span className="min-w-0"><span className="block truncate font-medium text-fg">{a.name}</span><span className="block truncate text-xs text-muted">{a.publisher || '—'}{a.version ? ` · ${a.version}` : ''}</span></span></span>
+                <span className="flex items-center gap-3"><AppIcon app={a} size={38} /><span className="min-w-0"><button className="block max-w-full truncate text-left font-medium text-fg hover:text-accent hover:underline" title="Ver o dossiê" onMouseEnter={() => prefetchDossier(a)} onMouseLeave={cancelPrefetch} onClick={(e) => { e.stopPropagation(); openDossier({ kind: 'app', app: a }); }}>{a.name}</button><span className="block truncate text-xs text-muted">{a.publisher || '—'}{a.version ? ` · ${a.version}` : ''}</span></span></span>
               ), title: (a) => a.name },
               { key: 'source', label: 'Origem', width: 190, sortable: true, sortValue: (a) => sourceLabel(a), render: (a) => <span className="flex items-center gap-1 text-xs text-muted">{sourceLabel(a)}{a.orphan && <Badge tone="danger" title="O desinstalador e a pasta não existem mais: só sobrou a entrada no registro">órfão</Badge>}{!a.canUninstall && <Badge tone="warn">protegido</Badge>}{a.background && a.canUninstall && <Badge title="Pacote sem atalho no menu Iniciar (runtime, extensão ou componente)">componente</Badge>}</span> },
               { key: 'installDate', label: 'Instalado em', width: 110, sortable: true, sortValue: (a) => a.installDate || 0, render: (a) => <span className="text-muted">{fmtDate(a.installDate)}</span> },

@@ -158,12 +158,11 @@ function AdvancedBanner({ live }: { live: HardwareLive | null }) {
   );
 }
 function Stage({ build, buildKey, live, height = 400, children }: { build: () => any; buildKey: string; live: LiveInput; height?: number; children?: React.ReactNode }) {
+  // sem moldura: o 3D vaza por trás das abas e dos blocos vizinhos e some em fade (ver OVERFLOW em hw3d/core)
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-[var(--line)]" style={{ background: 'radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 60%), radial-gradient(90% 70% at 50% 100%, rgba(120,60,255,.12), transparent 70%), var(--surface)' }}>
-      <div className="hw-grid pointer-events-none absolute inset-0 opacity-30" />
+    <div className="relative">
       <Viewer3D build={build} buildKey={buildKey} live={live} height={height} />
-      {children && <div className="pointer-events-none absolute left-4 top-3">{children}</div>}
-      <div className="pointer-events-none absolute bottom-2.5 right-3 text-[11px] text-muted">arraste para girar</div>
+      {children && <div className="pointer-events-none absolute left-1 top-0">{children}</div>}
     </div>
   );
 }
@@ -230,7 +229,7 @@ export default function Hardware() {
   const cpuShort = (info?.cpu.name || 'Processador').replace(/\(R\)|\(TM\)|CPU|@.*$/gi, '').replace(/\s+/g, ' ').trim();
   return (
     <PageBody>
-      <div className="flex items-center gap-4">
+      <div className="relative z-10 flex items-center gap-4">
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent)]"><CircuitBoard size={22} /></div>
         <div className="min-w-0 flex-1">
           <h1 className="text-xl font-semibold">Monitor de hardware</h1>
@@ -238,10 +237,11 @@ export default function Hardware() {
         </div>
         {L?.advanced?.active && <span className="flex items-center gap-1.5 rounded-full bg-[var(--accent-soft)] px-3 py-1 text-[12px] font-semibold text-[var(--accent)]"><Activity size={13} />{L.advanced.source}</span>}
       </div>
-      <div className="mt-4 flex flex-wrap gap-1.5">
+      {/* abas e aviso ficam por cima do 3D, que vaza para cima delas em fade */}
+      <div className="relative z-10 mt-4 inline-flex flex-wrap gap-1 rounded-xl border border-[var(--line)] bg-[color-mix(in_srgb,var(--surface)_70%,transparent)] p-1 backdrop-blur-md">
         {TABS.map((t) => <button key={t.id} onClick={() => setTab(t.id)} className={cx('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors', tab === t.id ? 'bg-[var(--accent)] text-white' : 'text-muted hover:bg-[var(--hover)] hover:text-[var(--fg)]')}>{t.icon}{t.label}</button>)}
       </div>
-      <div className="mt-4"><AdvancedBanner live={live} /></div>
+      <div className="relative z-10 mt-4"><AdvancedBanner live={live} /></div>
       <div key={tab} className="anim-fade-in mt-4 space-y-4">
         {tab === 'overview' && (
           <div className="grid gap-4 xl:grid-cols-[1fr_320px]">

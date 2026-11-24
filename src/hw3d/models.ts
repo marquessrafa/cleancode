@@ -168,6 +168,12 @@ export function boardModel(opts: { dimms?: number; sticks?: number; mac?: boolea
   const frame = new THREE.Mesh(new THREE.ExtrudeGeometry(sockFrame, { depth: 0.006, bevelEnabled: true, bevelSize: 0.0015, bevelThickness: 0.0015, bevelSegments: 2 }), mat.metal(0xd2d6db, 0.22)); add(frame, -0.03, 0.06, z0 + 0.004);
   const pads = new THREE.Mesh(new THREE.PlaneGeometry(0.078, 0.068), new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, (c) => { c.fillStyle = '#3a3420'; c.fillRect(0, 0, 256, 256); c.fillStyle = '#c9a54a'; for (let y = 4; y < 256; y += 8) for (let x = 4; x < 256; x += 8) c.fillRect(x, y, 3, 3); }), metalness: 0.8, roughness: 0.4 })); add(pads, -0.03, 0.06, z0 + 0.0045);
   const lever = cyl(0.0025, 0.0025, 0.12, mat.metal(0xd8dce0, 0.2), 12); add(lever, 0.033, 0.055, z0 + 0.008);
+  // processador instalado no soquete: substrato verde e tampa metálica (IHS) com gravação
+  if (!opts.mac) {
+    add(box(0.074, 0.064, 0.0018, new THREE.MeshStandardMaterial({ color: 0x1d4a34, metalness: 0.2, roughness: 0.6 })), -0.03, 0.06, z0 + 0.0062);
+    const ihs = rbox(0.058, 0.05, 0.0045, 0.006, new THREE.MeshStandardMaterial({ map: labelTexture([{ text: 'CPU', size: 120 }, { text: '8-CORE', size: 70, weight: 600, alpha: 0.6 }], 512, 512), metalness: 0.85, roughness: 0.32 }));
+    add(ihs, -0.03, 0.06, z0 + 0.0094);
+  }
   // slots de memória (com pentes, quando houver)
   const dimms = opts.dimms ?? 4, sticks = Math.min(dimms, opts.sticks ?? 2);
   const ramSticks: ReturnType<typeof ramStick>[] = [];
@@ -208,7 +214,16 @@ export function boardModel(opts: { dimms?: number; sticks?: number; mac?: boolea
   for (const [x, y] of [[-0.285, 0.225], [0.285, 0.225], [-0.285, -0.225], [0.285, -0.225], [0.02, 0.225], [0.02, -0.225]]) add(new THREE.Mesh(new THREE.TorusGeometry(0.006, 0.0015, 8, 20), mat.metal(0xb9bec4)), x, y, z0 + 0.001);
   let lastAccent = '';
   return {
-    group: g, focus: { distance: 1.25, target: [0, 0.245, 0], height: 0.42 },
+    group: g, focus: { distance: 1.25, target: [0, 0.245, 0], height: 0.42 }, orbit: { maxEl: 0.55, span: 0.95 },
+    pois: [
+      { at: [-0.03, 0.06, 0.012], d: 0.16, az: 0.1, el: 0.2 },    // processador no soquete
+      { at: [0.145, 0.07, 0.03], d: 0.2, az: 0.45, el: 0.18 },    // memórias
+      { at: [-0.05, 0.2, 0.05], d: 0.2, az: -0.2, el: 0.45 },     // dissipador dos reguladores
+      { at: [0.215, -0.11, 0.03], d: 0.17, az: 0.3, el: 0.25 },   // chipset com emblema
+      { at: [0.26, 0.215, 0.006], d: 0.1, az: 0.25, el: 0.15 },   // display de diagnóstico
+      { at: [-0.25, 0.12, 0.08], d: 0.2, az: -0.55, el: 0.15 },   // painel de luz do I/O
+      { at: [-0.02, -0.11, 0.015], d: 0.22, az: 0.15, el: 0.35 }, // slots PCIe e M.2
+    ],
     update(live, t) {
       const hex = accentHex(live);
       if (hex !== lastAccent) { lastAccent = hex; lightMat.emissiveMap = lightPanelTexture(hex); emblemMat.emissiveMap = hexEmblemTexture(hex); lightMat.needsUpdate = true; emblemMat.needsUpdate = true; }
@@ -284,24 +299,42 @@ export function powerModel(opts: { laptop?: boolean } = {}): Model {
     const fl = flows(curves); g.add(fl.group);
     return { group: g, focus: { distance: 1.35, target: [0, 0.12, 0], height: 0.55 }, update(live, t, dt) { const w = live.watts ?? 60; f.spin(4 + Math.min(1, w / 400) * 18, dt); ring.update(t); fl.update(dt, 0.15 + Math.min(1, w / 300) * 0.7, 3 + Math.min(15, w / 25), live.accent); } };
   }
-  // notebook: pacote de bateria com células, carregador e fluxo
-  const frame = rbox(0.5, 0.03, 0.28, 0.01, mat.dark(0x1a1c21, 0.5)); frame.position.y = 0.015; g.add(frame);
-  const fills: THREE.Mesh[] = []; const fillMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: new THREE.Color(0x3ddc97), emissiveIntensity: 1.6, transparent: true, opacity: 0.9 });
-  for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) {
-    const cell = rbox(0.14, 0.02, 0.11, 0.008, new THREE.MeshPhysicalMaterial({ color: 0x2a2f37, metalness: 0.4, roughness: 0.3, clearcoat: 1 })); cell.position.set(-0.16 + i * 0.16, 0.036, -0.06 + j * 0.12); g.add(cell);
-    const fill = box(0.12, 0.004, 0.09, fillMat); fill.position.set(-0.16 + i * 0.16, 0.047, -0.06 + j * 0.12); g.add(fill); fills.push(fill);
+  // notebook / Mac: módulo plano e técnico. Placa fina com trilhas, três células de bateria planas com o nível de
+  // carga aceso, porta USB-C na borda, controlador de energia e o chip; a energia corre rente à placa.
+  const plate = slab(0.82, 0.48, 0.008, 0.03, new THREE.MeshStandardMaterial({ map: pcbTexture('#08090b', 'rgba(80,96,110,0.32)', 21, 512), metalness: 0.35, roughness: 0.6 }), 0.002);
+  plate.rotation.x = -Math.PI / 2; plate.position.y = 0.004; g.add(plate);
+  const cellMat = new THREE.MeshStandardMaterial({ color: 0x2b2e34, metalness: 0.55, roughness: 0.42 });
+  const fillMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: new THREE.Color(0x3ddc97), emissiveIntensity: 1.4, transparent: true, opacity: 0.95 });
+  const fills: THREE.Mesh[] = [];
+  const CW = 0.17, CD = 0.3;
+  for (let i = 0; i < 3; i++) {
+    const x = -0.24 + i * (CW + 0.02);
+    const cell = slab(CW, CD, 0.012, 0.012, cellMat, 0.002); cell.rotation.x = -Math.PI / 2; cell.position.set(x, 0.016, 0.02); g.add(cell);
+    // faixa de nível (cresce a partir de baixo) com moldura
+    const frame = slab(CW * 0.72, CD * 0.8, 0.001, 0.006, mat.dark(0x0b0c0e, 0.7), 0); frame.rotation.x = -Math.PI / 2; frame.position.set(x, 0.0228, 0.02); g.add(frame);
+    const fill = box(CW * 0.66, 0.0012, CD * 0.74, fillMat); fill.position.set(x, 0.0236, 0.02); g.add(fill); fills.push(fill);
   }
-  const brick = rbox(0.12, 0.05, 0.12, 0.016, new THREE.MeshPhysicalMaterial({ color: 0x3a3d43, roughness: 0.45, clearcoat: 0.4 })); brick.position.set(-0.45, 0.025, 0.2); g.add(brick);
-  const chip = rbox(0.09, 0.012, 0.09, 0.004, mat.metal(0x9aa1ab, 0.3)); chip.position.set(0.4, 0.006, -0.12); g.add(chip);
-  const c1 = new THREE.CubicBezierCurve3(new THREE.Vector3(-0.39, 0.03, 0.2), new THREE.Vector3(-0.3, 0.12, 0.25), new THREE.Vector3(-0.3, 0.08, 0.05), new THREE.Vector3(-0.25, 0.03, 0.0));
-  const c2 = new THREE.CubicBezierCurve3(new THREE.Vector3(0.25, 0.03, 0.0), new THREE.Vector3(0.3, 0.1, -0.02), new THREE.Vector3(0.33, 0.08, -0.12), new THREE.Vector3(0.36, 0.012, -0.12));
-  const fl = flows([c1, c2]); g.add(fl.group);
+  // porta USB-C na borda esquerda e o controlador de energia
+  const port = rbox(0.02, 0.008, 0.05, 0.004, mat.metal(0x9aa1ab, 0.35)); port.position.set(-0.405, 0.012, -0.12); g.add(port);
+  const pmic = rbox(0.06, 0.008, 0.06, 0.003, mat.dark(0x15171b, 0.4)); pmic.position.set(-0.3, 0.012, -0.16); g.add(pmic);
+  const soc = rbox(0.11, 0.012, 0.11, 0.006, mat.metal(0xa7adb5, 0.35)); soc.position.set(0.33, 0.014, -0.12); g.add(soc);
+  const socDie = box(0.07, 0.002, 0.07, mat.dark(0x101215, 0.3)); socDie.position.set(0.33, 0.021, -0.12); g.add(socDie);
+  // caminhos de energia rentes à placa: porta → controlador → células → chip
+  const P = (x: number, z: number) => new THREE.Vector3(x, 0.013, z);
+  const line = (pts: THREE.Vector3[]) => new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.05);
+  const c1 = line([P(-0.395, -0.12), P(-0.36, -0.12), P(-0.34, -0.16), P(-0.33, -0.16)]);
+  const c2 = line([P(-0.27, -0.16), P(-0.24, -0.16), P(-0.24, -0.15), P(-0.24, -0.13)]);
+  const c3 = line([P(-0.27, -0.17), P(0.0, -0.2), P(0.2, -0.2), P(0.27, -0.13)]);
+  const c4 = line([P(0.19, -0.13), P(0.22, -0.13), P(0.26, -0.12), P(0.275, -0.12)]);
+  const fl = flows([c1, c2, c3, c4], 14); g.add(fl.group);
   return {
-    group: g, focus: { distance: 1.3, target: [0, 0.04, 0], height: 0.6 },
+    group: g, focus: { distance: 1.25, target: [0, 0.02, 0], height: 0.62 },
     update(live, t, dt) {
-      const lvl = live.battery ?? 0.8; fillMat.emissive.copy(lvl < 0.15 ? new THREE.Color(0xff4d4f) : live.accent); fillMat.emissiveIntensity = 1.2 + Math.sin(t * 2) * 0.3;
-      fills.forEach((f, i) => { const k = Math.max(0.05, Math.min(1, lvl * fills.length - i)); f.scale.set(k, 1, 1); });
-      const w = live.watts ?? 10; fl.update(dt, 0.15 + Math.min(1, w / 60) * 0.6, 3 + Math.min(14, w / 4), live.accent, !live.charging && false);
+      const lvl = live.battery ?? 0.8;
+      fillMat.emissive.copy(lvl < 0.15 ? new THREE.Color(0xff4d4f) : live.accent); fillMat.emissiveIntensity = 1.1 + Math.sin(t * 2) * 0.2;
+      // as três células enchem em sequência, como uma barra de 0 a 100%
+      fills.forEach((f, i) => { const k = Math.max(0.03, Math.min(1, lvl * fills.length - i)); f.scale.set(1, 1, k); f.position.z = 0.02 + (CD * 0.74) * (1 - k) / 2; });
+      const w = live.watts ?? 10; fl.update(dt, 0.15 + Math.min(1, w / 60) * 0.6, 3 + Math.min(14, w / 4), live.accent, false);
     },
   };
 }
@@ -356,6 +389,16 @@ export function pcModel(opts: { sticks?: number } = {}): Model {
   let lastShown = -1;
   return {
     group: g, focus: { distance: 1.55, target: [0, 0.25, 0], height: 0.42 },
+    // zooms dentro do gabinete, olhando pelo vidro da frente
+    pois: [
+      { at: [-0.058, 0.327, -D / 2 + 0.06], d: 0.26, az: -0.15, el: 0.12 },  // bomba do water cooler com a temperatura
+      { at: [0.05, 0.33, -D / 2 + 0.03], d: 0.24, az: 0.3, el: 0.18 },       // memórias
+      { at: [-0.03, 0.15, -D / 2 + 0.1], d: 0.3, az: 0.2, el: 0.05 },        // placa de vídeo
+      { at: [-0.02, H - 0.07, -0.02], d: 0.32, az: -0.1, el: 0.55 },         // ventoinhas e radiador do topo
+      { at: [W / 2 - 0.03, 0.28, 0], d: 0.34, az: -0.55, el: 0.2 },          // ventoinhas da frente
+      { at: [-0.12, 0.3, -D / 2 + 0.02], d: 0.3, az: 0.35, el: 0.25 },       // placa-mãe e painel de luz
+      { at: [0, 0.12, D / 2 - 0.01], d: 0.26, az: 0.1, el: 0.25 },           // faixa de LED e cobertura da fonte
+    ],
     update(live, t, dt) {
       const ld = live.load ?? 0.2; const speed = 4 + ld * 16;
       topFans.forEach((f) => f.spin(speed, dt)); sideFans.forEach((f) => f.spin(speed * 0.9, dt));
@@ -382,16 +425,68 @@ function keyboard(cols: number, rows: number, kw: number, gap: number, keyMat: T
   }
   inst.count = n; g.add(inst); return g;
 }
+/** Tela do Mac: wallpaper escuro original (faixas de luz dobradas), barra de menu no topo e Dock embaixo.
+ *  Sem logos de fabricante: o canto da barra de menu e a marca usam um símbolo neutro (anel com ponto). */
 function macScreen(accent: string) {
-  return canvasTex(1600, 1040, (c) => {
-    c.fillStyle = '#050507'; c.fillRect(0, 0, 1600, 1040);
-    c.lineCap = 'round'; c.lineJoin = 'round';
-    const draw = (w: number, col: string, blur: number) => {
-      c.strokeStyle = col; c.lineWidth = w; c.shadowColor = accent; c.shadowBlur = blur;
-      c.beginPath(); c.moveTo(-50, 260); c.lineTo(820, 260); c.quadraticCurveTo(1000, 260, 1000, 430); c.quadraticCurveTo(1000, 600, 820, 600); c.lineTo(420, 600); c.quadraticCurveTo(300, 600, 300, 720); c.lineTo(300, 1100); c.stroke();
-      c.beginPath(); c.moveTo(1240, 1100); c.lineTo(1240, 420); c.quadraticCurveTo(1240, 300, 1360, 300); c.quadraticCurveTo(1480, 300, 1480, 420); c.lineTo(1480, 1100); c.stroke();
+  const W = 1600, H = 1040;
+  return canvasTex(W, H, (c) => {
+    // wallpaper: fundo quase preto com faixas largas e suaves, iluminadas pela borda
+    c.fillStyle = '#030304'; c.fillRect(0, 0, W, H);
+    const band = (path: (c: CanvasRenderingContext2D) => void, width: number) => {
+      for (let k = 6; k >= 0; k--) {
+        c.save(); c.lineCap = 'round'; c.lineJoin = 'round';
+        c.strokeStyle = `rgba(${150 + k * 12},${152 + k * 12},${160 + k * 12},${0.035 + (6 - k) * 0.018})`;
+        c.lineWidth = width - k * (width / 9); c.filter = `blur(${k * 3}px)`;
+        c.beginPath(); path(c); c.stroke(); c.restore();
+      }
+      c.save(); c.strokeStyle = 'rgba(5,5,7,0.96)'; c.lineWidth = width * 0.62; c.lineCap = 'round'; c.lineJoin = 'round'; c.beginPath(); path(c); c.stroke(); c.restore();
     };
-    draw(150, 'rgba(255,255,255,0.05)', 80); draw(110, accent + '55', 60); draw(36, accent, 40); draw(10, '#ffffff', 20);
+    band((c) => { c.moveTo(-80, 860); c.bezierCurveTo(260, 860, 300, 420, 620, 420); c.lineTo(1080, 420); c.bezierCurveTo(1260, 420, 1260, 700, 1080, 700); c.lineTo(760, 700); }, 150);
+    band((c) => { c.moveTo(1700, 200); c.bezierCurveTo(1380, 200, 1380, 620, 1180, 840); c.bezierCurveTo(1060, 980, 860, 980, 700, 980); }, 120);
+    band((c) => { c.moveTo(-60, 260); c.lineTo(420, 260); c.bezierCurveTo(560, 260, 560, 120, 700, 120); c.lineTo(1000, 120); }, 90);
+    // leve toque da cor de destaque no centro
+    const glow = c.createRadialGradient(W * 0.55, H * 0.55, 10, W * 0.55, H * 0.55, 700); glow.addColorStop(0, accent + '22'); glow.addColorStop(1, 'transparent'); c.fillStyle = glow; c.fillRect(0, 0, W, H);
+
+    // barra de menu
+    c.fillStyle = 'rgba(28,28,32,0.72)'; c.fillRect(0, 0, W, 38);
+    c.fillStyle = 'rgba(255,255,255,0.92)'; c.textBaseline = 'middle';
+    c.save(); c.strokeStyle = 'rgba(255,255,255,0.92)'; c.lineWidth = 3.2; c.beginPath(); c.arc(34, 19, 9, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.arc(34, 19, 3, 0, Math.PI * 2); c.fill(); c.restore();
+    c.font = '700 21px -apple-system, "SF Pro Text", "Segoe UI", sans-serif'; c.fillText('CleanCode', 62, 20);
+    c.font = '500 21px -apple-system, "SF Pro Text", "Segoe UI", sans-serif';
+    let x = 186; for (const m of ['Arquivo', 'Editar', 'Visualizar', 'Janela', 'Ajuda']) { c.fillText(m, x, 20); x += c.measureText(m).width + 30; }
+    // ícones à direita: bateria, Wi-Fi, busca, controles e relógio
+    const now = new Date(); const dias = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+    const clock = `${dias[now.getDay()]} ${now.getDate()} ${now.toLocaleString('pt-BR', { month: 'short' }).replace('.', '')}  ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    c.textAlign = 'right'; c.fillText(clock, W - 24, 20); c.textAlign = 'left';
+    let rx = W - 24 - c.measureText(clock).width - 36;
+    c.strokeStyle = 'rgba(255,255,255,0.9)'; c.lineWidth = 2.4;
+    c.strokeRect(rx - 6, 12, 22, 14); c.fillRect(rx - 3, 15, 13, 8); c.fillRect(rx + 17, 16, 2.5, 6); rx -= 44; // controles
+    c.beginPath(); c.arc(rx + 6, 18, 8, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.moveTo(rx + 12, 24); c.lineTo(rx + 17, 29); c.stroke(); rx -= 44; // busca
+    for (const r of [13, 8.5, 4]) { c.beginPath(); c.arc(rx + 8, 28, r, Math.PI * 1.22, Math.PI * 1.78); c.stroke(); } rx -= 50; // Wi-Fi
+    c.strokeRect(rx, 12, 32, 15); c.fillRect(rx + 33, 16, 3, 7); c.fillStyle = 'rgba(255,255,255,0.9)'; c.fillRect(rx + 3, 15, 22, 9); // bateria
+
+    // Dock: barra de vidro com ícones genéricos
+    const icons: [string, string, (x: number, y: number, s: number) => void][] = [
+      ['#4b9dff', '#1f6fe0', (x, y, s) => { c.fillStyle = '#fff'; c.fillRect(x + s * 0.22, y + s * 0.3, s * 0.56, s * 0.42); c.fillStyle = '#9cc8ff'; c.fillRect(x + s * 0.22, y + s * 0.3, s * 0.24, s * 0.08); }], // pasta
+      ['#35c3ff', '#0b83d9', (x, y, s) => { c.strokeStyle = '#fff'; c.lineWidth = s * 0.06; c.beginPath(); c.arc(x + s / 2, y + s / 2, s * 0.28, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.ellipse(x + s / 2, y + s / 2, s * 0.12, s * 0.28, 0, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.moveTo(x + s * 0.22, y + s / 2); c.lineTo(x + s * 0.78, y + s / 2); c.stroke(); }], // navegador
+      ['#5fd06a', '#1e9c3a', (x, y, s) => { c.fillStyle = '#fff'; c.beginPath(); c.ellipse(x + s / 2, y + s * 0.47, s * 0.28, s * 0.22, 0, 0, Math.PI * 2); c.fill(); c.beginPath(); c.moveTo(x + s * 0.33, y + s * 0.62); c.lineTo(x + s * 0.28, y + s * 0.76); c.lineTo(x + s * 0.46, y + s * 0.66); c.fill(); }], // mensagens
+      ['#5aa0ff', '#2b5fe6', (x, y, s) => { c.fillStyle = '#fff'; c.fillRect(x + s * 0.2, y + s * 0.3, s * 0.6, s * 0.4); c.strokeStyle = '#2b5fe6'; c.lineWidth = s * 0.05; c.beginPath(); c.moveTo(x + s * 0.2, y + s * 0.3); c.lineTo(x + s / 2, y + s * 0.52); c.lineTo(x + s * 0.8, y + s * 0.3); c.stroke(); }], // e-mail
+      ['#ffffff', '#e9e9ee', (x, y, s) => { c.fillStyle = '#ff3b30'; c.fillRect(x, y + s * 0.0, s, s * 0.26); c.fillStyle = '#222'; c.font = `700 ${s * 0.46}px -apple-system, sans-serif`; c.textAlign = 'center'; c.fillText(String(new Date().getDate()), x + s / 2, y + s * 0.64); c.textAlign = 'left'; }], // calendário
+      ['#ff9f43', '#f36b1c', (x, y, s) => { const cols = ['#ffd166', '#ef476f', '#06d6a0', '#118ab2']; cols.forEach((col, i) => { c.fillStyle = col; c.globalAlpha = 0.9; c.beginPath(); c.arc(x + s / 2 + Math.cos(i * Math.PI / 2) * s * 0.13, y + s / 2 + Math.sin(i * Math.PI / 2) * s * 0.13, s * 0.17, 0, Math.PI * 2); c.fill(); }); c.globalAlpha = 1; }], // fotos
+      ['#fc5c7d', '#e1306c', (x, y, s) => { c.fillStyle = '#fff'; c.beginPath(); c.arc(x + s * 0.42, y + s * 0.66, s * 0.1, 0, Math.PI * 2); c.fill(); c.fillRect(x + s * 0.5, y + s * 0.26, s * 0.05, s * 0.42); c.fillRect(x + s * 0.5, y + s * 0.26, s * 0.2, s * 0.06); }], // música
+      ['#2c2c30', '#111114', (x, y, s) => { c.fillStyle = '#5ef08a'; c.font = `700 ${s * 0.32}px Menlo, monospace`; c.fillText('>_', x + s * 0.2, y + s * 0.55); }], // terminal
+      ['#9aa0a8', '#5f656d', (x, y, s) => { c.strokeStyle = '#fff'; c.lineWidth = s * 0.07; c.beginPath(); c.arc(x + s / 2, y + s / 2, s * 0.16, 0, Math.PI * 2); c.stroke(); for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; c.beginPath(); c.moveTo(x + s / 2 + Math.cos(a) * s * 0.22, y + s / 2 + Math.sin(a) * s * 0.22); c.lineTo(x + s / 2 + Math.cos(a) * s * 0.3, y + s / 2 + Math.sin(a) * s * 0.3); c.stroke(); } }], // ajustes
+      [accent, '#0b3b2a', (x, y, s) => { c.strokeStyle = '#fff'; c.lineWidth = s * 0.08; c.beginPath(); c.arc(x + s / 2, y + s / 2, s * 0.24, 0.4, Math.PI * 2 - 0.4); c.stroke(); c.fillStyle = '#fff'; c.beginPath(); c.arc(x + s / 2, y + s / 2, s * 0.08, 0, Math.PI * 2); c.fill(); }], // CleanCode
+    ];
+    const S = 66, gap = 14, dw = icons.length * (S + gap) + gap, dx = (W - dw) / 2, dy = H - S - 34;
+    c.fillStyle = 'rgba(60,60,68,0.42)'; c.strokeStyle = 'rgba(255,255,255,0.14)'; c.lineWidth = 1.5;
+    c.beginPath(); c.roundRect(dx, dy - 12, dw, S + 24, 26); c.fill(); c.stroke();
+    icons.forEach(([a, b, glyph], k) => {
+      const x = dx + gap + k * (S + gap), y = dy;
+      const g = c.createLinearGradient(x, y, x, y + S); g.addColorStop(0, a); g.addColorStop(1, b);
+      c.save(); c.beginPath(); c.roundRect(x, y, S, S, S * 0.23); c.clip(); c.fillStyle = g; c.fillRect(x, y, S, S); glyph(x, y, S); c.restore();
+      if (k === icons.length - 1) { c.fillStyle = 'rgba(255,255,255,0.8)'; c.beginPath(); c.arc(x + S / 2, y + S + 8, 2.6, 0, Math.PI * 2); c.fill(); }
+    });
   });
 }
 function winScreen(accent: string) {
@@ -434,10 +529,17 @@ export function laptopModel(opts: { mac?: boolean } = {}): Model {
   }
   // tampa: dobradiça na traseira, aberta e fixa (~110°)
   const lid = new THREE.Group(); lid.position.set(0, T, -D / 2 + 0.004); lid.rotation.x = -0.34; g.add(lid);
+  // marca neutra em baixo relevo nas costas da tampa (sem logo de fabricante)
+  if (mac) {
+    const markMat = new THREE.MeshStandardMaterial({ color: 0x0d0e10, metalness: 0.5, roughness: 0.25 });
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.0045, 12, 48, Math.PI * 2 - 0.8), markMat); ring.rotation.set(0, Math.PI, 0.4); ring.position.set(0, D * 0.5, -(mac ? 0.0075 : 0.009) - 0.0004); lid.add(ring);
+    const dotM = cyl(0.008, 0.008, 0.001, markMat, 24); dotM.rotation.x = Math.PI / 2; dotM.position.set(0, D * 0.5, -(mac ? 0.0075 : 0.009) - 0.0004); lid.add(dotM);
+  }
   const LT = mac ? 0.0075 : 0.009;
   const lidBody = slab(W, D * 0.96, LT - 0.003, 0.026, body, 0.0015); lidBody.position.set(0, D * 0.48, -LT / 2); lid.add(lidBody);
   const glass = slab(W * 0.992, D * 0.952, 0.0012, 0.022, new THREE.MeshPhysicalMaterial({ color: 0x030304, roughness: 0.08, clearcoat: 1 }), 0); glass.position.set(0, D * 0.48, 0.0007); lid.add(glass);
   const screenMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: new THREE.Color(0xffffff), emissiveIntensity: 1.0, roughness: 0.1 });
+  screenMat.userData.matte = true; // a tela não entra na atenuação de brilho (precisa ser legível)
   const sw = mac ? W * 0.965 : W * 0.93, sh = mac ? D * 0.9 : D * 0.84;
   const scr = new THREE.Mesh(new THREE.PlaneGeometry(sw, sh), screenMat); scr.position.set(0, mac ? D * 0.475 : D * 0.49, 0.0016); lid.add(scr);
   if (mac) { const notch = slab(0.064, 0.014, 0.0005, 0.006, mat.dark(0x000000, 0.5), 0); notch.position.set(0, D * 0.475 + sh / 2 - 0.006, 0.0019); lid.add(notch); }
@@ -446,11 +548,27 @@ export function laptopModel(opts: { mac?: boolean } = {}): Model {
   const hinge = cyl(T * 0.42, T * 0.42, W * 0.82, body, 32); hinge.rotation.z = Math.PI / 2; hinge.position.set(0, T * 0.9, -D / 2 + 0.006); g.add(hinge);
   let lastAccent = '';
   return {
-    group: g, focus: { distance: 1.3, target: [0, 0.14, 0.02], height: 0.36 }, orbit: { auto: false, range: 0.9, start: -0.45 },
+    group: g, focus: { distance: 1.45, target: [0, 0.12, 0.02], height: 0.36 }, orbit: { auto: false, start: -0.45, keepWhole: true },
+    // zooms grandes: pontos da tampa acompanham a abertura (função = posição no mundo na hora do zoom)
+    pois: [
+      { at: () => lid.localToWorld(new THREE.Vector3(0, mac ? D * 0.475 : D * 0.49, 0.002)), d: 0.42, az: 0, el: 0.16 },               // tela inteira, de frente
+      { at: () => lid.localToWorld(new THREE.Vector3(-sw * 0.3, (mac ? D * 0.475 : D * 0.49) + sh / 2 - 0.012, 0.002)), d: 0.16, az: -0.18, el: 0.14 }, // barra de menu
+      { at: () => lid.localToWorld(new THREE.Vector3(0, (mac ? D * 0.475 : D * 0.49) - sh / 2 + 0.03, 0.002)), d: 0.2, az: 0.12, el: 0.1 },            // Dock / barra de tarefas
+      { at: () => lid.localToWorld(new THREE.Vector3(0, (mac ? D * 0.475 : D * 0.49) + sh / 2 - 0.004, 0.002)), d: 0.11, az: 0, el: 0.12 },           // notch e câmera
+      { at: [0, T, -D * 0.25], d: 0.3, az: 0.15, el: 0.78 },        // teclado de cima
+      { at: [W * 0.18, T, -D * 0.3], d: 0.14, az: 0.45, el: 0.5 },   // teclas bem de perto
+      { at: [-W * 0.2, T, -D * 0.22], d: 0.15, az: -0.5, el: 0.42 }, // teclas, lado esquerdo
+      { at: [0, T, D * 0.27], d: 0.24, az: -0.2, el: 0.62 },         // trackpad
+      { at: [-W / 2, T * 0.5, -D * 0.18], d: 0.17, az: -1.42, el: 0.12 }, // portas da esquerda
+      { at: [W / 2, T * 0.5, -D * 0.15], d: 0.17, az: 1.42, el: 0.12 },   // portas da direita
+    ],
     update(live, t) {
       const hex = accentHex(live);
       if (hex !== lastAccent) { lastAccent = hex; screenMat.emissiveMap?.dispose(); screenMat.emissiveMap = mac ? macScreen(hex) : winScreen(hex); screenMat.needsUpdate = true; }
-      screenMat.emissiveIntensity = 0.95 + Math.sin(t * 0.8) * 0.05;
+      screenMat.emissiveIntensity = 0.82;
+      // tampa: abre e fecha devagar entre ~110° e ~62°, sem fechar (ciclo de ~16 s, parando suave nas pontas)
+      const k = (1 - Math.cos(t * (Math.PI * 2 / 16))) / 2;
+      lid.rotation.x = -0.34 + k * 0.82;
     },
   };
 }

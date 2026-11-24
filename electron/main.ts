@@ -1,4 +1,8 @@
-import { app, BrowserWindow, ipcMain, dialog, shell, clipboard, nativeTheme, Tray, Menu, screen } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, shell, clipboard, nativeTheme, nativeImage, Tray, Menu, screen } from 'electron';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+import crypto from 'crypto';
+const execFileP = promisify(execFile);
 import { Monitor, MonitorEvent } from './monitor';
 import { checkForUpdate, downloadUpdate, UpdateInfo, FEED_FILE } from './updater';
 import * as Browsers from './browsers';
@@ -11,11 +15,15 @@ import { system, drives, isAdmin, isMac } from './platform';
 import { setupFdaAssistant } from './fdaAssistant';
 import * as AppData from './appdata';
 import type { AppEntry } from './platform';
+import type { DossierQuery, GameInfo } from './platform/types';
 import { toCSV, toXLSX, toHTML, writeText } from './exporter';
 import { snapshot as metricsSnapshot, speedTest, details as metricsDetails, eject as ejectDrive , hardwareInfo, hardwareLive } from './metrics';
 import * as Cleanup from './cleanup';
 import * as Protection from './protection';
 import * as Clutter from './clutter';
+import { appDossier, gameDossier } from './dossier';
+import { onlineDossier } from './dossierOnline';
+import { storageMap } from './storageMap';
 
 declare const __UPDATE_SOURCE__: string; // definidas no build (scripts/build-electron.mjs)
 declare const __FEED_ID__: string;
@@ -369,6 +377,8 @@ ipcMain.handle('protection:quickScan', async () => {
   return r;
 });
 ipcMain.handle('app:openExternal', (_e, url: string) => { if (/^(x-apple\.systempreferences:|windowsdefender:|ms-settings:)/.test(url)) shell.openExternal(url); return true; });
+// links do dossiê (site, Wikipedia, loja): só http(s)
+ipcMain.handle('app:openLink', (_e, url: string) => { if (/^https?:\/\/[^\s]+$/i.test(url)) shell.openExternal(url); return true; });
 ipcMain.handle('metrics:speedTest', (e) => speedTest((p) => { if (!e.sender.isDestroyed()) e.sender.send('metrics:speedProgress', p); }));
 ipcMain.handle('panel:ready', () => { clearTimeout(panelRevealTimer); if (panelWin && !panelWin.isDestroyed() && panelWin.isVisible()) panelWin.setOpacity(1); return true; });
 ipcMain.handle('panel:resize', (_e, _h: number, w?: number) => {
@@ -448,6 +458,7 @@ function showNotification(e: MonitorEvent) {
       reveal();
       return;
     }
+    if (url.endsWith('#open') && e.app) { openInstalledDossier(e.app); win.close(); return; }
     if (url.endsWith('#open')) { showMain(); if (e.page && mainWin) { const w = mainWin; setTimeout(() => { if (!w.isDestroyed()) w.webContents.send('navigate', e.page); }, 300); } }
     if (url.endsWith('#open') || url.endsWith('#close')) win.close();
   });
@@ -456,6 +467,27 @@ function showNotification(e: MonitorEvent) {
     const next = notifyQueue.shift();
     if (next) setTimeout(() => showNotification(next), 400);
   });
+}
+/** Clique na notificação de app instalado: relê a lista de programas e abre o dossiê dele na janela principal. */
+async function openInstalledDossier(ref: { key: string; name: string }) {
+  showMain();
+  // macOS: o .app basta para o dossiê; abre na hora e atualiza a lista de programas em segundo plano
+  if (process.platform === 'darwin' && ref.key.endsWith('.app')) {
+    const entry = { id: 'app:' + ref.key, source: 'mac', name: ref.name, location: ref.key, icon: ref.key, canUninstall: !ref.key.startsWith('/System/'), installDate: Date.now() };
+    const send = () => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('open-dossier', entry); };
+    if (mainWin?.webContents.isLoading()) mainWin.webContents.once('did-finish-load', () => setTimeout(send, 600)); else setTimeout(send, 200);
+    system.listApps().then((l) => { appsCache = l; }).catch(() => {});
+    return;
+  }
+  try { appsCache = await system.listApps(); } catch { /* usa a lista anterior */ }
+  const last = (ref.key.split(/[\\/]/).pop() || '').toLowerCase();
+  const a = appsCache?.find((x) => x.id === 'app:' + ref.key || x.location === ref.key
+    || (!!last && (x.regPath?.toLowerCase().endsWith('\\' + last) || x.packageFullName?.toLowerCase() === last)))
+    || appsCache?.find((x) => x.name.toLowerCase() === ref.name.toLowerCase());
+  const entry = a ? (({ exes, ...rest }) => rest)(a) : { id: 'app:' + ref.key, source: process.platform === 'darwin' ? 'mac' : 'win32', name: ref.name, location: ref.key.startsWith('/') ? ref.key : undefined, icon: ref.key.startsWith('/') ? ref.key : undefined, canUninstall: false };
+  const send = () => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('open-dossier', entry); };
+  // janela recém-criada: espera o app carregar
+  if (mainWin?.webContents.isLoading()) mainWin.webContents.once('did-finish-load', () => setTimeout(send, 600)); else setTimeout(send, 300);
 }
 // ---------- atualizações ----------
 type UpdStatus = 'idle' | 'checking' | 'available' | 'none' | 'downloading' | 'ready' | 'installing' | 'error';
@@ -649,6 +681,17 @@ function createWindow(initialPath?: string | null) {
   else win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   if (initialPath) win.webContents.once('did-finish-load', () => win.webContents.send('open-path', initialPath));
   win.webContents.setWindowOpenHandler(({ url }) => { if (/^https?:/.test(url)) shell.openExternal(url); return { action: 'deny' }; });
+  // voltar/avançar entre telas: botões laterais do mouse e teclas de navegação (Windows) e gesto de deslizar (macOS)
+  win.on('app-command', (_e, cmd) => {
+    if (cmd === 'browser-backward') win.webContents.send('nav', 'back');
+    else if (cmd === 'browser-forward') win.webContents.send('nav', 'forward');
+  });
+  // macOS: drivers de mouse (Logitech e outros) mandam os botões laterais como gesto de deslizar. No AppKit,
+  // "left" (deltaX positivo) é voltar, como virar a página para trás no Safari
+  win.on('swipe', (_e, dir) => {
+    if (dir === 'left') win.webContents.send('nav', 'back');
+    else if (dir === 'right') win.webContents.send('nav', 'forward');
+  });
   return win;
 }
 
@@ -887,13 +930,47 @@ const iconCache = new Map<string, string>();
 ipcMain.handle('apps:icon', async (_e, p: string) => {
   if (!p) return null;
   if (iconCache.has(p)) return iconCache.get(p);
-  try {
-    const img = await app.getFileIcon(p, { size: 'normal' });
-    const url = img.isEmpty() ? '' : img.toDataURL();
-    iconCache.set(p, url);
-    return url;
-  } catch { iconCache.set(p, ''); return ''; }
+  // cache em disco por caminho + data de modificação: na próxima abertura os ícones aparecem na hora
+  let mt = 0; try { mt = fs.statSync(p).mtimeMs; } catch { /* */ }
+  const dir = path.join(app.getPath('userData'), 'icon-cache');
+  const file = path.join(dir, crypto.createHash('sha1').update(p + '|' + mt).digest('hex') + '.txt');
+  try { const u = fs.readFileSync(file, 'utf8'); iconCache.set(p, u); return u; } catch { /* ainda não */ }
+  const url = await loadIcon(p).catch(() => '');
+  iconCache.set(p, url);
+  if (url) { try { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(file, url); } catch { /* */ } }
+  return url;
 });
+/** Ícone do app. macOS: miniatura do Quick Look do .app (o getFileIcon devolve o ícone genérico para pacotes),
+ *  senão o .icns do Info.plist. Windows: imagem (.png/.ico do pacote MSIX ou DisplayIcon) ou ícone do .exe. */
+async function loadIcon(p: string): Promise<string> {
+  const ok = (img: Electron.NativeImage | null | undefined) => (img && !img.isEmpty() ? img.resize({ width: 128, height: 128, quality: 'best' }).toDataURL() : '');
+  if (process.platform === 'darwin' && /\.app\/?$/i.test(p)) {
+    try { const u = ok(await nativeImage.createThumbnailFromPath(p, { width: 256, height: 256 })); if (u) return u; } catch { /* sem Quick Look */ }
+    const png = await macIcnsPng(p);
+    if (png) return png;
+  }
+  if (/\.(png|jpe?g|ico|bmp)$/i.test(p)) { const u = ok(nativeImage.createFromPath(p)); if (u) return u; }
+  const img = await app.getFileIcon(p, { size: process.platform === 'win32' ? 'large' : 'normal' });
+  return img.isEmpty() ? '' : img.toDataURL();
+}
+/** .icns do app convertido em PNG pelo sips (o nativeImage não lê .icns). */
+async function macIcnsPng(appPath: string): Promise<string> {
+  const res = path.join(appPath, 'Contents', 'Resources');
+  let file = '';
+  try {
+    const info = JSON.parse((await execFileP('/usr/bin/plutil', ['-convert', 'json', '-o', '-', path.join(appPath, 'Contents', 'Info.plist')], { encoding: 'utf8', timeout: 4000 })).stdout);
+    const name = String(info.CFBundleIconFile || info.CFBundleIconName || '');
+    if (name) for (const c of [name, name + '.icns']) if (fs.existsSync(path.join(res, c)) && c.endsWith('.icns')) { file = path.join(res, c); break; }
+  } catch { /* */ }
+  if (!file) { try { const f = fs.readdirSync(res).find((n) => n.endsWith('.icns')); if (f) file = path.join(res, f); } catch { /* */ } }
+  if (!file) return '';
+  const out = path.join(app.getPath('temp'), `cc-icon-${process.pid}-${Math.random().toString(36).slice(2)}.png`);
+  try {
+    await execFileP('/usr/bin/sips', ['-s', 'format', 'png', '-Z', '128', file, '--out', out], { timeout: 8000 });
+    const img = nativeImage.createFromPath(out);
+    return img.isEmpty() ? '' : img.toDataURL();
+  } catch { return ''; } finally { try { fs.unlinkSync(out); } catch { /* */ } }
+}
 ipcMain.handle('apps:uninstall', async (e, ids: string[], silent: boolean) => {
   const results: any[] = [];
   for (const id of ids) {
@@ -914,6 +991,47 @@ ipcMain.handle('apps:leftovers', async (_e, ids: string[]) => {
   return out;
 });
 ipcMain.handle('apps:openLocation', (_e, p: string) => shell.openPath(p));
+// dossiê: o app vem da lista já lida (o renderer só manda o id), o jogo pela própria descrição
+// guardado por alguns minutos: voltar a um dossiê (ou abrir de novo) é instantâneo
+const dossierCache = new Map<string, { at: number; p: Promise<any> }>();
+ipcMain.handle('dossier:local', async (_e, t: { kind: 'app'; app: AppEntry } | { kind: 'game'; game: GameInfo }, refresh?: boolean) => {
+  const key = t.kind === 'game' ? 'g:' + t.game.id : 'a:' + t.app.id;
+  const hit = dossierCache.get(key);
+  if (hit && !refresh && Date.now() - hit.at < 5 * 60000) return hit.p;
+  const p = t.kind === 'game' ? gameDossier(t.game, appsCache) : appDossier(appsCache?.find((x) => x.id === t.app.id) || t.app);
+  dossierCache.set(key, { at: Date.now(), p });
+  p.catch(() => dossierCache.delete(key));
+  return p;
+});
+// mapa do armazenamento da Visão geral (categorias medidas num worker; progresso por evento)
+ipcMain.handle('storage:map', (e, refresh?: boolean) => {
+  const sender = e.sender;
+  return storageMap((m) => { if (!sender.isDestroyed()) sender.send('storage:progress', m); }, !!refresh);
+});
+// Gatekeeper do macOS (lento): o dossiê pede depois de aparecer
+const gkCache = new Map<string, Promise<any>>();
+ipcMain.handle('dossier:gatekeeper', (_e, p: string) => {
+  if (process.platform !== 'darwin' || !/\.app\/?$/.test(p || '')) return null;
+  if (!gkCache.has(p)) gkCache.set(p, require('./platform/darwin/dossier').gatekeeper(p).catch(() => null));
+  return gkCache.get(p);
+});
+// tamanho das pastas de dados do dossiê, num worker (pastas como a do Chrome têm dezenas de milhares de arquivos)
+const dirSizeCache = new Map<string, { at: number; size: number }>();
+ipcMain.handle('dossier:sizes', (_e, paths: string[]) => new Promise<Record<string, number>>((resolve) => {
+  const out: Record<string, number> = {};
+  const dirs: { id: string; path: string }[] = [];
+  for (const p of paths) {
+    const c = dirSizeCache.get(p);
+    if (c && Date.now() - c.at < 5 * 60000) { out[p] = c.size; continue; }
+    try { const st = fs.lstatSync(p); if (st.isDirectory()) dirs.push({ id: p, path: p }); else out[p] = st.size; } catch { out[p] = 0; }
+  }
+  if (!dirs.length) return resolve(out);
+  const w = new Worker(path.join(__dirname, 'sizeWorker.js'), { workerData: { items: dirs } });
+  const finish = () => { w.terminate(); resolve(out); };
+  w.on('message', (m: any) => { if (m.done) return finish(); out[m.id] = m.size; dirSizeCache.set(m.id, { at: Date.now(), size: m.size }); });
+  w.on('error', finish);
+}));
+ipcMain.handle('dossier:online', (_e, q: DossierQuery, refresh?: boolean) => onlineDossier(q, !!refresh));
 ipcMain.handle('apps:removeEntry', async (_e, id: string) => {
   const a = appsCache?.find((x) => x.id === id);
   if (!a) return { ok: false, message: 'Não encontrado' };

@@ -21,5 +21,5 @@ export default function Viewer3D({ build, buildKey, live, height = 420, classNam
     const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
     viewer.current?.setLive({ ...(live || {}), ...(accent ? { accent: new THREE.Color(accent) } : {}) });
   });
-  return <div ref={host} className={className} style={{ height, width: '100%', position: 'relative', overflow: 'hidden', minWidth: 0, cursor: 'grab', touchAction: 'none' }} />;
+  return <div ref={host} className={className} style={{ height, width: '100%', position: 'relative', minWidth: 0 }} />;
 }

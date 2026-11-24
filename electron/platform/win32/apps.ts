@@ -99,6 +99,23 @@ function listExes(dir: string, depth = 2, out: string[] = []): string[] {
   }
   return out;
 }
+/** Logotipo de um pacote MSIX/Store (Square44x44Logo ou Logo do AppxManifest, na escala que existir). */
+function appxLogo(dir?: string): string | undefined {
+  if (!dir) return;
+  let x = '';
+  try { x = fs.readFileSync(path.join(dir, 'AppxManifest.xml'), 'utf8'); } catch { return; }
+  const rel = /Square44x44Logo="([^"]+)"/.exec(x)?.[1] || /Square150x150Logo="([^"]+)"/.exec(x)?.[1] || /<Logo>([^<]+)<\/Logo>/.exec(x)?.[1];
+  if (!rel) return;
+  const full = path.join(dir, rel);
+  if (fs.existsSync(full)) return full;
+  const d = path.dirname(full), ext = path.extname(full).toLowerCase(), base = path.basename(full, path.extname(full)).toLowerCase();
+  let files: string[] = [];
+  try { files = fs.readdirSync(d).filter((n) => n.toLowerCase().startsWith(base + '.') && n.toLowerCase().endsWith(ext)); } catch { return; }
+  const pick = files.find((n) => /targetsize-(48|64)(?!_altform-lightunplated)/i.test(n) && !/contrast/i.test(n))
+    || files.find((n) => /scale-(200|150|100)/i.test(n) && !/contrast/i.test(n)) || files.find((n) => !/contrast/i.test(n));
+  return pick ? path.join(d, pick) : undefined;
+}
+
 function parseInstallDate(s?: string): number | undefined {
   if (!s) return;
   const m = /^(\d{4})(\d{2})(\d{2})$/.exec(String(s).trim());
@@ -196,6 +213,7 @@ export async function listApps(): Promise<AppEntry[]> {
       id: 'appx:' + p.full, source: 'store', name: friendly || prettifyPkg(p.name), version: p.version, background: !friendly,
       publisher: String(p.publisher || '').replace(/^CN=([^,]+).*$/, '$1'), installDate: p.created || undefined,
       location: p.location, packageFullName: p.full, family: p.family, canUninstall: !p.nonRemovable,
+      icon: appxLogo(p.location),
     };
     let best = 0, count = 0;
     for (const u of ua) if (u.lower.startsWith(fam + '!')) { count += u.count; if (u.time > best) best = u.time; }

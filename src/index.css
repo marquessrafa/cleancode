@@ -234,3 +234,97 @@ body.panel-body, body.panel-body #root { background: transparent !important; hei
 @keyframes f3d-particle { 0%, 100% { opacity: .15; } 50% { opacity: .9; } }
 .f3d-particle { animation: f3d-particle 3.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .f3d-ring, .f3d-float, .f3d-sway, .f3d-particle { animation: none; } }
+
+/* ---------- brilho radial na cor de destaque, do topo para baixo (atrás das abas) ---------- */
+:root { --glow: color-mix(in srgb, var(--accent) 16%, transparent); --glow-2: color-mix(in srgb, var(--accent) 7%, transparent); }
+.dark { --glow: color-mix(in srgb, var(--accent) 15%, transparent); --glow-2: color-mix(in srgb, var(--accent) 6%, transparent); }
+.app-glow {
+  position: absolute; inset: -140px 0 auto 0; height: 560px; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(ellipse 46% 60% at var(--glow-x, 50%) 18%, var(--glow), transparent 72%),
+    radial-gradient(ellipse 80% 70% at var(--glow-x, 50%) 0%, var(--glow-2), transparent 78%);
+  filter: blur(36px);
+  transition: background .5s ease;
+}
+
+/* ---------- menu lateral: painel flutuante, solto das bordas ---------- */
+.side-panel {
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line-strong) 70%, transparent);
+  border-radius: 18px;
+  backdrop-filter: blur(22px) saturate(1.5);
+  -webkit-backdrop-filter: blur(22px) saturate(1.5);
+  box-shadow: 0 1px 0 0 color-mix(in srgb, #fff 6%, transparent) inset, 0 18px 40px -18px rgb(0 0 0 / .35), 0 4px 14px -6px rgb(0 0 0 / .18);
+}
+.dark .side-panel {
+  background: linear-gradient(180deg, color-mix(in srgb, #1d1d1f 82%, transparent), color-mix(in srgb, #151515 86%, transparent));
+  box-shadow: 0 1px 0 0 rgb(255 255 255 / .06) inset, 0 24px 48px -20px rgb(0 0 0 / .7), 0 6px 18px -8px rgb(0 0 0 / .5);
+}
+/* reflexo sutil no topo do vidro */
+.side-panel::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(120% 50% at 50% -10%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%);
+}
+.side-item { position: relative; transition: background-color .18s ease, color .18s ease, transform .18s cubic-bezier(.2,.8,.2,1); }
+.side-item:hover { transform: translateX(2px); }
+.side-item:active { transform: translateX(1px) scale(.985); }
+.side-item.on {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 20%, transparent), color-mix(in srgb, var(--accent) 7%, transparent));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent) inset, 0 6px 18px -10px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.side-item.on::before {
+  content: ''; position: absolute; left: 0; top: 22%; bottom: 22%; width: 3px; border-radius: 0 3px 3px 0;
+  background: var(--accent); box-shadow: 0 0 10px var(--accent);
+  animation: side-bar-in .28s cubic-bezier(.2,.8,.2,1);
+}
+.side-item.on .side-icon { color: var(--accent); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 55%, transparent)); }
+@keyframes side-bar-in { from { transform: scaleY(.2); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
+/* rolagem do menu discreta: só aparece ao passar o mouse */
+.side-panel nav { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+.side-panel nav:hover { scrollbar-color: color-mix(in srgb, var(--fg) 18%, transparent) transparent; }
+.side-panel nav::-webkit-scrollbar { width: 6px; }
+.side-panel nav::-webkit-scrollbar-thumb { background: transparent; border-radius: 6px; }
+.side-panel nav:hover::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--fg) 18%, transparent); }
+
+/* ---------- reflexo da luz do topo na borda superior dos painéis ----------
+   O gradiente fica preso à janela (background fixo): só a borda que está "embaixo" do brilho radial do topo
+   acende, mais forte no centro e perto do topo, sumindo para baixo e para os lados. */
+:root { --glint: color-mix(in srgb, var(--accent) 75%, transparent); --glint-2: color-mix(in srgb, var(--accent) 22%, transparent); }
+.dark { --glint: color-mix(in srgb, var(--accent) 55%, #ffffff); --glint-2: color-mix(in srgb, var(--accent) 30%, transparent); }
+.glint { position: relative; }
+.glint::after {
+  content: ''; position: absolute; left: 12px; right: 12px; top: -1px; height: 1px; pointer-events: none; z-index: 1;
+  /* --gx/--gy: posição do centro da luz (centro da janela, acima do topo) em relação ao elemento, atualizada
+     em JS (useGlint): o "background-attachment: fixed" não funciona aqui no Electron */
+  background: radial-gradient(ellipse 52vw 60vh at calc(var(--gx, 50vw) - 12px) calc(var(--gy, 0px) - 4vh), var(--glint) 0%, var(--glint-2) 50%, transparent 82%);
+  /* cada bloco tem a própria linha, esmaecendo nas pontas (blocos lado a lado não ficam com a luz cortada) */
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent);
+}
+
+/* seletor de opções (Tamanho / Alocado / Arquivos…): vidro, deixando o fundo aparecer */
+.seg-glass { background: color-mix(in srgb, var(--surface-2) 40%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.seg-on { background: color-mix(in srgb, var(--fg) 11%, transparent); box-shadow: 0 1px 0 0 color-mix(in srgb, #fff 8%, transparent) inset, 0 1px 2px rgb(0 0 0 / .18); }
+
+.glint-in::after { top: 0; }
+
+/* primeiro bloco da tela (marcado por useGlint): vidro deixando o brilho do fundo aparecer */
+.glass-first {
+  background: color-mix(in srgb, var(--surface) 22%, transparent) !important;
+  -webkit-backdrop-filter: blur(6px) saturate(1.5); backdrop-filter: blur(6px) saturate(1.5);
+  border-color: color-mix(in srgb, var(--line-strong) 75%, transparent) !important;
+}
+:root:not(.dark) .glass-first { background: color-mix(in srgb, var(--surface) 38%, transparent) !important; }
+
+/* fundo do 3D do Monitor de hardware, no tom da cor de destaque; some em fade por baixo do conteúdo (máscara
+   aplicada em hw3d/core). As trilhas animadas do circuito são um canvas dentro dele. */
+.hw-backdrop {
+  background:
+    radial-gradient(45% 48% at 50% 50%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 75%),
+    linear-gradient(180deg, rgba(0, 0, 0, .22), rgba(0, 0, 0, .12));
+}
+:root:not(.dark) .hw-backdrop {
+  background:
+    radial-gradient(45% 48% at 50% 50%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 75%),
+    linear-gradient(180deg, rgba(255, 255, 255, .25), rgba(255, 255, 255, .12));
+}

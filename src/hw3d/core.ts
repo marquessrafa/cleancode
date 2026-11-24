@@ -1,13 +1,9 @@
-// Motor 3D do Monitor de hardware: three.js com materiais PBR, ambiente para reflexos, brilho neon
-// (UnrealBloomPass) e órbita suave com o mouse. A renderização pausa quando o visualizador sai da tela
+// Motor 3D do Monitor de hardware: three.js com materiais PBR foscos, reflexo leve e câmera automática que
+// passeia pelo modelo. A renderização pausa quando o visualizador sai da tela
 // ou a janela fica oculta. Também traz as peças reutilizáveis: caixa chanfrada, ventoinha, faixa de LED
 // RGB, texturas geradas em canvas (trilhas de placa, telas, texto gravado).
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 
 export { THREE };
@@ -26,7 +22,10 @@ export interface Live {
   temps?: Record<string, number>; // temperatura por peça (cpu, gpu, ram, board, disk, psu)
   accent: THREE.Color;
 }
-export interface Model { group: THREE.Group; update?: (live: Live, t: number, dt: number) => void; focus?: { distance: number; target?: [number, number, number]; height?: number }; orbit?: { auto?: boolean; range?: number; start?: number } }
+export interface Model { group: THREE.Group; update?: (live: Live, t: number, dt: number) => void; focus?: { distance: number; target?: [number, number, number]; height?: number }; orbit?: { auto?: boolean; range?: number; start?: number; keepWhole?: boolean; maxEl?: number; span?: number };
+  /** pontos de interesse para os zooms grandes: posição (no espaço do modelo, ou função que devolve a posição no
+   *  mundo, para peças que se mexem), distância da câmera em unidades reais, e direção (az relativo à frente, el) */
+  pois?: { at: [number, number, number] | (() => THREE.Vector3); d: number; az?: number; el?: number }[] }
 
 // ---------- materiais ----------
 export const mat = {
@@ -163,48 +162,178 @@ export function tempColor(c: number) {
 
 // ---------- visualizador ----------
 export interface ViewerHandle { setLive: (l: Partial<Live>) => void; dispose: () => void; setHeat: (on: boolean) => void; renderOnce: (t?: number) => string }
+/** Quanto o canvas passa do espaço reservado, em cada lado: o 3D vaza por trás dos blocos vizinhos e some em fade. */
+export const OVERFLOW = 150;
+
+/** Deixa os materiais foscos: menos metal e reflexo, e brilho bem mais fraco. A atenuação do brilho fica no
+ *  shader, porque os modelos recalculam a intensidade dos LEDs e dos núcleos a cada quadro. */
+const EMISSIVE_DAMP = 0.42, BASIC_DAMP = 0.72, ADDITIVE_DAMP = 0.45;
+function matte(root: THREE.Object3D) {
+  root.traverse((o: any) => {
+    const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+    for (const m of ms) {
+      if (m.userData.matte) continue;
+      m.userData.matte = true;
+      if (m instanceof THREE.MeshBasicMaterial) {
+        const additive = m.blending === THREE.AdditiveBlending;
+        m.onBeforeCompile = (sh) => {
+          sh.fragmentShader = sh.fragmentShader.replace('#include <alphamap_fragment>', `#include <alphamap_fragment>
+            ${additive ? `diffuseColor.a *= ${ADDITIVE_DAMP.toFixed(2)};` : `diffuseColor.rgb *= ${BASIC_DAMP.toFixed(2)};`}`);
+        };
+        m.customProgramCacheKey = () => (additive ? 'matte-add' : 'matte-basic');
+        m.needsUpdate = true;
+        continue;
+      }
+      if (!(m instanceof THREE.MeshStandardMaterial)) continue;
+      m.roughness = Math.max(m.roughness, m.metalness > 0.5 ? 0.55 : 0.68);
+      m.metalness = m.metalness * 0.75;
+      m.envMapIntensity = 0.6;
+      m.onBeforeCompile = (sh) => {
+        sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+          totalEmissiveRadiance *= ${EMISSIVE_DAMP.toFixed(2)};`);
+      };
+      m.customProgramCacheKey = () => 'matte-std';
+      m.needsUpdate = true;
+    }
+  });
+}
+
+/** Circuito animado no fundo do 3D: trilhas que saem de trás do componente (centro) até as bordas, com pulsos
+ *  de energia correndo para fora. As trilhas ficam desenhadas num canvas fixo; só os pulsos são redesenhados. */
+function circuitLayer(parent: HTMLElement) {
+  const cv = document.createElement('canvas');
+  Object.assign(cv.style, { position: 'absolute', inset: '0', width: '100%', height: '100%' });
+  parent.appendChild(cv);
+  const ctx = cv.getContext('2d')!;
+  const still = document.createElement('canvas');
+  const sctx = still.getContext('2d')!;
+  const css = getComputedStyle(document.documentElement);
+  const ac = new THREE.Color(css.getPropertyValue('--accent').trim() || '#3ddc97');
+  const [ar, ag, ab] = [ac.r, ac.g, ac.b].map((v) => Math.round(v * 255));
+  const rgba = (a: number) => `rgba(${ar},${ag},${ab},${a})`;
+  const dark = document.documentElement.classList.contains('dark');
+  type Trace = { pts: [number, number][]; len: number; segs: number[]; pulses: { s: number; v: number; l: number }[] };
+  let traces: Trace[] = [], W = 0, H = 0;
+  const DPR = Math.min(2, window.devicePixelRatio || 1);
+  const build = () => {
+    traces = [];
+    const cx = W / 2, cy = H / 2, G = 18; // trilhas na grade de 18 px, como numa placa
+    const snap = (v: number) => Math.round(v / G) * G;
+    const n = Math.round(Math.min(64, Math.max(28, (W * H) / 26000)));
+    for (let i = 0; i < n; i++) {
+      // nasce embaixo do componente e segue para uma borda, com curvas de 90° e 45°
+      const ang = (i / n) * Math.PI * 2 + Math.random() * 0.3;
+      let x = snap(cx + Math.cos(ang) * W * 0.07 * Math.random()), y = snap(cy + Math.sin(ang) * H * 0.07 * Math.random());
+      const pts: [number, number][] = [[x, y]];
+      let hor = Math.abs(Math.cos(ang)) > Math.abs(Math.sin(ang));
+      const sx = Math.sign(Math.cos(ang)) || 1, sy = Math.sign(Math.sin(ang)) || 1;
+      for (let k = 0; k < 7 && x > 0 && x < W && y > 0 && y < H; k++) {
+        const step = snap(G * (3 + Math.random() * 9));
+        if (Math.random() < 0.28) { x += sx * step * 0.7; y += sy * step * 0.7; } // diagonal
+        else if (hor) x += sx * step; else y += sy * step;
+        pts.push([snap(x), snap(y)]);
+        if (Math.random() < 0.55) hor = !hor;
+      }
+      const segs: number[] = []; let len = 0;
+      for (let k = 1; k < pts.length; k++) { const d = Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]); segs.push(d); len += d; }
+      if (len < G * 4) continue;
+      const pulses = Array.from({ length: Math.random() < 0.5 ? 1 : 2 }, () => ({ s: -Math.random() * len, v: 50 + Math.random() * 90, l: 26 + Math.random() * 40 }));
+      traces.push({ pts, len, segs, pulses });
+    }
+    // trilhas e terminais (fixos)
+    still.width = cv.width; still.height = cv.height;
+    sctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    sctx.clearRect(0, 0, W, H);
+    sctx.lineCap = 'round'; sctx.lineJoin = 'round';
+    sctx.strokeStyle = rgba(dark ? 0.26 : 0.34);
+    sctx.lineWidth = 1.2;
+    for (const t of traces) {
+      sctx.beginPath(); t.pts.forEach(([x, y], k) => (k ? sctx.lineTo(x, y) : sctx.moveTo(x, y))); sctx.stroke();
+      const [ex, ey] = t.pts[t.pts.length - 1];
+      sctx.fillStyle = rgba(dark ? 0.4 : 0.5);
+      sctx.beginPath(); sctx.arc(ex, ey, 2.4, 0, Math.PI * 2); sctx.fill();
+      for (let k = 1; k < t.pts.length - 1; k++) if (k % 2 === 0) { sctx.beginPath(); sctx.arc(t.pts[k][0], t.pts[k][1], 1.4, 0, Math.PI * 2); sctx.fill(); }
+    }
+  };
+  const at = (t: Trace, s: number): [number, number] => {
+    let acc = 0;
+    for (let k = 0; k < t.segs.length; k++) {
+      if (s <= acc + t.segs[k]) { const f = (s - acc) / t.segs[k]; const a = t.pts[k], b = t.pts[k + 1]; return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]; }
+      acc += t.segs[k];
+    }
+    return t.pts[t.pts.length - 1];
+  };
+  return {
+    resize(w: number, h: number) { W = w; H = h; cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR); build(); },
+    draw(dt: number) {
+      if (!W) return;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      ctx.drawImage(still, 0, 0);
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      ctx.lineCap = 'round';
+      for (const t of traces) {
+        for (const p of t.pulses) {
+          p.s += p.v * dt;
+          if (p.s - p.l > t.len) { p.s = -Math.random() * t.len * 0.8; p.v = 50 + Math.random() * 90; }
+          if (p.s <= 0) continue;
+          // pulso: um trecho curto mais claro na ponta, esmaecendo para trás
+          const N = 8;
+          for (let k = 0; k < N; k++) {
+            const s1 = Math.max(0, p.s - (p.l * k) / N), s0 = Math.max(0, p.s - (p.l * (k + 1)) / N);
+            if (s1 <= 0 || s0 >= t.len) continue;
+            const [x0, y0] = at(t, Math.min(t.len, s0)), [x1, y1] = at(t, Math.min(t.len, s1));
+            ctx.strokeStyle = rgba(0.9 - k * 0.1);
+            ctx.lineWidth = 1.8;
+            ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+          }
+          const [hx, hy] = at(t, Math.min(t.len, p.s));
+          ctx.fillStyle = `rgba(${Math.round(ar + (255 - ar) * 0.4)},${Math.round(ag + (255 - ag) * 0.4)},${Math.round(ab + (255 - ab) * 0.4)},0.95)`;
+          ctx.beginPath(); ctx.arc(hx, hy, 1.9, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+    },
+    dispose() { cv.remove(); },
+  };
+}
+
 export function createViewer(host: HTMLElement, build: () => Model, opts: { bloom?: number; autoRotate?: boolean; heat?: boolean } = {}): ViewerHandle {
   const testMode = location.hash.startsWith('#hw3d-test');
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance', preserveDrawingBuffer: testMode });
-  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
-  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+  // telas de densidade 1 (comuns no Windows) serrilham mesmo com MSAA: renderiza em resolução maior
+  renderer.setPixelRatio(Math.min(2, Math.max(window.devicePixelRatio, 1.6)));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.95;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.setClearColor(0x000000, 0);
-  host.appendChild(renderer.domElement);
-  // canvas fora do fluxo do layout: senão ele empurra o tamanho do contêiner (laço de redimensionamento)
-  Object.assign(renderer.domElement.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', display: 'block' });
+  const cv = renderer.domElement;
+  // canvas maior que o espaço do 3D e atrás do conteúdo da página; as bordas somem em fade + desfoque
+  const fadeMask = 'radial-gradient(closest-side, #000 52%, rgba(0,0,0,.55) 74%, transparent 100%)';
+  Object.assign(cv.style, { position: 'absolute', inset: `-${OVERFLOW}px`, width: `calc(100% + ${OVERFLOW * 2}px)`, height: `calc(100% + ${OVERFLOW * 2}px)`, display: 'block', zIndex: '-1', pointerEvents: 'none', webkitMaskImage: fadeMask, maskImage: fadeMask });
+  const blur = document.createElement('div');
+  const ringMask = 'radial-gradient(closest-side, transparent 46%, #000 88%)';
+  Object.assign(blur.style, { position: 'absolute', inset: `-${OVERFLOW}px`, zIndex: '-1', pointerEvents: 'none', backdropFilter: 'blur(22px)', webkitBackdropFilter: 'blur(22px)', webkitMaskImage: ringMask, maskImage: ringMask });
+  // fundo tecnológico por trás do 3D (degradê, brilho na cor de destaque e grade), também em fade por baixo do conteúdo
+  const back = document.createElement('div');
+  back.className = 'hw-backdrop';
+  Object.assign(back.style, { position: 'absolute', inset: `-${OVERFLOW}px`, zIndex: '-1', pointerEvents: 'none', webkitMaskImage: fadeMask, maskImage: fadeMask });
+  const circuit = circuitLayer(back);
+  host.appendChild(back); host.appendChild(cv); host.appendChild(blur);
   if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
 
   const scene = new THREE.Scene();
-  // fundo tecnológico: gradiente com brilho na cor de destaque (o bloom não preserva transparência)
-  const accentCss = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#3ddc97';
-  scene.background = canvasTex(1024, 640, (c) => {
-    const g = c.createLinearGradient(0, 0, 0, 640); g.addColorStop(0, '#07090f'); g.addColorStop(1, '#0b0f17'); c.fillStyle = g; c.fillRect(0, 0, 1024, 640);
-    const r1 = c.createRadialGradient(512, 300, 20, 512, 300, 520); r1.addColorStop(0, accentCss + '30'); r1.addColorStop(1, 'transparent'); c.fillStyle = r1; c.fillRect(0, 0, 1024, 640);
-    const r2 = c.createRadialGradient(860, 120, 10, 860, 120, 380); r2.addColorStop(0, 'rgba(122,60,255,0.22)'); r2.addColorStop(1, 'transparent'); c.fillStyle = r2; c.fillRect(0, 0, 1024, 640);
-    c.fillStyle = 'rgba(255,255,255,0.05)'; for (let y = 0; y < 640; y += 3) c.fillRect(0, y, 1024, 1);
-  });
-  scene.fog = new THREE.Fog(0x080b12, 2.5, 7);
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  (scene as any).environmentIntensity = 0.55; // reflexos suaves (metal escuro continua escuro)
+  (scene as any).environmentIntensity = 0.35; // reflexo bem leve
   const camera = new THREE.PerspectiveCamera(32, 1, 0.01, 50);
 
-  const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(2, 3, 2.5); key.castShadow = true; key.shadow.mapSize.set(1024, 1024); key.shadow.bias = -0.0005; scene.add(key);
-  const rim = new THREE.DirectionalLight(0x8fb7ff, 0.9); rim.position.set(-3, 1.5, -2); scene.add(rim);
-  scene.add(new THREE.AmbientLight(0xffffff, 0.12));
-  const floor = new THREE.Mesh(new THREE.CircleGeometry(3, 64), new THREE.ShadowMaterial({ opacity: 0.28 })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+  const key = new THREE.DirectionalLight(0xffffff, 1.35); key.position.set(2, 3, 2.5); key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0005; key.shadow.radius = 4; scene.add(key);
+  const rim = new THREE.DirectionalLight(0xbfd2ff, 0.5); rim.position.set(-3, 1.5, -2); scene.add(rim);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x20242c, 0.35));
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(3, 64), new THREE.ShadowMaterial({ opacity: 0.22 })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
 
-  const backdrop = new THREE.Group(); scene.add(backdrop);
-  const grid = new THREE.GridHelper(8, 64, new THREE.Color(accentCss), new THREE.Color(accentCss));
-  (grid.material as THREE.Material).transparent = true; (grid.material as THREE.LineBasicMaterial).opacity = 0.16; grid.position.y = 0.0005; backdrop.add(grid);
-  const NP = 420, pos = new Float32Array(NP * 3), speed = new Float32Array(NP);
-  for (let i = 0; i < NP; i++) { pos[i * 3] = (Math.random() - 0.5) * 6; pos[i * 3 + 1] = Math.random() * 2.6; pos[i * 3 + 2] = (Math.random() - 0.5) * 6; speed[i] = 0.02 + Math.random() * 0.06; }
-  const pgeo = new THREE.BufferGeometry(); pgeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const dot = canvasTex(64, 64, (c) => { const g = c.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.4, 'rgba(255,255,255,0.5)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(0, 0, 64, 64); });
-  const pmat = new THREE.PointsMaterial({ size: 0.022, map: dot, color: new THREE.Color(accentCss), transparent: true, opacity: 0.75, depthWrite: false, blending: THREE.AdditiveBlending });
-  const particles = new THREE.Points(pgeo, pmat); backdrop.add(particles);
   const model = build();
+  matte(model.group);
   // centraliza e apoia no chão
   const bb = new THREE.Box3().setFromObject(model.group);
   const center = bb.getCenter(new THREE.Vector3()); const size = bb.getSize(new THREE.Vector3());
@@ -212,33 +341,97 @@ export function createViewer(host: HTMLElement, build: () => Model, opts: { bloo
   floor.position.y = 0;
   scene.add(model.group);
   const radius = Math.max(size.x, size.y, size.z);
-  const dist = model.focus?.distance ?? radius * 2.1;
-  const target = new THREE.Vector3(...(model.focus?.target ?? [0, size.y * 0.45, 0]));
+  const baseDist = model.focus?.distance ?? radius * 2.1;
+  const baseTarget = new THREE.Vector3(...(model.focus?.target ?? [0, size.y * 0.45, 0]));
   const camH = model.focus?.height ?? size.y * 0.65 + radius * 0.35;
 
-  const composer = new EffectComposer(renderer);
-  composer.addPass(new RenderPass(scene, camera));
-  // só o que é emissivo (LEDs, telas) ultrapassa o limiar e brilha
-  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), opts.bloom ?? 0.6, 0.45, 0.96);
-  composer.addPass(bloom);
-  composer.addPass(new OutputPass());
-
   const live: Live = { accent: new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#3ddc97') };
-  const autoRotate = (model.orbit?.auto ?? opts.autoRotate) !== false, range = model.orbit?.range;
-  let az = model.orbit?.start ?? -0.6, el = 0.0, targetAz = az, dragging = false, lastX = 0, lastY = 0, hover = { x: 0, y: 0 };
-  const az0 = az; let spinDir = 1;
-  const onDown = (e: PointerEvent) => { dragging = true; lastX = e.clientX; lastY = e.clientY; host.setPointerCapture(e.pointerId); };
-  const onMove = (e: PointerEvent) => {
-    const r = host.getBoundingClientRect(); hover = { x: (e.clientX - r.left) / r.width - 0.5, y: (e.clientY - r.top) / r.height - 0.5 };
-    if (!dragging) return; targetAz -= (e.clientX - lastX) * 0.008; if (range !== undefined) targetAz = Math.max(az0 - range, Math.min(az0 + range, targetAz)); el = Math.max(-0.35, Math.min(0.5, el + (e.clientY - lastY) * 0.004)); lastX = e.clientX; lastY = e.clientY;
+  void opts;
+
+  // ---------- câmera automática ----------
+  // Dois tempos, em loop: TROCA rápida (~1,2 s) para um novo ângulo, com arranque forte, e ESTABILIZAÇÃO lenta
+  // (3,5–5 s) em que a câmera continua andando devagar (girando, aproximando ou subindo um pouco). A troca é uma
+  // curva Hermite que sai com a velocidade da deriva atual e chega com a velocidade da próxima: nunca para.
+  // keepWhole (notebook): sem planos rentes de perto, para o aparelho não sair do quadro.
+  const keepWhole = !!model.orbit?.keepWhole;
+  const az0 = model.orbit?.start ?? -0.6;
+  const rnd = (a: number, b: number) => a + Math.random() * (b - a);
+  const sign = () => (Math.random() < 0.5 ? -1 : 1);
+  type Pose = [number, number, number, number, number, number]; // az, el, dist, tx, ty, tz
+  // 16 planos em volta da FRENTE do componente (até ±80° para cada lado), com bastante aproximação; a parte de
+  // trás quase não aparece (só um plano raro das costas da tampa no notebook). Evita repetir os últimos 4.
+  const front = az0 + (keepWhole ? 0.45 : 0);
+  type Shot = { name: string; w: number; make: (s: number) => { daz: number; el: number; dist: number; tgt: [number, number, number] } };
+  const S: Shot[] = [
+    { name: 'hero', w: 1.2, make: (s) => ({ daz: s * rnd(0.55, 0.8), el: rnd(0.22, 0.36), dist: rnd(0.95, 1.05), tgt: mid() }) },
+    { name: 'frente', w: 1, make: () => ({ daz: rnd(-0.12, 0.12), el: rnd(0.1, 0.22), dist: rnd(0.9, 1.0), tgt: mid() }) },
+    { name: 'cima', w: 1, make: (s) => ({ daz: s * rnd(0.1, 0.4), el: rnd(0.95, 1.08), dist: rnd(0.95, 1.05), tgt: mid() }) },
+    { name: 'alto 3/4', w: 1, make: (s) => ({ daz: s * rnd(0.7, 1.0), el: rnd(0.6, 0.78), dist: rnd(0.85, 0.95), tgt: mid() }) },
+    { name: 'baixo', w: 0.9, make: (s) => ({ daz: s * rnd(0.3, 0.7), el: rnd(keepWhole ? 0.05 : 0.0, 0.08), dist: rnd(0.85, 0.95), tgt: mid() }) },
+    { name: 'perfil', w: 0.8, make: (s) => ({ daz: s * rnd(1.25, 1.4), el: rnd(0.1, 0.2), dist: rnd(0.9, 1.0), tgt: mid() }) },
+    { name: 'aberto', w: 0.8, make: (s) => ({ daz: s * rnd(0.3, 0.6), el: rnd(0.38, 0.5), dist: rnd(1.25, 1.4), tgt: mid() }) },
+    { name: 'detalhe centro', w: 1.3, make: (s) => ({ daz: s * rnd(0.1, 0.5), el: rnd(0.3, 0.55), dist: rnd(0.38, 0.46), tgt: [rnd(-0.1, 0.1) * size.x, rnd(0.35, 0.65) * size.y, rnd(-0.1, 0.1) * size.z] }) },
+    { name: 'detalhe esquerda', w: 1.1, make: () => ({ daz: -rnd(0.3, 0.8), el: rnd(0.2, 0.45), dist: rnd(0.38, 0.46), tgt: [-rnd(0.18, 0.32) * size.x, rnd(0.25, 0.7) * size.y, rnd(-0.15, 0.2) * size.z] }) },
+    { name: 'detalhe direita', w: 1.1, make: () => ({ daz: rnd(0.3, 0.8), el: rnd(0.2, 0.45), dist: rnd(0.38, 0.46), tgt: [rnd(0.18, 0.32) * size.x, rnd(0.25, 0.7) * size.y, rnd(-0.15, 0.2) * size.z] }) },
+    { name: 'macro de cima', w: 1, make: (s) => ({ daz: s * rnd(0.05, 0.35), el: rnd(0.8, 0.95), dist: rnd(0.34, 0.42), tgt: [rnd(-0.2, 0.2) * size.x, rnd(0.4, 0.8) * size.y, rnd(-0.15, 0.15) * size.z] }) },
+    { name: 'rasante', w: 1, make: (s) => ({ daz: s * rnd(0.7, 1.1), el: rnd(0.05, 0.14), dist: rnd(0.44, 0.52), tgt: [rnd(-0.2, 0.2) * size.x, rnd(0.3, 0.6) * size.y, rnd(0, 0.25) * size.z] }) },
+    { name: 'mergulho', w: 0.9, make: (s) => ({ daz: s * rnd(0.25, 0.55), el: rnd(0.5, 0.65), dist: rnd(0.4, 0.48), tgt: [rnd(-0.15, 0.15) * size.x, rnd(0.35, 0.7) * size.y, rnd(-0.1, 0.15) * size.z] }) },
+    { name: 'frente perto', w: 1, make: () => ({ daz: rnd(-0.15, 0.15), el: rnd(0.18, 0.32), dist: rnd(0.42, 0.5), tgt: [rnd(-0.12, 0.12) * size.x, rnd(0.4, 0.7) * size.y, rnd(0, 0.2) * size.z] }) },
+    { name: 'canto', w: 0.9, make: (s) => ({ daz: s * rnd(0.85, 1.15), el: rnd(0.3, 0.45), dist: rnd(0.46, 0.54), tgt: [s * rnd(0.15, 0.3) * size.x, rnd(0.3, 0.6) * size.y, rnd(0.1, 0.25) * size.z] }) },
+    { name: 'lateral alta', w: 0.8, make: (s) => ({ daz: s * rnd(1.1, 1.35), el: rnd(0.45, 0.62), dist: rnd(0.8, 0.95), tgt: mid() }) },
+  ];
+  // notebook: os zooms vêm dos pontos de interesse (tela, teclas, portas); sem aproximações genéricas que o cortam
+  if (keepWhole) for (let i = S.length - 1; i >= 0; i--) if (/detalhe|macro|rasante|mergulho|perto|canto/.test(S[i].name)) S.splice(i, 1);
+  // zoom grande nos pontos de interesse do modelo: cada um conta como um plano próprio
+  // no notebook os zooms ficam mais afastados e variam bastante (nem todos perto); nos outros, aproximação firme
+  (model.pois || []).forEach((poi, i) => S.push({ name: 'poi' + i, w: keepWhole ? 0.8 : 1.4, make: () => {
+    const w = typeof poi.at === 'function' ? poi.at() : new THREE.Vector3(...poi.at).add(model.group.position);
+    return { daz: (poi.az ?? rnd(-0.3, 0.3)) + rnd(-0.12, 0.12), el: (poi.el ?? 0.3) + rnd(-0.05, 0.06), dist: (poi.d * 1.8 * (keepWhole ? 1.9 * rnd(0.85, 1.5) : rnd(0.92, 1.1))) / (baseDist * fovFit), tgt: [w.x, w.y, w.z] };
+  } }));
+  if (keepWhole) S.push({ name: 'costas', w: 0.35, make: (s) => ({ daz: Math.PI + s * rnd(0.3, 0.6), el: rnd(0.35, 0.55), dist: rnd(1.0, 1.12), tgt: mid() }) });
+  const recent: string[] = [];
+  const mid = (): [number, number, number] => [baseTarget.x, baseTarget.y, baseTarget.z];
+  /** novo plano: pose de chegada e a deriva lenta que ele terá depois de chegar (unidades por segundo) */
+  const nextShot = (prev: Pose): { pose: Pose; drift: Pose } => {
+    const opts = S.filter((x) => !recent.includes(x.name));
+    let r = Math.random() * opts.reduce((a, x) => a + x.w, 0), shot = opts[0];
+    for (const x of opts) { r -= x.w; if (r <= 0) { shot = x; break; } }
+    recent.push(shot.name); if (recent.length > 4) recent.shift();
+    // lado oposto ao atual na maioria das vezes, para a troca cruzar a frente
+    const side = Math.sign(prev[0] - front) || 1;
+    const sg = Math.random() < 0.7 ? -side : side;
+    const m = shot.make(sg);
+    // peças em pé (placa-mãe): sem vista de cima nem de perfil, que só mostram a borda
+    if (model.orbit?.maxEl !== undefined) m.el = Math.min(m.el, model.orbit.maxEl);
+    if (model.orbit?.span !== undefined && shot.name !== 'costas') m.daz = Math.max(-model.orbit.span, Math.min(model.orbit.span, m.daz));
+    let az = front + m.daz;
+    // a câmera vai pelo caminho mais curto e nunca dá a volta por trás (exceto no plano das costas)
+    while (az - prev[0] > Math.PI) az -= Math.PI * 2; while (az - prev[0] < -Math.PI) az += Math.PI * 2;
+    const back = shot.name === 'costas';
+    // a estabilização segue no mesmo sentido do movimento da troca, mais devagar (sem voltar)
+    const zoom = m.dist < 0.55;
+    const drift: Pose = [(Math.sign(az - prev[0]) || sg) * (zoom ? rnd(0.02, 0.045) : rnd(0.05, 0.1)), rnd(-0.01, 0.012), zoom ? -m.dist * rnd(0.025, 0.045) : keepWhole ? rnd(-0.006, 0.006) : rnd(-0.018, 0.004), 0, 0, 0];
+    void back;
+    return { pose: [az, m.el, m.dist, m.tgt[0], m.tgt[1], m.tgt[2]], drift };
   };
-  const onUp = () => { dragging = false; };
-  host.addEventListener('pointerdown', onDown); host.addEventListener('pointermove', onMove); host.addEventListener('pointerup', onUp); host.addEventListener('pointerleave', () => { hover = { x: 0, y: 0 }; });
+  const m0 = mid();
+  let cur: Pose = [az0, 0.25, keepWhole ? 1.05 : 1.0, m0[0], m0[1], m0[2]];
+  let vel: Pose = [0.07, 0, 0, 0, 0, 0];
+  let phase: 'hold' | 'cut' = 'hold', segT = 0, segDur = rnd(3, 4);
+  let cutFrom: Pose = cur, cutTo: Pose = cur, vFrom: Pose = vel, vTo: Pose = vel;
+  const hermite = (p1: number, p2: number, m1: number, m2: number, T: number, u: number) => {
+    const u2 = u * u, u3 = u2 * u;
+    return (2 * u3 - 3 * u2 + 1) * p1 + (u3 - 2 * u2 + u) * T * m1 + (-2 * u3 + 3 * u2) * p2 + (u3 - u2) * T * m2;
+  };
+  let fovFit = 1; // o canvas é maior que o espaço do 3D: afasta a câmera na mesma proporção para manter o tamanho
 
   const resize = () => {
-    const w = host.clientWidth || 1, h = host.clientHeight || 1;
-    renderer.setSize(w, h, false); composer.setSize(w, h); bloom.setSize(w, h);
+    const hw = host.clientWidth || 1, hh = host.clientHeight || 1;
+    const w = hw + OVERFLOW * 2, h = hh + OVERFLOW * 2;
+    renderer.setSize(w, h, false);
     camera.aspect = w / h; camera.updateProjectionMatrix();
+    fovFit = h / hh;
+    circuit.resize(w, h);
   };
   const ro = new ResizeObserver(resize); ro.observe(host); resize();
 
@@ -247,20 +440,32 @@ export function createViewer(host: HTMLElement, build: () => Model, opts: { bloo
   let raf = 0, last = performance.now(), t = 0, alive = true;
   const step = (dt: number) => {
     t += dt;
-    if (autoRotate && !dragging) {
-      // com limite de órbita, vai e volta dentro do arco permitido
-      if (range !== undefined) { targetAz += dt * 0.12 * spinDir; if (targetAz > az0 + range) spinDir = -1; else if (targetAz < az0 - range) spinDir = 1; }
-      else targetAz += dt * 0.12;
+    segT += dt;
+    if (segT >= segDur) {
+      segT = 0;
+      if (phase === 'hold') {
+        const n = nextShot(cur);
+        cutFrom = [...cur] as Pose; cutTo = n.pose; vFrom = [...vel] as Pose; vTo = n.drift;
+        phase = 'cut'; segDur = rnd(1.0, 1.4);
+      } else { cur = [...cutTo] as Pose; vel = [...vTo] as Pose; phase = 'hold'; segDur = rnd(3.5, 5); }
     }
-    // partículas sobem devagar e reaparecem embaixo
-    for (let i = 0; i < NP; i++) { pos[i * 3 + 1] += speed[i] * dt; if (pos[i * 3 + 1] > 2.6) pos[i * 3 + 1] = 0; }
-    pgeo.attributes.position.needsUpdate = true; particles.rotation.y += dt * 0.02;
-    az += (targetAz - az) * Math.min(1, dt * 6);
-    const a = az + hover.x * 0.25, e2 = el + hover.y * 0.12;
-    camera.position.set(target.x + Math.sin(a) * dist * Math.cos(e2), camH + Math.sin(e2) * dist, target.z + Math.cos(a) * dist * Math.cos(e2));
-    camera.lookAt(target);
+    if (phase === 'cut') {
+      const u = Math.min(1, segT / segDur);
+      for (let k = 0; k < 6; k++) cur[k] = hermite(cutFrom[k], cutTo[k], vFrom[k], vTo[k], segDur, u);
+    } else {
+      for (let k = 0; k < 6; k++) cur[k] += vel[k] * dt; // estabilização: segue andando devagar
+      const span = model.orbit?.span ?? 1.45;
+      if (recent[recent.length - 1] !== 'costas') cur[0] = Math.max(front - span, Math.min(front + span, cur[0]));
+    }
+    const az = cur[0], el = Math.max(-0.05, Math.min(1.1, cur[1])), dk = Math.max(0.05, cur[2]);
+    const dist = baseDist * fovFit * dk;
+    const tgt = new THREE.Vector3(cur[3], cur[4], cur[5]);
+    // a altura acima do foco cresce junto com a distância: o ângulo de visão se mantém
+    camera.position.set(tgt.x + Math.sin(az) * dist * Math.cos(el), tgt.y + (camH - baseTarget.y) * fovFit * dk + Math.sin(el) * dist, tgt.z + Math.cos(az) * dist * Math.cos(el));
+    circuit.draw(dt);
+    camera.lookAt(tgt);
     model.update?.(live, t, dt);
-    composer.render();
+    renderer.render(scene, camera);
   };
   const frame = (now: number) => {
     if (!alive) return;
@@ -277,9 +482,8 @@ export function createViewer(host: HTMLElement, build: () => Model, opts: { bloo
     setHeat() { /* reservado */ },
     dispose() {
       alive = false; cancelAnimationFrame(raf); ro.disconnect(); io.disconnect();
-      host.removeEventListener('pointerdown', onDown); host.removeEventListener('pointermove', onMove); host.removeEventListener('pointerup', onUp);
       scene.traverse((o: any) => { o.geometry?.dispose?.(); const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : []; ms.forEach((m: any) => { Object.values(m).forEach((v: any) => v?.isTexture && v.dispose()); m.dispose?.(); }); });
-      composer.dispose(); pmrem.dispose(); renderer.dispose(); renderer.domElement.remove();
+      pmrem.dispose(); renderer.dispose(); cv.remove(); blur.remove(); back.remove(); circuit.dispose();
     },
   };
 }

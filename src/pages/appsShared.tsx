@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Package, Store, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Package, Store, CheckCircle2, XCircle, Loader2, FolderTree } from 'lucide-react';
 import { useApp } from '../lib/store';
 import { cc, AppEntry, isMac } from '../lib/api';
-import { fmtSize } from '../lib/format';
+import { fmtSize, fmtDate, fmtRelative } from '../lib/format';
 import { Button, Card, cx } from '../components/ui';
 
 let cache: AppEntry[] | null = null;
@@ -34,16 +34,19 @@ export function useApps() {
   return { apps, loading, reload: () => load(true), remove };
 }
 
-export function AppIcon({ app, size = 28 }: { app: AppEntry; size?: number }) {
+export function AppIcon({ app, size = 36 }: { app: AppEntry; size?: number }) {
   const [src, setSrc] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
     if (app.icon) cc.appIcon(app.icon).then((s) => alive && setSrc(s || null));
     return () => { alive = false; };
   }, [app.icon]);
+  // o ícone real aparece solto (os do macOS já têm o formato; os do Windows ganham cantos arredondados);
+  // só quem não tem ícone fica com o quadrado genérico
+  if (src) return <img src={src} draggable={false} className="shrink-0 select-none object-contain" style={{ width: size, height: size, borderRadius: isMac ? 0 : size * 0.22 }} alt="" />;
   return (
-    <div className="flex shrink-0 items-center justify-center overflow-hidden rounded-md border border-line bg-surface-2" style={{ width: size, height: size }}>
-      {src ? <img src={src} className="h-[70%] w-[70%] object-contain" alt="" /> : app.source === 'store' ? <Store size={size * 0.5} className="text-muted" /> : <Package size={size * 0.5} className="text-muted" />}
+    <div className="flex shrink-0 items-center justify-center rounded-[22%] bg-gradient-to-b from-surface-2 to-[var(--line)] text-muted" style={{ width: size, height: size }}>
+      {app.source === 'store' ? <Store size={size * 0.5} /> : <Package size={size * 0.5} />}
     </div>
   );
 }
@@ -149,3 +152,67 @@ export function useUninstall(onDone: (removed: string[]) => void) {
   );
   return { start, panel, busy: !!running && !running.done };
 }
+
+/** Programas instalados mais recentemente (sem componentes, apps do sistema e entradas órfãs). */
+export function recentInstalls(apps: AppEntry[] | null, n: number): AppEntry[] {
+  return (apps || []).filter((a) => a.installDate && a.canUninstall && !a.background && !a.orphan)
+    .sort((a, b) => (b.installDate || 0) - (a.installDate || 0)).slice(0, n);
+}
+
+/** Pasta do programa para abrir na árvore (no Windows, a do executável quando o registro não informa). */
+export const appFolder = (a: AppEntry) => a.location || (a.exes?.[0] ? a.exes[0].replace(/[\\/][^\\/]+$/, '') : undefined);
+
+/** Faixa "Instalados recentemente": clique abre o dossiê; o botão da pasta abre na árvore. */
+export function RecentInstalls({ apps, n = 8, compact }: { apps: AppEntry[] | null; n?: number; compact?: boolean }) {
+  const { openDossier, startScan, go } = useApp();
+  const list = recentInstalls(apps, n);
+  if (!apps) return <div className={cx('grid gap-2', compact ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-4')}>{Array.from({ length: compact ? 4 : n }, (_, i) => <div key={i} className="skeleton h-12 rounded-lg" />)}</div>;
+  if (!list.length) return <div className="text-xs text-muted">Nenhum programa com data de instalação.</div>;
+  return (
+    <div className={cx(compact ? '-mx-1 space-y-0.5' : 'grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4')}>
+      {list.map((a) => {
+        const dir = appFolder(a);
+        return (
+          <div key={a.id} className={cx('group flex items-center gap-2.5 rounded-lg transition-colors hover:bg-hover', compact ? 'px-1 py-1' : 'border border-line bg-surface px-2.5 py-2')}>
+            <button className="flex min-w-0 flex-1 items-center gap-2.5 text-left" onClick={() => openDossier({ kind: 'app', app: a })} onMouseEnter={() => prefetchDossier(a)} onMouseLeave={cancelPrefetch} title="Ver o dossiê">
+              <AppIcon app={a} size={compact ? 34 : 40} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px] text-fg">{a.name}</span>
+                <span className="block truncate text-[11px] text-faint" title={fmtDate(a.installDate, true)}>Instalado {fmtRelative(a.installDate).toLowerCase()}</span>
+              </span>
+            </button>
+            {dir && <button className="shrink-0 rounded p-1 text-muted opacity-60 hover:bg-[var(--hover)] hover:text-fg group-hover:opacity-100" title="Abrir a pasta na árvore" onClick={async () => { await startScan(dir); go('explorer'); }}><FolderTree size={14} /></button>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// abrir o Desinstalador já ordenado (Visão geral: "Ver todos" de maiores ou de recentes)
+let pendingSort: string | null = null;
+const SORT_EVENT = 'cc:uninstall-sort';
+export function openUninstaller(go: (p: 'uninstall') => void, sort: 'size:false' | 'installDate:false') {
+  pendingSort = sort;
+  window.dispatchEvent(new CustomEvent(SORT_EVENT, { detail: sort }));
+  go('uninstall');
+}
+const parseSort = (v: string) => { const [key, a] = v.split(':'); return { key, asc: a === 'true' }; };
+/** Ordenação do Desinstalador que respeita o pedido da Visão geral. */
+export function useUninstallSort() {
+  const [sort, setSort] = useState(() => { const p = pendingSort; pendingSort = null; return parseSort(p || 'size:false'); });
+  useEffect(() => {
+    const h = (e: Event) => { pendingSort = null; setSort(parseSort((e as CustomEvent).detail)); };
+    window.addEventListener(SORT_EVENT, h);
+    return () => window.removeEventListener(SORT_EVENT, h);
+  }, []);
+  return [sort, setSort] as const;
+}
+
+/** Passar o mouse sobre um app já começa a ler o dossiê dele (o processo principal guarda o resultado). */
+let hoverTimer: ReturnType<typeof setTimeout> | null = null;
+export function prefetchDossier(app: AppEntry) {
+  if (hoverTimer) clearTimeout(hoverTimer);
+  hoverTimer = setTimeout(() => { cc.dossierLocal({ kind: 'app', app }).catch(() => {}); }, 180);
+}
+export function cancelPrefetch() { if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; } }

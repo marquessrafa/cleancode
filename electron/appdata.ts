@@ -55,6 +55,37 @@ function matches(name: string, parent: string | undefined, a: AppEntry): boolean
   return f0.length >= 5 && (whole.startsWith(f0) || at.some((t) => t.length >= 5 && f0.startsWith(t)));
 }
 
+/** Pastas de dados de um programa no perfil (Windows: AppData e ProgramData; macOS: Application Support e Caches),
+ *  para o dossiê. Mais rígido que a classificação do AppData: o nome da pasta precisa ser o do programa (ou o nome
+ *  interno/executável em `aliases`), aceitando só sufixos como versão, "updater" ou "helper". */
+export function dataFoldersFor(a: AppEntry, sizeOf: (p: string) => number, aliases: string[] = []): { path: string; size: number; kind: string }[] {
+  const roots = [...ROOTS];
+  if (!isMac && process.env.ProgramData) roots.push({ path: process.env.ProgramData, label: 'ProgramData' });
+  const names = [...new Set([a.name, ...aliases].map(norm).filter((n) => n.length >= 3))];
+  if (!names.length) return [];
+  const REST = /^(\d+|x64|x86|updater|update|helper|launcher|crashpad|crashreports?|data|cache|logs?|desktop|app)$/;
+  const hit = (folder: string, parent?: string) => {
+    const n = norm(folder);
+    const cands = parent ? [n, norm(parent) + n] : [n];
+    return cands.some((c) => names.some((w) => c === w || (c.startsWith(w) && REST.test(c.slice(w.length)))));
+  };
+  const out: { path: string; size: number; kind: string }[] = [];
+  const dirs = (p: string) => { try { return fs.readdirSync(p, { withFileTypes: true }).filter((e) => e.isDirectory() && !e.isSymbolicLink()).map((e) => e.name); } catch { return []; } };
+  for (const r of roots) {
+    for (const t of dirs(r.path)) {
+      if ((isMac ? SYSTEM_MAC.test(t) : SYSTEM_WIN.has(t.toLowerCase())) && !VENDORS.includes(t)) continue;
+      if (/^[a-z]{2,4}\.[\w-]+\./i.test(t)) continue; // com.empresa.app: já vem pelos restos (identificador exato)
+      if (hit(t)) out.push({ path: path.join(r.path, t), size: 0, kind: r.label });
+      else if (VENDORS.includes(t) || (a.publisher && norm(t) === norm(a.publisher))) {
+        for (const k of dirs(path.join(r.path, t))) if (hit(k, t)) out.push({ path: path.join(r.path, t, k), size: 0, kind: r.label });
+      }
+      if (out.length >= 12) break;
+    }
+  }
+  for (const o of out) o.size = sizeOf(o.path);
+  return out;
+}
+
 let last: AppDataItem[] = [];
 let running: Worker | null = null;
 

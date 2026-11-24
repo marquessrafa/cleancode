@@ -30,6 +30,7 @@ await build({
     junkWorker: 'electron/junkWorker.ts',
     appdataWorker: 'electron/appdataWorker.ts',
     clutterWorker: 'electron/clutterWorker.ts',
+    storageWorker: 'electron/storageWorker.ts',
   },
   outdir: 'dist-electron',
 });

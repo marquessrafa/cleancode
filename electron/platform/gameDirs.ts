@@ -7,7 +7,7 @@ import type { GameInfo } from './types';
 
 const SKIP = /unins|setup|install|redist|vc_?redist|dxsetup|directx|crash|report|prereq|helper|update|patch|config|settings|benchmark|easyanticheat|battleye|dotnet|vcruntime|ue4prereq|cefprocess|webhelper/i;
 
-function biggestExe(dir: string, depth: number): { file: string; size: number } | null {
+export function biggestExe(dir: string, depth: number): { file: string; size: number } | null {
   let best: { file: string; size: number } | null = null;
   let entries: fs.Dirent[] = [];
   try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return null; }

@@ -13,7 +13,7 @@ import { Hero, Orb } from './maint';
 const SYS = /^(CleanCode|Electron|Finder|Dock|SystemUIServer|WindowServer|explorer|dwm|csrss|svchost|System|Registry|Idle|steam|steamwebhelper|EpicGamesLauncher|GalaxyClient)$/i;
 
 export default function GameMode() {
-  const { toast } = useApp();
+  const { toast, openDossier } = useApp();
   const [status, setStatus] = useState<GameStatus | null>(null);
   const [games, setGames] = useState<GameInfo[]>([]);
   const [dirs, setDirs] = useState<string[]>([]);
@@ -184,7 +184,7 @@ export default function GameMode() {
             {games.map((g) => (
               <div key={g.id} className={cx('flex items-center gap-3 px-4 py-2.5', game === g.id && 'bg-[var(--accent-soft)]')}>
                 <Gamepad2 size={16} className="shrink-0 text-muted" />
-                <div className="min-w-0 flex-1"><div className="truncate text-[13px] font-medium">{g.name}</div><div className="text-[11px] text-muted">{(g.store === 'app' ? 'App' : g.store === 'custom' ? 'Pasta' : g.store.toUpperCase())}{g.size ? ` · ${fmtSize(g.size)}` : ''}</div></div>
+                <div className="min-w-0 flex-1"><button className="block max-w-full truncate text-left text-[13px] font-medium hover:text-accent hover:underline" title="Ver o dossiê do jogo" onClick={() => openDossier({ kind: 'game', game: g })}>{g.name}</button><div className="text-[11px] text-muted">{(g.store === 'app' ? 'App' : g.store === 'custom' ? 'Pasta' : g.store.toUpperCase())}{g.size ? ` · ${fmtSize(g.size)}` : ''}</div></div>
                 <Button size="sm" variant="ghost" icon={<Zap size={13} />} onClick={() => setGame(g.id)}>Escolher</Button>
               </div>
             ))}

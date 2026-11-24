@@ -81,7 +81,7 @@ const mdDate = (v: string | null) => { if (!v) return undefined; const t = Date.
 
 function publisherOf(info: any, bundleId: string): string | undefined {
   const c = String(info?.NSHumanReadableCopyright || '');
-  const m = /(?:©|\(c\)|copyright)\s*(?:\d{4}(?:\s*[-–]\s*\d{4})?,?\s*)?([^.,;\n]+?)(?:\.|,|;|\s+all rights|\s*$)/i.exec(c);
+  const m = /(?:(?:©|\(c\)|copyright)\s*)+(?:\d{4}(?:\s*[-–]\s*\d{4})?,?\s*)?([^.,;\n]+?)(?:\.|,|;|\s+all rights|\s*$)/i.exec(c);
   if (m && m[1].trim().length >= 2 && !/^\d+$/.test(m[1].trim())) return m[1].trim();
   if (bundleId.startsWith('com.apple.')) return 'Apple';
   return undefined;
@@ -145,7 +145,7 @@ function duSize(p: string, budgetMs = 3000): number {
 }
 
 /** Arquivos que o app deixa em ~/Library. Só nomes exatos (identificador ou nome do app) para não pegar coisa de outro app. */
-export function findLeftovers(a: AppEntry): Leftover[] {
+export function findLeftovers(a: AppEntry, sizeOf: (p: string) => number = (p) => duSize(p)): Leftover[] {
   const id = a.bundleId || '';
   const name = a.name;
   if (id.startsWith('com.apple.')) return []; // dados de apps da Apple são compartilhados com o sistema
@@ -178,7 +178,7 @@ export function findLeftovers(a: AppEntry): Leftover[] {
     if (seen.has(p.toLowerCase())) continue;
     seen.add(p.toLowerCase());
     try { fs.lstatSync(p); } catch { continue; }
-    out.push({ path: p, kind, size: duSize(p) });
+    out.push({ path: p, kind, size: sizeOf(p) });
   }
   return out;
 }
@@ -236,7 +236,7 @@ export async function describeInstalledApp(key: string): Promise<MonitorEvent> {
   const version = info?.CFBundleShortVersionString ? ` ${info.CFBundleShortVersionString}` : '';
   const root = key.startsWith('/Volumes/') ? key.split('/').slice(0, 3).join('/') : '/';
   const label = drives().find((d) => d.root === root)?.label;
-  return { kind: 'app', title: 'Novo app instalado', drive: root, driveLabel: label, amount: duSize(key, 5000), detail: name + version };
+  return { kind: 'app', title: 'Novo app instalado', drive: root, driveLabel: label, amount: duSize(key, 5000), detail: name + version, app: { key, name: path.basename(key, '.app') } };
 }
 /** fs.watch nas pastas de apps; espera a cópia terminar (arrastar um .app grande leva alguns segundos). */
 export function watchInstalls(onChange: () => void): () => void {

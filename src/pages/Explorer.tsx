@@ -24,8 +24,11 @@ export const ALL_COLUMNS: { key: string; label: string }[] = [
   { key: 'prev', label: 'Tamanho anterior (comparação)' }, { key: 'delta', label: 'Variação (comparação)' },
 ];
 
+/** histórico de pastas do Explorador por varredura (id) */
+const dirHistory = new Map<number, { stack: number[]; pos: number }>();
+
 export default function Explorer() {
-  const { active, settings, setSettings, select, stopScan, refreshScan, toast, tick, bump, startScan } = useApp();
+  const { active, settings, setSettings, select, stopScan, refreshScan, toast, tick, bump, startScan, registerNav } = useApp();
   const units = settings!.units, dec = settings!.decimals, mode = settings!.displayMode;
   const [expanded, setExpanded] = useState<Set<number>>(new Set([0]));
   const [tree, setTree] = useState<Row[]>([]);
@@ -40,7 +43,7 @@ export default function Explorer() {
   const [exportOpen, setExportOpen] = useState<string | null>(null);
   const [newFolderFor, setNewFolderFor] = useState<{ id: number; path: string } | null>(null);
   const [summary, setSummary] = useState<any>(null);
-  const [nav, setNav] = useState<{ stack: number[]; pos: number }>({ stack: [0], pos: 0 });
+  const [nav, setNav] = useState<{ stack: number[]; pos: number }>(() => dirHistory.get(active!.id) || { stack: [0], pos: 0 });
   const treeRef = useRef<HTMLDivElement>(null);
   const [treeScroll, setTreeScroll] = useState(0);
   const [treeH, setTreeH] = useState(600);
@@ -104,6 +107,27 @@ export default function Explorer() {
       });
     }, 120);
   }, [scanId, select]);
+  // voltar/avançar entre pastas; os botões laterais do mouse, ⌘[ ⌘] e o gesto usam isto antes de trocar de tela
+  const navRef = useRef(nav);
+  navRef.current = nav;
+  // o histórico de pastas fica guardado por varredura: sobrevive à troca de tela e de aba
+  const navScan = useRef(scanId);
+  useEffect(() => {
+    if (navScan.current !== scanId) { navScan.current = scanId; setNav(dirHistory.get(scanId) || { stack: [0], pos: 0 }); return; }
+    dirHistory.set(scanId, nav);
+  }, [scanId, nav]);
+  const moveDir = useCallback((d: number) => {
+    const s = navRef.current, pos = s.pos + d;
+    if (pos < 0 || pos >= s.stack.length) return;
+    const next = { ...s, pos };
+    navRef.current = next; // dois cliques rápidos não repetem a mesma pasta
+    setNav(next);
+    goTo(s.stack[pos], false);
+  }, [goTo]);
+  const navBackDir = useCallback(() => moveDir(-1), [moveDir]);
+  const navForwardDir = useCallback(() => moveDir(1), [moveDir]);
+  useEffect(() => { registerNav('explorer', { canBack: nav.pos > 0, canForward: nav.pos < nav.stack.length - 1, back: navBackDir, forward: navForwardDir }); }, [nav, navBackDir, navForwardDir, registerNav]);
+  useEffect(() => () => registerNav('explorer', null), [registerNav]);
 
   const toggle = (id: number) => setExpanded((e) => { const x = new Set(e); x.has(id) ? x.delete(id) : x.add(id); return x; });
   const expandTo = async (depth: number) => {
@@ -210,11 +234,13 @@ export default function Explorer() {
   };
 
   return (
-    <div className="flex h-full flex-col">
+    // centralizado com a mesma largura máxima das outras telas, numa moldura transparente
+    <div className="h-full px-6 py-6">
+    <div className="mx-auto flex h-full max-w-[1400px] flex-col rounded-xl border border-line"><div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[inherit]">
       {/* barra de ferramentas */}
-      <div className="flex flex-wrap items-center gap-1.5 border-b border-line bg-surface px-3 py-2">
-        <IconButton title="Voltar" disabled={nav.pos === 0} onClick={() => { const pos = nav.pos - 1; setNav({ ...nav, pos }); goTo(nav.stack[pos], false); }}><ArrowLeft size={16} /></IconButton>
-        <IconButton title="Avançar" disabled={nav.pos >= nav.stack.length - 1} onClick={() => { const pos = nav.pos + 1; setNav({ ...nav, pos }); goTo(nav.stack[pos], false); }}><ArrowRight size={16} /></IconButton>
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-line px-3 py-2">
+        <IconButton title="Voltar" disabled={nav.pos === 0} onClick={navBackDir}><ArrowLeft size={16} /></IconButton>
+        <IconButton title="Avançar" disabled={nav.pos >= nav.stack.length - 1} onClick={navForwardDir}><ArrowRight size={16} /></IconButton>
         <IconButton title="Pasta pai" disabled={selected <= 0} onClick={async () => { const n: any = await cc.scanQuery(scanId, 'nodeInfo', selected); if (n.parent >= 0) goTo(n.parent); }}><ArrowUp size={16} /></IconButton>
         <div className="mx-1 h-5 w-px bg-line" />
         {active!.done
@@ -255,7 +281,7 @@ export default function Explorer() {
 
       {/* painéis */}
       <div className="flex min-h-0 flex-1">
-        <div className="flex min-w-[260px] flex-col border-r border-line bg-surface" style={{ width: treeW }}>
+        <div className="flex min-w-[260px] flex-col border-r border-line" style={{ width: treeW }}>
           <div
             ref={treeRef}
             tabIndex={0}
@@ -314,10 +340,10 @@ export default function Explorer() {
             document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up);
           }}
         />
-        <div className="flex min-w-0 flex-1 flex-col bg-bg">
+        <div className="flex min-w-0 flex-1 flex-col">
           <SelectionSummary row={tree.find((r) => r.id === selected) || tree[0]} path={selPath} units={units} dec={dec} datesWithTime={settings!.datesWithTime} />
           <DataTable
-            className="min-h-0 flex-1 bg-surface"
+            className="min-h-0 flex-1"
             rows={details}
             columns={columns}
             rowKey={(r) => r.id}
@@ -333,7 +359,7 @@ export default function Explorer() {
             empty={active!.done ? 'Pasta vazia' : 'Carregando…'}
           />
           {sel.size > 0 && (
-            <div className="flex items-center gap-2 border-t border-line bg-surface px-3 py-1.5 text-xs anim-fade">
+            <div className="flex items-center gap-2 border-t border-line bg-[color-mix(in_srgb,var(--surface)_60%,transparent)] px-3 py-1.5 text-xs backdrop-blur anim-fade">
               <span className="text-muted">{sel.size} selecionado(s) · {fmtSize(selectedRows.reduce((s, r) => s + r.size, 0), units, dec)}</span>
               <div className="flex-1" />
               <Button size="sm" variant="ghost" onClick={() => setSel(new Set())}>Limpar seleção</Button>
@@ -345,7 +371,7 @@ export default function Explorer() {
       </div>
 
       {/* barra de status */}
-      <div className="flex h-7 shrink-0 items-center gap-4 overflow-hidden whitespace-nowrap border-t border-line bg-surface px-3 text-xs text-muted">
+      <div className="flex h-7 shrink-0 items-center gap-4 overflow-hidden whitespace-nowrap border-t border-line px-3 text-xs text-muted">
         {!active!.done ? (
           <span className="flex min-w-0 items-center gap-2 text-accent"><Loader2 size={12} className="animate-spin" /> Varrendo <span className="truncate text-muted">{p?.current}</span></span>
         ) : (
@@ -365,6 +391,8 @@ export default function Explorer() {
       <NewFolderModal target={newFolderFor} onClose={() => setNewFolderFor(null)} scanId={scanId} />
       <ErrorsAfterScan scanId={scanId} open={() => setErrorsOpen(true)} />
     </div>
+    </div>
+    </div>
   );
 }
 
@@ -375,7 +403,7 @@ function SelectionSummary({ row, path, units, dec, datesWithTime }: { row?: Row;
     ['Arquivos', fmtNum(row.files)], ['Pastas', fmtNum(row.dirs)], ['Modificado', fmtDate(row.mtime, datesWithTime)],
   ];
   return (
-    <div className="flex items-center gap-6 border-b border-line bg-surface px-4 py-2.5">
+    <div className="flex items-center gap-6 border-b border-line px-4 py-2.5">
       <div className="min-w-0 flex-1">
         <div className="truncate text-[13px] font-medium text-fg" title={path}>{path}</div>
         <div className="text-xs text-muted">{fmtPct(row.pct)} da pasta pai</div>
