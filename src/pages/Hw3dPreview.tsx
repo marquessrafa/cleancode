@@ -6,12 +6,13 @@ import { gpuModel, cpuModel, ramModel, boardModel, ssdModel, powerModel, pcModel
 import { socModel, gpuChipModel, soDimmModel, solderedMemModel, laptopBoardModel } from '../hw3d/mobile';
 
 const MODELS: { id: string; label: string; build: () => any }[] = [
-  { id: 'pc', label: 'PC (gabinete)', build: () => pcModel({ sticks: 2 }) },
+  { id: 'pc', label: 'PC com Intel (gabinete branco)', build: () => pcModel({ sticks: 2, cpu: { name: 'Intel Core Ultra 9 285K', sub: 'x64', cores: 24 } }) },
   { id: 'gpu', label: 'Placa de vídeo', build: () => gpuModel({ fans: 3 }) },
   { id: 'cpu', label: 'Processador AMD', build: () => cpuModel({ name: 'AMD Ryzen 7 7700X 8-Core Processor', sub: 'x64', cores: 8 }) },
   { id: 'cpu-intel', label: 'Processador Intel', build: () => cpuModel({ name: 'Intel Core i7-14700K', sub: 'x64', cores: 20 }) },
   { id: 'ram', label: 'Memória', build: () => ramModel({ count: 2 }) },
-  { id: 'board', label: 'Placa-mãe', build: () => boardModel({ dimms: 4, sticks: 2, cpu: { name: 'AMD Ryzen 7 7700X 8-Core Processor', sub: 'x64', cores: 8 } }) },
+  { id: 'board-intel', label: 'Placa-mãe Intel', build: () => boardModel({ dimms: 4, sticks: 2, cpu: { name: 'Intel Core Ultra 9 285K', sub: 'x64', cores: 24 } }) },
+  { id: 'board', label: 'Placa-mãe AMD', build: () => boardModel({ dimms: 4, sticks: 2, cpu: { name: 'AMD Ryzen 7 7700X 8-Core Processor', sub: 'x64', cores: 8 } }) },
   { id: 'pc-amd', label: 'PC com AMD', build: () => pcModel({ sticks: 2, cpu: { name: 'AMD Ryzen 7 7700X 8-Core Processor', sub: 'x64', cores: 8 } }) },
   { id: 'psu', label: 'Fonte', build: () => powerModel({}) },
   { id: 'ssd', label: 'SSD NVMe', build: () => ssdModel({ kind: 'nvme', label: 'SSD NVMe' }) },

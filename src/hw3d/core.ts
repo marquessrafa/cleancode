@@ -152,7 +152,11 @@ export function ledStrip(len: number, count: number, thickness = 0.01, depth = 0
 export function ledRing(radius: number, tube = 0.008) {
   const m = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: new THREE.Color(0xffffff), emissiveIntensity: 2.4 });
   const mesh = new THREE.Mesh(new THREE.TorusGeometry(radius, tube, 10, 80), m);
-  return { mesh, update(t: number, offset = 0) { m.emissive.setHSL((t * 0.07 + offset) % 1, 0.9, 0.55); } };
+  // com a cor de destaque, o anel "respira" nessa cor; sem ela, passa pelo arco-íris
+  return { mesh, update(t: number, offset = 0, accent?: THREE.Color) {
+    if (accent) { m.emissive.copy(accent); m.emissiveIntensity = 1.9 + Math.sin(t * 1.6 + offset * 6) * 0.5; }
+    else { m.emissive.setHSL((t * 0.07 + offset) % 1, 0.9, 0.55); m.emissiveIntensity = 2.4; }
+  } };
 }
 /** Cor de temperatura (azul frio → verde → amarelo → vermelho). */
 export function tempColor(c: number) {
