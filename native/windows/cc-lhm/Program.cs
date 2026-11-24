@@ -137,15 +137,91 @@ static class Program
         var marker = Marker(name);
         try
         {
-            if (File.Exists(marker) && DateTime.UtcNow - File.GetLastWriteTimeUtc(marker) < TimeSpan.FromDays(1)) { Groups[name] = "skipped"; Log("etapa " + name + ": pulada, porque caiu numa execução anterior (tenta de novo em um dia)"); return; }
+            if (!CheckMarker(name, marker, out int crashes)) return;
             Directory.CreateDirectory(MarkerDir);
-            File.WriteAllText(marker, DateTime.UtcNow.ToString("o"));
+            WriteMarker(marker, crashes);
         }
         catch { /* sem pasta de marcadores: abre mesmo assim */ }
         var sw = Stopwatch.StartNew();
         try { enable(); Groups[name] = "ok"; Log("etapa " + name + ": aberta em " + sw.ElapsedMilliseconds + " ms"); }
         catch (Exception e) { Groups[name] = "error: " + e.Message; Log("etapa " + name + ": erro " + e); }
         // o marcador continua até as primeiras leituras terminarem (ver ClearMarkers)
+    }
+
+    // ---------- marcadores de queda ----------
+    // Cada marcador guarda quem o criou: "pid|início do processo|versão do helper|quedas seguidas".
+    // Na 1.4.15, o marcador guardava só a hora. Quando duas cópias do helper abriam ao mesmo tempo (a tarefa de
+    // administrador e o helper comum do app), uma via o marcador da outra, achava que era uma queda e deixava a peça
+    // de fora por um dia. Agora o helper:
+    // - ignora marcadores de outra versão do helper;
+    // - espera a outra cópia terminar quando o dono do marcador ainda está rodando;
+    // - só deixa a peça de fora depois de duas quedas seguidas. Uma única queda pode ser o processo encerrado de fora
+    //   (por exemplo, pelo instalador de uma atualização).
+    static readonly string Build = BuildId();
+    static string BuildId()
+    {
+        try { return File.GetLastWriteTimeUtc(typeof(Program).Assembly.Location).Ticks.ToString(); } catch { return "0"; }
+    }
+    static long StartTicks(Process p) { try { return p.StartTime.ToUniversalTime().Ticks; } catch { return 0; } }
+    static void WriteMarker(string marker, int crashes)
+    {
+        var me = Process.GetCurrentProcess();
+        File.WriteAllText(marker, me.Id + "|" + StartTicks(me) + "|" + Build + "|" + crashes);
+    }
+    /// <summary>O processo que criou o marcador ainda está rodando?</summary>
+    static bool OwnerAlive(int pid, long start)
+    {
+        if (pid <= 0 || pid == Process.GetCurrentProcess().Id) return false;
+        try { var p = Process.GetProcessById(pid); if (p.HasExited) return false; var st = StartTicks(p); return st == 0 || start == 0 || st == start; }
+        catch (ArgumentException) { return false; } // não existe mais
+        catch { return true; } // sem acesso ao processo: considera que ainda roda
+    }
+    static bool ReadMarker(string marker, out int pid, out long start, out string build, out int crashes)
+    {
+        pid = 0; start = 0; build = ""; crashes = 0;
+        try
+        {
+            var parts = File.ReadAllText(marker).Trim().Split('|');
+            if (parts.Length < 4) return false; // marcador antigo (1.4.12 a 1.4.15): só tinha a hora
+            int.TryParse(parts[0], out pid); long.TryParse(parts[1], out start); build = parts[2]; int.TryParse(parts[3], out crashes);
+            return true;
+        }
+        catch { return false; }
+    }
+    /// <summary>
+    /// Decide se a etapa pode abrir. Devolve false quando ela deve ficar de fora nesta execução.
+    /// crashes: quantas quedas seguidas já aconteceram (vai no novo marcador).
+    /// </summary>
+    static bool CheckMarker(string name, string marker, out int crashes)
+    {
+        crashes = 0;
+        if (!File.Exists(marker)) return true;
+        if (!ReadMarker(marker, out int pid, out long start, out string build, out int prev) || build != Build)
+        {
+            Log("etapa " + name + ": marcador de outra versão do helper; ele é ignorado");
+            return true;
+        }
+        if (OwnerAlive(pid, start))
+        {
+            // outra cópia do helper está abrindo esta peça agora: espera ela terminar (até 30 segundos)
+            Log("etapa " + name + ": outra cópia do helper (processo " + pid + ") está abrindo esta peça; esperando");
+            var sw = Stopwatch.StartNew();
+            while (File.Exists(marker) && OwnerAlive(pid, start) && sw.Elapsed.TotalSeconds < 30) Thread.Sleep(250);
+            if (!File.Exists(marker)) return true; // a outra cópia abriu e leu sem cair
+            if (OwnerAlive(pid, start)) { Groups[name] = "timeout"; Log("etapa " + name + ": a outra cópia passou de 30 segundos; esta cópia segue sem a peça"); return false; }
+        }
+        // o dono do marcador não está mais rodando: ele caiu (ou foi encerrado) no meio da abertura ou das primeiras leituras
+        crashes = prev + 1;
+        var recent = DateTime.UtcNow - File.GetLastWriteTimeUtc(marker) < TimeSpan.FromDays(1);
+        if (crashes >= 2 && recent)
+        {
+            Groups[name] = "skipped";
+            Log("etapa " + name + ": pulada, porque caiu " + crashes + " vezes seguidas (tenta de novo em um dia)");
+            return false;
+        }
+        if (!recent) crashes = 1;
+        Log("etapa " + name + ": a execução anterior caiu ou foi encerrada nesta etapa (" + crashes + "ª vez); tentando de novo");
+        return true;
     }
 
     /// <summary>
@@ -158,7 +234,14 @@ static class Program
         foreach (var g in RiskyGroups)
         {
             if (!Groups.TryGetValue(g, out var st) || !(st == "ok" || st.StartsWith("error"))) continue;
-            try { File.Delete(Marker(g)); } catch { /* */ }
+            try
+            {
+                // só apaga o marcador desta cópia do helper (outra cópia pode estar no meio da abertura)
+                var m = Marker(g);
+                if (ReadMarker(m, out int pid, out long _, out string _, out int _) && pid != Process.GetCurrentProcess().Id) continue;
+                File.Delete(m);
+            }
+            catch { /* */ }
         }
     }
 

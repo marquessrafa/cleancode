@@ -53,3 +53,29 @@ jobs:
           Get-Content (Join-Path (Split-Path $out) 'lhm.log')
           '--- marcadores que sobraram'
           Get-ChildItem (Join-Path $env:LOCALAPPDATA 'CleanCode\lhm') -Filter 'opening-*' -ErrorAction SilentlyContinue | % Name
+      - name: Testar duas cópias ao mesmo tempo e uma queda no meio da abertura
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:LOCALAPPDATA 'CleanCode\lhm'
+          Remove-Item (Join-Path $dir 'opening-*') -ErrorAction SilentlyContinue
+          # duas cópias abrindo ao mesmo tempo: nenhuma pode achar que a outra caiu
+          $a = Start-Process .\out\cc-lhm.exe -ArgumentList '--once' -RedirectStandardOutput a.json -PassThru -NoNewWindow
+          $b = Start-Process .\out\cc-lhm.exe -ArgumentList '--once' -RedirectStandardOutput b.json -PassThru -NoNewWindow
+          $a.WaitForExit(90000) | Out-Null; $b.WaitForExit(90000) | Out-Null
+          foreach ($f in 'a.json','b.json') {
+            $j = Get-Content $f -Raw | ConvertFrom-Json
+            $g = $j.groups | ConvertTo-Json -Compress
+            "$f etapas: $g"
+            if ($g -match 'skipped') { throw "$f deixou uma peça de fora por engano" }
+          }
+          # uma queda (processo encerrado) no meio da abertura: a próxima execução tenta de novo
+          $p = Start-Process .\out\cc-lhm.exe -ArgumentList '--loop' -PassThru -NoNewWindow -RedirectStandardOutput c.json
+          Start-Sleep -Milliseconds 350; Stop-Process -Id $p.Id -Force
+          "marcadores depois da queda: $((Get-ChildItem $dir -Filter 'opening-*' -ErrorAction SilentlyContinue | % Name) -join ', ')"
+          $q = Start-Process .\out\cc-lhm.exe -ArgumentList '--once' -RedirectStandardOutput d.json -PassThru -NoNewWindow
+          $q.WaitForExit(90000) | Out-Null
+          $g = (Get-Content d.json -Raw | ConvertFrom-Json).groups | ConvertTo-Json -Compress
+          "depois de uma queda: $g"
+          if ($g -match 'skipped') { throw 'uma única queda deixou uma peça de fora' }
+          '--- registro'
+          Get-Content (Join-Path $dir 'lhm.log') | Select-Object -Last 30

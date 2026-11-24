@@ -45,11 +45,13 @@ export function helperPath(): string | null {
 
 // ---------- leitura ----------
 let child: ChildProcess | null = null;
+let childStarted = 0;
 let last: LhmSnapshot | null = null;
 let buf = '';
 function startChild() {
   const exe = helperPath(); if (!exe || child) return;
   child = spawn(exe, ['--loop'], { windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
+  childStarted = Date.now();
   child.stdout!.setEncoding('utf8');
   child.stdout!.on('data', (d: string) => {
     buf += d; let i: number;
@@ -82,11 +84,25 @@ export async function advancedActive(): Promise<boolean> {
 export async function snapshot(): Promise<LhmSnapshot | null> {
   if (!askedAt) askedAt = Date.now();
   let s: LhmSnapshot | null = null;
-  if (await advancedActive()) s = await readTaskFile();
+  if (await advancedActive()) {
+    s = await readTaskFile();
+    if (s) {
+      taskMissingSince = 0;
+      // a tarefa voltou a responder: encerra o helper comum, mas só depois da janela dos marcadores de queda
+      // (abertura e primeiras leituras), para ele não deixar um marcador que pareça uma queda
+      if (child && Date.now() - childStarted > 30000) { child.kill(); child = null; last = null; }
+    } else {
+      // a tarefa ainda não gravou a leitura (por exemplo, logo depois do logon): espera até 20 segundos antes de abrir
+      // o helper comum. Duas cópias abrindo as peças ao mesmo tempo faziam uma achar que a outra tinha caído (1.4.15).
+      if (!taskMissingSince) taskMissingSince = Date.now();
+      if (Date.now() - taskMissingSince < 20000) return child ? last : null;
+    }
+  }
   if (!s) { startChild(); s = last; }
   if (s?.hardware?.length) dataAt = Date.now();
   return s;
 }
+let taskMissingSince = 0;
 // Quando foi pedida a primeira leitura e quando chegou a última leitura com peças.
 let askedAt = 0, dataAt = 0;
 /**
@@ -136,6 +152,8 @@ export async function activate(onStep: (step: number, info?: { driverPresent?: b
     // para a tarefa antiga (se houver) e copia o helper para Arquivos de Programas
     `Stop-ScheduledTask -TaskName ${psq(TASK)} -ErrorAction SilentlyContinue`,
     "Get-Process cc-lhm -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue",
+    // marcadores de queda antigos: começam do zero com o helper novo
+    `Remove-Item -Force -ErrorAction SilentlyContinue -Path ${psq(path.join(process.env.LOCALAPPDATA || os.tmpdir(), 'CleanCode', 'lhm', 'opening-*'))}`,
     `New-Item -ItemType Directory -Force -Path ${psq(SENSORS_DIR)} | Out-Null`,
     `Copy-Item -Path ${psq(path.join(path.dirname(exe), '*'))} -Destination ${psq(SENSORS_DIR)} -Recurse -Force`,
     `$a = ${taskXmlAction}`,
@@ -146,11 +164,11 @@ export async function activate(onStep: (step: number, info?: { driverPresent?: b
     `Start-ScheduledTask -TaskName ${psq(TASK)}`,
   ].filter(Boolean).join('; ');
   onStep(2, { driverPresent: !needPawn });
+  child?.kill(); child = null; last = null;
   const r = await psAdmin(script);
   taskInstalled = null;
   try { fs.unlinkSync(setup); } catch { /* */ }
   if (!r.ok) return { ok: false, message: /cancel/i.test(r.err) ? t("Cancelado") : needPawn && !(await pawnioInstalled()) ? t("O driver PawnIO não pôde ser instalado") : t("Sem permissão de administrador") };
-  child?.kill(); child = null;
   // espera a primeira leitura da tarefa de administrador (até 25 segundos)
   onStep(3, { driverPresent: !needPawn });
   for (let i = 0; i < 25; i++) {
