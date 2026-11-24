@@ -47,6 +47,7 @@ jobs:
           if (-not (Test-Path $exe)) { Get-ChildItem (Join-Path $env:LOCALAPPDATA 'Programs') -Recurse -Filter CleanCode.exe | Select -First 3 | % FullName; throw 'CleanCode.exe não encontrado' }
           "EXE=$exe" | Out-File -Append $env:GITHUB_ENV
           "instalado: " + (Get-Item $exe).VersionInfo.ProductVersion
+          "EXE_TIME=" + (Get-Item $exe).LastWriteTimeUtc.ToString('o') | Out-File -Append $env:GITHUB_ENV
       - name: Feed local com uma versão nova (modo build)
         if: env.MODE == 'build'
         shell: pwsh
@@ -65,6 +66,8 @@ jobs:
           node .github/e2e/trigger-update.mjs
           $w.WaitForExit()
           "--- versão no fim: " + (Get-Item $env:EXE).VersionInfo.ProductVersion
+          "--- CleanCode.exe gravado em: antes $env:EXE_TIME, depois " + (Get-Item $env:EXE).LastWriteTimeUtc.ToString('o')
+          Get-CimInstance Win32_Process -Filter "Name='CleanCode.exe'" | % { "--- processo $($_.ProcessId) criado em $($_.CreationDate): $($_.CommandLine)" }
           "--- CleanCode rodando no fim: " + ((Get-Process CleanCode -ErrorAction SilentlyContinue | Measure-Object).Count)
           Get-Content e2e-out\timeline.txt | Select-Object -Last 120
           Get-ChildItem $env:TEMP -Filter 'cleancode-update*' -ErrorAction SilentlyContinue | % { "--- $($_.Name)"; if ($_.Extension -eq '.log') { Get-Content $_.FullName } }
