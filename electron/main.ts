@@ -917,6 +917,8 @@ ipcMain.handle('history:importSnapshot', async (e) => {
 // ---------- sistema / arquivos ----------
 // idioma das janelas (lido de forma síncrona pelo preload)
 ipcMain.on('app:lang', (e) => { e.returnValue = LANG; });
+// prévia do popup de mapeamento dos sensores, só na versão de desenvolvimento (npm run preview:sensores)
+ipcMain.on('app:previewSensors', (e) => { e.returnValue = app.isPackaged ? '' : String(process.env.CLEANCODE_PREVIEW_SENSORS || ''); });
 ipcMain.handle('app:info', () => ({
   version: app.getVersion(), isAdmin: isAdmin(), electron: process.versions.electron, userData: userDir,
   platform: process.platform, osName: system.osName, fileManager: system.fileManager,

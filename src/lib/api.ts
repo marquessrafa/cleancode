@@ -139,6 +139,8 @@ interface CC {
   platform: string;
   /** idioma da interface, decidido pelo processo principal (configuração ou idioma do computador) */
   lang: 'pt' | 'en' | 'es';
+  /** prévia do popup de mapeamento (só na versão de desenvolvimento): '', 'aviso', 'ok' ou 'falha' */
+  previewSensors?: string;
   /** reinicia o CleanCode */
   relaunch(): Promise<boolean>;
   info(): Promise<AppInfo>;

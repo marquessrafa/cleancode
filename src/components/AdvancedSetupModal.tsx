@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { Activity, AlertTriangle, Check, CircuitBoard, Cpu, Fan, Gauge, Gpu, HardDrive, Loader2, MemoryStick, Send, ShieldCheck, Thermometer, X, Zap } from 'lucide-react';
 import { cc, isMac, type HardwareLive, type HwCheck } from '../lib/api';
 import { useApp } from '../lib/store';
+import { PREVIEW, previewActivate } from './advancedPreview';
 import { Button, cx } from './ui';
 import { t as tr } from '../lib/i18n';
 
@@ -17,6 +18,7 @@ const MIN_STEP_MS = 700;
 
 /** O monitoramento avançado precisa ser ativado (ou ativado de novo)? */
 export function needsAdvanced(live: HardwareLive | null): boolean {
+  if (PREVIEW) return true;
   const adv = live?.live?.advanced;
   if (isMac || !adv?.available) return false;
   return !adv.active || adv.cpuBlocked === 'admin' || adv.cpuBlocked === 'nodata' || adv.cpuBlocked === 'driver';
@@ -67,12 +69,12 @@ export function AdvancedSetupModal({ live }: { live: HardwareLive | null }) {
     return () => clearTimeout(id);
   }, [phase, allOk]);
 
-  if (!open || isMac) return null;
+  if (!open || (isMac && !PREVIEW)) return null;
   const start = async () => {
     busyRef.current = true;
     setPhase('work'); setTarget(0); setShown(0); setResult(null); setSent(false);
     let r: { ok: boolean; message: string };
-    try { r = await cc.hardwareAdvanced(true); } catch (e: any) { r = { ok: false, message: String(e?.message || e) }; }
+    try { r = PREVIEW ? await previewActivate((i, drv) => { setTarget(i); setDriverPresent(drv); }) : await cc.hardwareAdvanced(true); } catch (e: any) { r = { ok: false, message: String(e?.message || e) }; }
     busyRef.current = false;
     setResult(r);
     if (!r.ok) setPhase('error');
@@ -93,6 +95,7 @@ export function AdvancedSetupModal({ live }: { live: HardwareLive | null }) {
   const checks = result?.checks || [];
   const anyFail = checks.some((c) => c.status === 'fail');
   const sendReport = async () => {
+    if (PREVIEW) { setSent(true); toast(tr("Na prévia, o relatório não é enviado."), 'ok'); return; }
     const r = await cc.hardwareReport(checks);
     setSent(true);
     toast(r.truncated ? tr("A página da issue abriu no navegador. O relatório completo também foi copiado, e você pode colar na issue.") : tr("A página da issue abriu no navegador. Revise o texto e clique em Submit new issue para enviar."), 'ok');

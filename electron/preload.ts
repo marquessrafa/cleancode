@@ -10,6 +10,7 @@ const on = (ch: string, cb: (d: any) => void) => {
 contextBridge.exposeInMainWorld('cc', {
   platform: process.platform,
   lang: ipcRenderer.sendSync('app:lang') as 'pt' | 'en' | 'es',
+  previewSensors: ipcRenderer.sendSync('app:previewSensors') as string,
   info: () => inv('app:info'),
   relaunch: () => inv('app:relaunch'),
   drives: () => inv('drives:list'),
