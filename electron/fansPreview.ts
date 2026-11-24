@@ -29,14 +29,16 @@ export function previewState(cfg: Record<string, FanConfig>): FanState {
   const controls: FanControlInfo[] = FANS.map((f) => {
     const c = cfg[f.id];
     let pct = f.auto, status: FanControlInfo['status'];
-    if (tests.has(f.id)) { pct = tests.get(f.id)!; status = { mode: 'fixed', pct, error: null }; }
-    else if (c?.mode === 'fixed' && typeof c.value === 'number') { pct = c.value; status = { mode: 'fixed', pct, error: null }; }
+    const floor = (p: number) => (c?.pump ? Math.max(60, p) : p);
+        if (f.kind === 'gpu') { /* placa AMD recente: só leitura, como no app de verdade */ }
+    else if (tests.has(f.id)) { pct = floor(tests.get(f.id)!); status = { mode: 'fixed', pct, read: pct, error: null }; }
+    else if (c?.mode === 'fixed' && typeof c.value === 'number') { pct = floor(c.value); status = { mode: 'fixed', pct, read: pct, error: null }; }
     else if (c?.mode === 'curve' && c.points?.length) {
       const t = temps.find((x) => x.id === c.source);
-      if (t) { pct = Math.round(interp(c.points, t.value)); status = { mode: 'curve', pct, error: null }; }
+      if (t) { pct = floor(Math.round(interp(c.points, t.value))); status = { mode: 'curve', pct, read: pct, error: null }; }
       else status = { mode: 'curve', pct: null, error: 'nosource' };
     }
-    return { id: f.id, name: f.name, hw: f.hw, kind: f.kind, pct, rpm: Math.round((f.max * pct) / 100), status };
+    return { id: f.id, name: f.name, hw: f.hw, kind: f.kind, pct, rpm: Math.round((f.max * pct) / 100), status, locked: f.kind === 'gpu' || undefined };
   });
   return { available: true, active: true, helperReady: true, controls, temps, emergency: false, preview: true };
 }

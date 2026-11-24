@@ -1,24 +1,31 @@
 // Ventoinhas (Windows): velocidade fixa ou curva pela temperatura para cada ventoinha que aceita controle.
 // Quem aplica é a tarefa de administrador do monitoramento avançado (helper cc-lhm). O app só grava o pedido e renova
 // a cada 3 segundos (ver electron/platform/win32/fans.ts). Proteções: 100% a partir de 90 °C, modo automático quando o
-// app fecha ou para de renovar o pedido.
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Fan, ShieldCheck, AlertTriangle, Loader2, FlaskConical, Pencil, Check, Info } from 'lucide-react';
+// app fecha ou para de renovar o pedido, e modo automático quando a placa não obedece ao comando.
+//
+// Layout: topo com degradê e resumo; cartões pequenos (um por ventoinha, com o anel de velocidade); painel de edição
+// da ventoinha escolhida (modo, velocidade fixa, curva, bomba e teste).
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { ShieldCheck, AlertTriangle, Loader2, FlaskConical, Pencil, Check, Info, Thermometer, Cpu, Gpu, Droplets, Plus, Minus, ChevronDown, Sparkles } from 'lucide-react';
 import { cc, FanConfig, FanControlInfo, FanState, FanTempSource } from '../lib/api';
 import { useApp } from '../lib/store';
 import { PageBody } from './common';
-import { Button, Segmented, Select, cx } from '../components/ui';
+import { Button, Select, cx } from '../components/ui';
 import { OPEN_ADVANCED } from '../components/AdvancedSetupModal';
 import { t as tr, LOCALE } from '../lib/i18n';
 
 type Points = [number, number][];
+type Mode = FanConfig['mode'];
+const PUMP_MIN = 60;
 const PRESETS: { id: string; label: string; points: Points }[] = [
   { id: 'quiet', label: tr("Silenciosa"), points: [[30, 20], [50, 30], [70, 55], [85, 100]] },
   { id: 'balanced', label: tr("Equilibrada"), points: [[30, 30], [50, 45], [70, 70], [85, 100]] },
   { id: 'performance', label: tr("Desempenho"), points: [[30, 45], [50, 60], [65, 85], [80, 100]] },
 ];
 const T_MIN = 20, T_MAX = 100;
-const fmt = (v: number | undefined, d = 0) => (v === undefined || v === null || isNaN(v) ? '—' : v.toLocaleString(LOCALE, { maximumFractionDigits: d }));
+// segunda cor dos degradês: a cor de destaque girada no círculo de cores (a mesma técnica do Monitor de hardware)
+const ACC2 = 'oklch(from var(--accent) .78 .15 calc(h + 45))';
+const fmt = (v: number | undefined | null, d = 0) => (v === undefined || v === null || isNaN(v) ? '—' : v.toLocaleString(LOCALE, { maximumFractionDigits: d }));
 function interp(pts: Points, t: number) {
   if (!pts.length) return 0;
   if (t <= pts[0][0]) return pts[0][1];
@@ -30,6 +37,7 @@ function defaultSource(fan: FanControlInfo, temps: FanTempSource[]) {
   if (fan.kind === 'gpu') return (temps.find((t) => t.kind === 'gpu' && fan.hw.startsWith(t.hw) && t.name === 'GPU Core') || temps.find((t) => t.kind === 'gpu'))?.id;
   return (temps.find((t) => t.kind === 'cpu' && /package|tctl/i.test(t.name)) || temps.find((t) => t.kind === 'cpu') || temps[0])?.id;
 }
+const kindLabel = (k: FanControlInfo['kind']) => (k === 'gpu' ? tr("Placa de vídeo") : k === 'board' ? tr("Placa-mãe") : k === 'cooler' ? tr("Refrigeração") : tr("Outras ventoinhas"));
 
 // ---------- estado das ventoinhas (consulta a cada 1,5 segundo enquanto a tela está aberta) ----------
 function useFans(active: boolean) {
@@ -48,12 +56,54 @@ function useFans(active: boolean) {
   return { state, ref };
 }
 
+// ---------- ícone da ventoinha: sete pás curvas em volta do eixo, dentro de um círculo com o anel de velocidade ----------
+function FanGlyph({ size, spin, gid }: { size: number; spin: number; gid: string }) {
+  const blades = Array.from({ length: 7 }, (_, i) => (i * 360) / 7);
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" style={spin ? { animation: `spin ${spin}s linear infinite` } : undefined} aria-hidden>
+      <defs>
+        <linearGradient id={`${gid}-blade`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="var(--accent)" />
+          <stop offset="1" stopColor={ACC2} />
+        </linearGradient>
+      </defs>
+      {blades.map((a) => (
+        <path key={a} transform={`rotate(${a} 50 50)`} fill={`url(#${gid}-blade)`} opacity={0.92}
+          stroke="var(--surface)" strokeWidth="1.2" d="M46.3 38.6 C45 28 48 15 56.1 6.4 Q67 4 75.9 14.4 C69 24 61 31 53.7 38.6 Z" />
+      ))}
+      <circle cx="50" cy="50" r="13" fill="var(--surface)" stroke={`url(#${gid}-blade)`} strokeWidth="3" />
+      <circle cx="50" cy="50" r="3.5" fill="var(--accent)" />
+    </svg>
+  );
+}
+function FanDial({ size, pct, rpm, tone = 'ok', dim }: { size: number; pct?: number; rpm?: number; tone?: 'ok' | 'warn' | 'danger'; dim?: boolean }) {
+  const gid = useId().replace(/:/g, '');
+  const r = 46, c = 2 * Math.PI * r, p = Math.max(0, Math.min(100, pct ?? 0));
+  const spin = rpm && rpm > 0 ? Math.max(0.3, Math.min(3, 1400 / rpm)) : 0;
+  const stroke = tone === 'danger' ? 'var(--danger)' : tone === 'warn' ? 'var(--warn)' : `url(#${gid}-ring)`;
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox="0 0 100 100" className="absolute inset-0 -rotate-90">
+        <defs>
+          <linearGradient id={`${gid}-ring`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor={ACC2} /><stop offset="1" stopColor="var(--accent)" /></linearGradient>
+          <radialGradient id={`${gid}-disc`} cx=".35" cy=".3" r=".8"><stop offset="0" stopColor="color-mix(in srgb, var(--accent) 22%, var(--surface))" /><stop offset="1" stopColor="var(--surface)" /></radialGradient>
+        </defs>
+        <circle cx="50" cy="50" r="40" fill={`url(#${gid}-disc)`} />
+        <circle cx="50" cy="50" r={r} fill="none" stroke="var(--line)" strokeWidth="5" />
+        <circle cx="50" cy="50" r={r} fill="none" stroke={stroke} strokeWidth="5" strokeLinecap="round" strokeDasharray={`${(c * p) / 100} ${c}`} style={{ transition: 'stroke-dasharray .6s cubic-bezier(.2,.8,.2,1)' }} />
+      </svg>
+      <div className={cx('absolute inset-0 flex items-center justify-center', dim && 'opacity-40')}><FanGlyph size={size * 0.56} spin={spin} gid={gid} /></div>
+    </div>
+  );
+}
+
 export default function FansPage() {
   const { page, go, settings, setSettings } = useApp();
   const { state, ref } = useFans(page === 'fans');
   const [draft, setDraft] = useState<Record<string, FanConfig>>(() => settings?.fans || {});
   const draftRef = useRef(draft);
   const [showEmpty, setShowEmpty] = useState(false);
+  const [selected, setSelected] = useState<string | null>(null);
   const save = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   // as mudanças aparecem na hora e são salvas (e aplicadas) depois de uma pausa curta, para não gravar a cada passo do controle deslizante
   const change = (id: string, patch: Partial<FanConfig>) => {
@@ -67,24 +117,13 @@ export default function FansPage() {
   const controls = state?.controls || [];
   const hidden = controls.filter((c) => c.kind === 'board' && !c.rpm && (draft[c.id]?.mode || 'auto') === 'auto');
   const visible = showEmpty ? controls : controls.filter((c) => !hidden.includes(c));
-  const groups = [
-    { kind: 'board', title: tr("Placa-mãe") },
-    { kind: 'gpu', title: tr("Placa de vídeo") },
-    { kind: 'cooler', title: tr("Refrigeração") },
-    { kind: 'other', title: tr("Outras ventoinhas") },
-  ].map((g) => ({ ...g, items: visible.filter((c) => c.kind === g.kind) })).filter((g) => g.items.length);
+  const sel = visible.find((c) => c.id === selected) || visible[0];
+  const ready = !!state && state.active && state.helperReady && controls.length > 0;
 
   return (
     <PageBody>
-      <div className="flex items-center gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent)]"><Fan size={22} /></div>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-semibold">{tr("Ventoinhas")}</h1>
-          <p className="text-[13px] text-muted">{tr("Escolha a velocidade de cada ventoinha da placa-mãe e da placa de vídeo. Você pode usar uma velocidade fixa ou uma curva que acompanha a temperatura.")}</p>
-        </div>
-      </div>
-
-      <div className="mt-5 space-y-4">
+      <Hero state={state} draft={draft} ready={ready} />
+      <div className="mt-4 space-y-4">
         {!state ? (
           <div className="flex items-center gap-2 text-[13px] text-muted"><Loader2 size={15} className="animate-spin" />{tr("O CleanCode está lendo as ventoinhas.")}</div>
         ) : !state.active ? (
@@ -100,39 +139,71 @@ export default function FansPage() {
             text={tr("O LibreHardwareMonitor não encontrou nenhuma ventoinha que aceite comandos. Isso acontece quando a placa-mãe tem um chip de sensores que a biblioteca não sabe controlar.")} />
         ) : (
           <>
-            {state.preview && (
-              <div className="flex items-start gap-3 rounded-xl border border-[color-mix(in_srgb,var(--warn)_45%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] p-4 text-[13px]">
-                <FlaskConical size={20} className="mt-0.5 shrink-0 text-[var(--warn)]" />
-                <div><div className="font-semibold">{tr("Esta é uma prévia com ventoinhas simuladas")}</div>
-                  <div className="text-muted">{tr("Nesta prévia, nenhuma mudança chega às ventoinhas de verdade. Para controlar as ventoinhas do PC, use o app instalado com o monitoramento avançado ativo.")}</div></div>
-              </div>
-            )}
-            {state.emergency && (
-              <div className="flex items-start gap-3 rounded-xl border border-[color-mix(in_srgb,var(--danger)_45%,transparent)] bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] p-4 text-[13px]">
-                <AlertTriangle size={20} className="mt-0.5 shrink-0 text-[var(--danger)]" />
-                <div><div className="font-semibold">{tr("A proteção de temperatura está ativa")}</div>
-                  <div className="text-muted">{tr("O processador ou a placa de vídeo chegou a 90 °C. Por isso, o CleanCode colocou as ventoinhas controladas em 100%. Elas voltam à sua configuração quando a temperatura cair para 85 °C.")}</div></div>
-              </div>
-            )}
-            <HowItWorks />
-            {groups.map((g) => (
-              <section key={g.kind}>
-                <h2 className="mb-2 text-[12px] font-medium uppercase tracking-wide text-faint">{g.title}</h2>
-                <div className="grid gap-3 xl:grid-cols-2">
-                  {g.items.map((f) => <FanCard key={f.id} fan={f} cfg={draft[f.id]} temps={state.temps} onChange={(p) => change(f.id, p)} live={ref} />)}
-                </div>
-              </section>
-            ))}
+            {state.preview && <Banner tone="warn" icon={<FlaskConical size={18} />} title={tr("Esta é uma prévia com ventoinhas simuladas")}
+              text={tr("Nesta prévia, nenhuma mudança chega às ventoinhas de verdade. Para controlar as ventoinhas do PC, use o app instalado com o monitoramento avançado ativo.")} />}
+            {state.emergency && <Banner tone="danger" icon={<AlertTriangle size={18} />} title={tr("A proteção de temperatura está ativa")}
+              text={tr("O processador ou a placa de vídeo chegou a 90 °C. Por isso, o CleanCode colocou as ventoinhas controladas em 100%. Elas voltam à sua configuração quando a temperatura cair para 85 °C.")} />}
+
+            <div className="grid gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))' }}>
+              {visible.map((f) => <FanTile key={f.id} fan={f} cfg={draft[f.id]} active={sel?.id === f.id} onClick={() => setSelected(f.id)} />)}
+            </div>
             {hidden.length > 0 && (
               <div className="flex flex-wrap items-center gap-3 text-[12.5px] text-muted">
                 <span>{showEmpty ? tr("As saídas da placa-mãe sem ventoinha ligada também aparecem acima.") : tr("{0} saídas da placa-mãe estão sem ventoinha ligada (0 RPM), então o CleanCode escondeu essas saídas.", hidden.length)}</span>
                 <Button size="sm" variant="outline" onClick={() => setShowEmpty((v) => !v)}>{showEmpty ? tr("Esconder as saídas vazias") : tr("Mostrar as saídas vazias")}</Button>
               </div>
             )}
+            {sel && <Editor key={sel.id} fan={sel} cfg={draft[sel.id]} temps={state.temps} onChange={(p) => change(sel.id, p)} live={ref} />}
+            <HowItWorks />
           </>
         )}
       </div>
     </PageBody>
+  );
+}
+
+// ---------- topo: degradê, ícone grande e resumo ----------
+function Hero({ state, draft, ready }: { state: FanState | null; draft: Record<string, FanConfig>; ready: boolean }) {
+  const cpu = state?.temps.find((t) => t.kind === 'cpu' && /package|tctl/i.test(t.name)) || state?.temps.find((t) => t.kind === 'cpu');
+  const gpu = state?.temps.find((t) => t.kind === 'gpu' && t.name === 'GPU Core') || state?.temps.find((t) => t.kind === 'gpu');
+  const controls = state?.controls || [];
+  const managed = controls.filter((c) => !c.locked && (draft[c.id]?.mode || 'auto') !== 'auto').length;
+  // conta só as saídas com ventoinha ligada (ou já controladas), e não as saídas vazias da placa-mãe
+  const connected = controls.filter((c) => !c.locked).filter((c) => (c.rpm || 0) > 0 || c.kind !== 'board' || (draft[c.id]?.mode || 'auto') !== 'auto').length;
+  const spinning = controls.filter((c) => (c.rpm || 0) > 0);
+  const avgPct = spinning.length ? spinning.reduce((a, c) => a + (c.pct || 0), 0) / spinning.length : 0;
+  const maxRpm = spinning.reduce((a, c) => Math.max(a, c.rpm || 0), 0);
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-[var(--line)] p-5"
+      style={{ background: `radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--accent) 24%, transparent) 0%, transparent 55%), radial-gradient(90% 120% at 100% 100%, color-mix(in srgb, ${ACC2} 18%, transparent) 0%, transparent 60%), var(--surface)` }}>
+      <div className="flex flex-wrap items-center gap-5">
+        <FanDial size={92} pct={avgPct} rpm={maxRpm} />
+        <div className="min-w-[240px] flex-1">
+          <h1 className="text-[22px] font-semibold tracking-tight">{tr("Ventoinhas")}</h1>
+          <p className="mt-0.5 max-w-[620px] text-[13px] text-muted">{tr("Escolha a velocidade de cada ventoinha da placa-mãe e da placa de vídeo. Você pode usar uma velocidade fixa ou uma curva que acompanha a temperatura.")}</p>
+          {ready && (
+            <div className="mt-2.5 inline-flex items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--accent)_35%,transparent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] px-2.5 py-1 text-[11.5px] font-medium text-[var(--accent)]">
+              <ShieldCheck size={13} />{tr("A proteção de 90 °C está ligada")}
+            </div>
+          )}
+        </div>
+        {ready && (
+          <div className="grid grid-cols-3 gap-2">
+            <HeroStat icon={<Cpu size={14} />} label={tr("Processador")} value={cpu ? `${fmt(cpu.value)} °C` : '—'} />
+            <HeroStat icon={<Gpu size={14} />} label={tr("Placa de vídeo")} value={gpu ? `${fmt(gpu.value)} °C` : '—'} />
+            <HeroStat icon={<Thermometer size={14} />} label={tr("No controle do CleanCode")} value={tr("{0} de {1}", managed, connected)} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+function HeroStat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="min-w-[118px] rounded-xl border border-[var(--line)] bg-[color-mix(in_srgb,var(--surface)_70%,transparent)] px-3 py-2 backdrop-blur-md">
+      <div className="flex items-center gap-1.5 text-[11px] text-muted">{icon}{label}</div>
+      <div className="mt-0.5 text-[18px] font-semibold tabular-nums">{value}</div>
+    </div>
   );
 }
 
@@ -145,15 +216,328 @@ function Notice({ icon, title, text, action }: { icon: React.ReactNode; title: s
     </div>
   );
 }
+function Banner({ tone, icon, title, text }: { tone: 'warn' | 'danger'; icon: React.ReactNode; title: string; text: string }) {
+  const col = tone === 'danger' ? 'var(--danger)' : 'var(--warn)';
+  return (
+    <div className="flex items-start gap-3 rounded-xl border p-3.5 text-[13px]" style={{ borderColor: `color-mix(in srgb, ${col} 45%, transparent)`, background: `linear-gradient(90deg, color-mix(in srgb, ${col} 14%, transparent), transparent)` }}>
+      <div className="mt-0.5 shrink-0" style={{ color: col }}>{icon}</div>
+      <div><div className="font-semibold">{title}</div><div className="text-muted">{text}</div></div>
+    </div>
+  );
+}
+
+// ---------- estado de cada ventoinha (texto e cor) ----------
+function fanStatus(fan: FanControlInfo, mode: Mode): { tone: 'ok' | 'warn' | 'danger' | 'idle'; short: string; long: string } {
+  const st = fan.status;
+  if (fan.locked) return { tone: 'ok', short: tr("Em breve"), long: tr("O controle desta ventoinha chega numa próxima versão. Por enquanto, o CleanCode só mostra a velocidade.") };
+  if (mode === 'auto') return { tone: 'idle', short: tr("Automático"), long: tr("A placa decide a velocidade desta ventoinha, pelo perfil do BIOS.") };
+  if (!st) return { tone: 'ok', short: tr("Aplicando"), long: tr("O CleanCode está aplicando a configuração.") };
+  if (st.error === 'refused') return { tone: 'warn', short: tr("A placa recusou"), long: tr("A placa não obedeceu ao comando. Por isso, o CleanCode devolveu esta ventoinha ao modo automático. Se você mudar a configuração, o CleanCode tenta de novo.") };
+  if (st.error === 'notfound') return { tone: 'warn', short: tr("Não encontrada"), long: tr("A tarefa de administrador não encontrou esta ventoinha.") };
+  if (st.error === 'nosource') return { tone: 'warn', short: tr("Sem temperatura"), long: tr("A temperatura escolhida está sem leitura agora. Por isso, a ventoinha ficou no modo automático.") };
+  if (st.error) return { tone: 'warn', short: tr("Erro"), long: tr("A placa recusou o comando: {0}", st.error.replace(/^error:\s*/, '')) };
+  if (st.mode === 'emergency') return { tone: 'danger', short: tr("Proteção"), long: tr("A proteção de temperatura colocou esta ventoinha em 100%.") };
+  const long = typeof st.read === 'number' ? tr("O CleanCode está aplicando {0}%, e a placa informa {1}%.", fmt(st.pct), fmt(st.read)) : tr("O CleanCode está aplicando {0}%.", fmt(st.pct));
+  return { tone: 'ok', short: `${fmt(st.pct)}%`, long };
+}
+const TONE: Record<string, string> = { ok: 'var(--accent)', warn: 'var(--warn)', danger: 'var(--danger)', idle: 'var(--faint)' };
+const MODE_LABEL: Record<Mode, string> = { auto: tr("Automático"), fixed: tr("Velocidade fixa"), curve: tr("Curva") };
+
+// ---------- cartão pequeno de uma ventoinha ----------
+function FanTile({ fan, cfg, active, onClick }: { fan: FanControlInfo; cfg?: FanConfig; active: boolean; onClick: () => void }) {
+  const mode = fan.locked ? 'auto' : cfg?.mode || 'auto';
+  const s = fanStatus(fan, mode);
+  return (
+    <button onClick={onClick} className={cx('group relative flex items-center gap-3 overflow-hidden rounded-xl border p-3 text-left transition-all duration-200', active ? 'border-[color-mix(in_srgb,var(--accent)_60%,transparent)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_14%,transparent)]' : 'border-[var(--line)] hover:border-[color-mix(in_srgb,var(--accent)_35%,var(--line))]')}
+      style={{ background: active ? `linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, var(--surface)), var(--surface) 70%)` : 'var(--surface)' }}>
+      <FanDial size={54} pct={fan.pct} rpm={fan.rpm} tone={s.tone === 'warn' ? 'warn' : s.tone === 'danger' ? 'danger' : 'ok'} dim={!fan.rpm} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          {cfg?.pump && <Droplets size={12} className="shrink-0 text-[var(--accent)]" />}
+          <span className="break-words text-[13px] font-semibold leading-tight">{cfg?.label || fan.name}</span>
+        </div>
+        <div className="text-[11px] text-muted">{kindLabel(fan.kind)}</div>
+        <div className="mt-1 flex items-baseline gap-1.5">
+          <span className="text-[17px] font-semibold tabular-nums leading-none">{fmt(fan.rpm)}</span>
+          <span className="text-[10.5px] text-muted">RPM</span>
+        </div>
+      </div>
+      <div className="flex flex-col items-end gap-1 self-start">
+        <span className="rounded-full px-2 py-0.5 text-[10.5px] font-semibold" style={{ color: TONE[s.tone], background: `color-mix(in srgb, ${TONE[s.tone]} 14%, transparent)` }}>{mode === 'auto' || s.tone === 'warn' || s.tone === 'danger' ? s.short : MODE_LABEL[mode]}</span>
+        <span className="text-[11px] tabular-nums text-muted">{fmt(fan.pct)}%</span>
+      </div>
+    </button>
+  );
+}
+
+// ---------- painel de edição da ventoinha escolhida ----------
+type TestStep = { phase: 'low' | 'high' | 'done'; lowPct: number; low?: number; high?: number };
+function Editor({ fan, cfg, temps, onChange, live }: { fan: FanControlInfo; cfg?: FanConfig; temps: FanTempSource[]; onChange: (p: Partial<FanConfig>) => void; live: React.MutableRefObject<FanState | null> }) {
+  const locked = !!fan.locked;
+  const mode = locked ? 'auto' : cfg?.mode || 'auto';
+  const pump = !!cfg?.pump;
+  const floor = pump ? PUMP_MIN : 0;
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(cfg?.label || '');
+  const [test, setTest] = useState<TestStep | null>(null);
+  const testing = !!test && test.phase !== 'done';
+  const source = cfg?.source && temps.some((t) => t.id === cfg.source) ? cfg.source : defaultSource(fan, temps);
+  const points: Points = (cfg?.points?.length ? cfg.points : PRESETS[1].points).map(([t, p]) => [t, Math.max(floor, p)]) as Points;
+  const temp = temps.find((t) => t.id === source)?.value;
+  const s = fanStatus(fan, mode);
+  const value = Math.max(floor, cfg?.value ?? Math.round(fan.pct ?? 50));
+
+  const setMode = (m: Mode) => {
+    if (m === 'fixed') onChange({ mode: m, value });
+    else if (m === 'curve') onChange({ mode: m, source, points });
+    else onChange({ mode: m });
+  };
+  const runTest = async () => {
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const read = () => live.current?.controls.find((c) => c.id === fan.id)?.rpm;
+    const lowPct = pump ? PUMP_MIN : 30;
+    try {
+      setTest({ phase: 'low', lowPct }); await cc.fanTest(fan.id, lowPct); await wait(8000); const low = read();
+      setTest({ phase: 'high', lowPct, low }); await cc.fanTest(fan.id, 100); await wait(8000); const high = read();
+      setTest({ phase: 'done', lowPct, low, high });
+    } finally { await cc.fanTest(fan.id, null); }
+  };
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)]">
+      <div className="h-[3px] w-full" style={{ background: `linear-gradient(90deg, var(--accent), ${ACC2})` }} />
+      <div className="p-4">
+        {/* cabeçalho: anel grande, nome, peça, RPM e ações */}
+        <div className="flex flex-wrap items-center gap-4">
+          <FanDial size={76} pct={fan.pct} rpm={fan.rpm} tone={s.tone === 'warn' ? 'warn' : s.tone === 'danger' ? 'danger' : 'ok'} dim={!fan.rpm} />
+          <div className="min-w-[220px] flex-1">
+            {editing ? (
+              <form className="flex items-center gap-1.5" onSubmit={(e) => { e.preventDefault(); onChange({ label: name.trim() || undefined }); setEditing(false); }}>
+                <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={fan.name} className="h-8 min-w-0 flex-1 rounded-md border border-[var(--line)] bg-[var(--bg)] px-2 text-[14px] outline-none focus:border-[var(--accent)]" />
+                <Button size="sm" type="submit" icon={<Check size={13} />}>{tr("Salvar")}</Button>
+              </form>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[17px] font-semibold">{cfg?.label || fan.name}</span>
+                <button title={tr("Dar um nome para esta ventoinha")} onClick={() => { setName(cfg?.label || ''); setEditing(true); }} className="rounded p-1 text-faint hover:bg-[var(--hover)] hover:text-[var(--fg)]"><Pencil size={13} /></button>
+              </div>
+            )}
+            <div className="text-[12px] text-muted">{cfg?.label ? `${fan.name}, ${fan.hw}` : fan.hw}</div>
+            <div className="mt-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[12.5px]">
+              <span><span className="text-[20px] font-semibold tabular-nums">{fmt(fan.rpm)}</span> <span className="text-muted">RPM</span></span>
+              <span className="text-muted">{tr("{0}% da velocidade", fmt(fan.pct))}</span>
+            </div>
+          </div>
+          {!locked && <div className="flex flex-wrap items-center gap-2">
+            {fan.kind === 'board' && (
+              <button onClick={() => onChange(pump ? { pump: false } : { pump: true, value: Math.max(PUMP_MIN, value), points: points.map(([t, p]) => [t, Math.max(PUMP_MIN, p)]) as Points })} title={tr("Marque esta opção se a saída for a bomba do water cooler. Assim, o CleanCode nunca deixa a velocidade abaixo de {0}%.", PUMP_MIN)}
+                className={cx('flex h-8 items-center gap-1.5 rounded-lg border px-3 text-[12.5px] font-medium transition-colors', pump ? 'border-[color-mix(in_srgb,var(--accent)_50%,transparent)] bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] text-[var(--accent)]' : 'border-[var(--line)] text-muted hover:bg-[var(--hover)] hover:text-[var(--fg)]')}>
+                <Droplets size={14} />{tr("Bomba do water cooler")}
+              </button>
+            )}
+            <Button variant="outline" icon={testing ? <Loader2 size={14} className="animate-spin" /> : <FlaskConical size={14} />} disabled={testing} onClick={runTest}>{tr("Testar")}</Button>
+          </div>}
+        </div>
+
+        {locked ? (
+          <div className="mt-4 flex items-start gap-3 rounded-xl border border-[var(--line)] p-4 text-[13px]" style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${ACC2} 12%, var(--surface)), var(--surface) 70%)` }}>
+            <Sparkles size={18} className="mt-0.5 shrink-0 text-[var(--accent)]" />
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 font-semibold">{tr("Controle da placa de vídeo")}<span className="rounded-full px-2 py-0.5 text-[10.5px] font-semibold text-[var(--on-accent)]" style={{ background: `linear-gradient(135deg, var(--accent), ${ACC2})` }}>{tr("Em breve")}</span></div>
+              <div className="text-muted">{tr("O CleanCode ainda não controla a ventoinha da placa de vídeo. Esse controle chega numa próxima versão, e por enquanto o CleanCode só mostra a velocidade.")}</div>
+              <div className="text-muted">{tr("Até lá, use o programa da fabricante da placa para mudar a ventoinha. Nas placas AMD, por exemplo, use o AMD Software: Adrenalin Edition.")}</div>
+            </div>
+          </div>
+        ) : (<>
+        {/* modo */}
+        <div className="mt-4 grid grid-cols-3 gap-1 rounded-xl border border-[var(--line)] bg-[var(--surface-2)] p-1">
+          {(['auto', 'fixed', 'curve'] as Mode[]).map((m) => (
+            <button key={m} onClick={() => setMode(m)} className={cx('rounded-lg px-3 py-2 text-[13px] font-semibold transition-all', mode === m ? 'text-[var(--on-accent)] shadow-sm' : 'text-muted hover:text-[var(--fg)]')}
+              style={mode === m ? { background: `linear-gradient(135deg, var(--accent), ${ACC2})` } : undefined}>{MODE_LABEL[m]}</button>
+          ))}
+        </div>
+        <div className="mt-2 flex items-start gap-2 text-[12.5px]" style={{ color: s.tone === 'idle' ? undefined : TONE[s.tone] }}>
+          <span className="mt-[5px] h-2 w-2 shrink-0 rounded-full" style={{ background: TONE[s.tone] }} />
+          <span className={s.tone === 'idle' || s.tone === 'ok' ? 'text-muted' : ''}>{s.long}</span>
+        </div>
+        {pump && <div className="mt-1 text-[12px] text-muted">{tr("Esta saída está marcada como bomba do water cooler. Por isso, o CleanCode nunca deixa a velocidade abaixo de {0}%.", PUMP_MIN)}</div>}
+
+        {mode === 'fixed' && (
+          <div className="mt-4">
+            <GradientSlider value={value} min={floor} onChange={(v) => onChange({ value: v })} />
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {[30, 50, 75, 100].filter((v) => v >= floor).map((v) => (
+                <button key={v} onClick={() => onChange({ value: v })} className={cx('rounded-full border px-3 py-1 text-[12px] font-medium tabular-nums transition-colors', value === v ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-[var(--line)] text-muted hover:text-[var(--fg)]')}>{v}%</button>
+              ))}
+              {value < 30 && <span className="text-[12px] text-[var(--warn)]">{tr("Abaixo de 30%, algumas ventoinhas param de girar. A proteção de temperatura continua ligada.")}</span>}
+            </div>
+          </div>
+        )}
+
+        {mode === 'curve' && (
+          <div className="mt-4 space-y-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <span className="text-[12.5px] text-muted">{tr("Temperatura que guia a curva")}</span>
+              <Select className="min-w-[320px] flex-1" value={source || ''} onChange={(v) => onChange({ source: v })} options={temps.map((t) => ({ value: t.id, label: `${t.name}, ${t.hw}: ${fmt(t.value)} °C` }))} />
+            </div>
+          <div className="grid gap-4 lg:grid-cols-[1fr_250px]">
+            <CurveEditor points={points} temp={temp} floor={floor} onChange={(pts) => onChange({ points: pts, source })} />
+            <div className="space-y-3">
+              <div>
+                <div className="mb-1 text-[12px] text-muted">{tr("Começar de um modelo")}</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {PRESETS.map((p) => <button key={p.id} onClick={() => onChange({ points: p.points.map(([t, v]) => [t, Math.max(floor, v)]) as Points, source })} className="rounded-lg border border-[var(--line)] px-2.5 py-1.5 text-[12px] font-medium hover:border-[var(--accent)] hover:text-[var(--accent)]">{p.label}</button>)}
+                </div>
+              </div>
+              <div className="rounded-lg bg-[var(--surface-2)] p-2.5 text-[12px] text-muted">
+                {temp !== undefined ? tr("Agora: {0} °C. A curva pede {1}%.", fmt(temp), fmt(Math.max(floor, interp(points, temp)))) : tr("A temperatura escolhida está sem leitura agora.")}
+              </div>
+              <div className="text-[11.5px] text-muted">{tr("Arraste os pontos para mudar a curva. Clique duas vezes no gráfico para criar um ponto, e clique com o botão direito num ponto para apagar.")}</div>
+            </div>
+          </div>
+          </div>
+        )}
+
+        </>)}
+
+        {test && (
+          <div className="mt-4 rounded-xl border border-[var(--line)] bg-[var(--surface-2)] p-3 text-[12.5px]">
+            {test.phase === 'low' ? tr("Teste em andamento: a ventoinha está em {0}% por 8 segundos.", test.lowPct)
+              : test.phase === 'high' ? tr("Teste em andamento: a ventoinha está em 100% por 8 segundos.")
+              : testResult(test.lowPct, test.low, test.high)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+function testResult(lowPct: number, low?: number, high?: number) {
+  if (low === undefined || high === undefined) return tr("Esta saída não informa o RPM. Por isso, o teste não consegue conferir se a ventoinha obedeceu. Depois do teste, a ventoinha voltou à configuração anterior.");
+  if (!low && !high) return tr("A ventoinha não girou no teste. Talvez não exista uma ventoinha ligada nesta saída. Depois do teste, a ventoinha voltou à configuração anterior.");
+  if (high - low > Math.max(150, high * 0.15)) return tr("A ventoinha obedeceu ao comando: ela girou a {0} RPM em {1}% e a {2} RPM em 100%. Depois do teste, a ventoinha voltou à configuração anterior.", fmt(low), lowPct, fmt(high));
+  return tr("O RPM quase não mudou: {0} RPM em {1}% e {2} RPM em 100%. A placa pode estar ignorando o comando. Depois do teste, a ventoinha voltou à configuração anterior.", fmt(low), lowPct, fmt(high));
+}
+
+// ---------- controle deslizante com degradê (o campo nativo fica por cima, invisível, para o teclado e o leitor de tela) ----------
+function GradientSlider({ value, min, onChange }: { value: number; min: number; onChange: (v: number) => void }) {
+  return (
+    <div className="flex items-center gap-4">
+      <div className="relative h-9 flex-1">
+        <div className="absolute inset-x-0 top-1/2 h-2.5 -translate-y-1/2 rounded-full bg-[var(--surface-2)] ring-1 ring-[var(--line)]" />
+        <div className="absolute left-0 top-1/2 h-2.5 -translate-y-1/2 rounded-full" style={{ width: `${value}%`, background: `linear-gradient(90deg, ${ACC2}, var(--accent))`, boxShadow: '0 0 14px color-mix(in srgb, var(--accent) 45%, transparent)' }} />
+        <div className="pointer-events-none absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-[var(--accent)] bg-[var(--surface)] shadow" style={{ left: `${value}%` }} />
+        <input type="range" min={0} max={100} step={1} value={value} onChange={(e) => onChange(Math.max(min, Number(e.target.value)))} aria-label={tr("Velocidade fixa")} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
+      </div>
+      <span className="w-16 text-right text-[22px] font-semibold tabular-nums">{fmt(value)}%</span>
+    </div>
+  );
+}
+
+// ---------- editor da curva (temperatura no eixo horizontal, velocidade no vertical) ----------
+const W = 560, H = 230, PL = 36, PR = 24, PT = 14, PB = 26;
+const sx = (t: number) => PL + ((t - T_MIN) / (T_MAX - T_MIN)) * (W - PL - PR);
+const sy = (p: number) => PT + (1 - p / 100) * (H - PT - PB);
+function CurveEditor({ points, temp, floor, onChange }: { points: Points; temp?: number; floor: number; onChange: (p: Points) => void }) {
+  const gid = useId().replace(/:/g, '');
+  const svg = useRef<SVGSVGElement>(null);
+  const [local, setLocalState] = useState<Points>(points);
+  // a última posição fica também numa referência: o fim do arrasto pode chegar antes de a tela redesenhar o último movimento
+  const localRef = useRef<Points>(points);
+  const setLocal = (f: (p: Points) => Points) => { localRef.current = f(localRef.current); setLocalState(localRef.current); };
+  const drag = useRef<number | null>(null);
+  const [hover, setHover] = useState<number | null>(null);
+  useEffect(() => { if (drag.current === null) { localRef.current = points; setLocalState(points); } }, [points]);
+  const toData = (e: { clientX: number; clientY: number }) => {
+    const r = svg.current!.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width) * W, y = ((e.clientY - r.top) / r.height) * H;
+    return [T_MIN + ((x - PL) / (W - PL - PR)) * (T_MAX - T_MIN), (1 - (y - PT) / (H - PT - PB)) * 100];
+  };
+  const move = (e: React.PointerEvent) => {
+    const i = drag.current; if (i === null || !svg.current) return;
+    const [tx, py] = toData(e); const cur = localRef.current;
+    const lo = i > 0 ? cur[i - 1][0] + 1 : T_MIN, hi = i < cur.length - 1 ? cur[i + 1][0] - 1 : T_MAX;
+    const t = Math.round(Math.max(lo, Math.min(hi, tx))), p = Math.round(Math.max(floor, Math.min(100, py)));
+    setLocal((pts) => pts.map((q, k) => (k === i ? [t, p] : q)) as Points);
+  };
+  const end = () => { if (drag.current !== null) { drag.current = null; onChange(localRef.current); } };
+  const add = (e: React.MouseEvent) => {
+    if (!svg.current || localRef.current.length >= 8) return;
+    const [tx, py] = toData(e); const t = Math.round(Math.max(T_MIN, Math.min(T_MAX, tx)));
+    if (localRef.current.some(([q]) => Math.abs(q - t) < 2)) return;
+    const next = [...localRef.current, [t, Math.round(Math.max(floor, Math.min(100, py)))] as [number, number]].sort((a, b) => a[0] - b[0]) as Points;
+    localRef.current = next; setLocalState(next); onChange(next);
+  };
+  const remove = (i: number) => {
+    if (localRef.current.length <= 2) return;
+    const next = localRef.current.filter((_, k) => k !== i) as Points;
+    localRef.current = next; setLocalState(next); onChange(next);
+  };
+  const line = useMemo(() => {
+    const pts = [[T_MIN, local[0][1]] as [number, number], ...local, [T_MAX, local[local.length - 1][1]] as [number, number]];
+    return pts.map(([t, p], k) => `${k ? 'L' : 'M'}${sx(t).toFixed(1)},${sy(p).toFixed(1)}`).join(' ');
+  }, [local]);
+  const area = `${line} L${sx(T_MAX)},${sy(0)} L${sx(T_MIN)},${sy(0)} Z`;
+  const now = temp !== undefined ? Math.max(T_MIN, Math.min(T_MAX, temp)) : undefined;
+  return (
+    <div className="rounded-xl border border-[var(--line)] p-2" style={{ background: 'linear-gradient(180deg, color-mix(in srgb, var(--accent) 5%, var(--surface)), var(--surface))' }}>
+      <svg ref={svg} viewBox={`0 0 ${W} ${H}`} className="w-full touch-none select-none" onPointerMove={move} onPointerUp={end} onPointerLeave={end} onDoubleClick={add} role="img" aria-label={tr("Curva de velocidade pela temperatura")}>
+        <defs>
+          <linearGradient id={`${gid}-area`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="var(--accent)" stopOpacity=".38" /><stop offset="1" stopColor="var(--accent)" stopOpacity="0" /></linearGradient>
+          <linearGradient id={`${gid}-line`} x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor={ACC2} /><stop offset="1" stopColor="var(--accent)" /></linearGradient>
+          <linearGradient id={`${gid}-hot`} x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="var(--danger)" stopOpacity="0" /><stop offset="1" stopColor="var(--danger)" stopOpacity=".14" /></linearGradient>
+        </defs>
+        {/* faixa quente: a partir de 80 °C, e a linha da proteção em 90 °C */}
+        <rect x={sx(80)} y={PT} width={sx(T_MAX) - sx(80)} height={H - PT - PB} fill={`url(#${gid}-hot)`} />
+        <line x1={sx(90)} x2={sx(90)} y1={PT} y2={H - PB} stroke="var(--danger)" strokeOpacity=".5" strokeDasharray="2 4" />
+        <text x={sx(90) - 4} y={H - PB - 6} textAnchor="end" fontSize="9.5" fill="var(--danger)" fillOpacity=".8">{tr("proteção")}</text>
+        {floor > 0 && <rect x={PL} y={sy(floor)} width={W - PL - PR} height={sy(0) - sy(floor)} fill="var(--line)" opacity=".35" />}
+        {[0, 25, 50, 75, 100].map((p) => <g key={p}><line x1={PL} x2={W - PR} y1={sy(p)} y2={sy(p)} stroke="var(--line)" strokeOpacity=".7" /><text x={PL - 6} y={sy(p) + 3.5} textAnchor="end" fontSize="10" fill="var(--faint)">{p}%</text></g>)}
+        {[20, 30, 40, 50, 60, 70, 80, 90, 100].map((t) => <text key={t} x={sx(t)} y={H - 8} textAnchor="middle" fontSize="10" fill="var(--faint)">{t}°</text>)}
+        <path d={area} fill={`url(#${gid}-area)`} />
+        <path d={line} fill="none" stroke={`url(#${gid}-line)`} strokeWidth={2.6} strokeLinejoin="round" />
+        {now !== undefined && (
+          <g>
+            <line x1={sx(now)} x2={sx(now)} y1={PT} y2={H - PB} stroke="var(--fg)" strokeOpacity={0.45} strokeDasharray="3 3" />
+            <circle cx={sx(now)} cy={sy(Math.max(floor, interp(local, now)))} r={5} fill="var(--fg)" stroke="var(--surface)" strokeWidth={2} />
+          </g>
+        )}
+        {local.map(([t, p], i) => (
+          <g key={i} onPointerEnter={() => setHover(i)} onPointerLeave={() => setHover((h) => (h === i ? null : h))}>
+            <circle cx={sx(t)} cy={sy(p)} r={13} fill="var(--accent)" opacity={hover === i ? 0.18 : 0} />
+            <circle cx={sx(t)} cy={sy(p)} r={6.5} fill="var(--surface)" stroke="var(--accent)" strokeWidth={2.6} className="cursor-grab active:cursor-grabbing"
+              onPointerDown={(e) => { drag.current = i; try { (e.target as Element).setPointerCapture?.(e.pointerId); } catch { /* sem captura: o arrasto continua pela área do gráfico */ } }}
+              onContextMenu={(e) => { e.preventDefault(); remove(i); }} />
+            {hover === i && <text x={sx(t)} y={sy(p) - 14} textAnchor="middle" fontSize="10.5" fontWeight={600} fill="var(--fg)">{tr("{0} °C: {1}%", t, p)}</text>}
+          </g>
+        ))}
+      </svg>
+      <div className="flex items-center justify-end gap-1.5 px-1 pb-0.5">
+        <Button size="sm" variant="ghost" icon={<Plus size={13} />} disabled={local.length >= 8} onClick={() => {
+          // novo ponto no meio do maior intervalo entre dois pontos
+          const pts = localRef.current; let best = 0;
+          for (let i = 1; i < pts.length - 1; i++) if (pts[i + 1][0] - pts[i][0] > pts[best + 1][0] - pts[best][0]) best = i;
+          const a = pts[best], b = pts[best + 1]; if (!b || b[0] - a[0] < 3) return;
+          const t = Math.round((a[0] + b[0]) / 2), next = [...pts.slice(0, best + 1), [t, Math.round((a[1] + b[1]) / 2)] as [number, number], ...pts.slice(best + 1)] as Points;
+          localRef.current = next; setLocalState(next); onChange(next);
+        }}>{tr("Adicionar ponto")}</Button>
+        <Button size="sm" variant="ghost" icon={<Minus size={13} />} disabled={local.length <= 2} onClick={() => remove(hover ?? local.length - 2)}>{tr("Remover ponto")}</Button>
+      </div>
+    </div>
+  );
+}
 
 function HowItWorks() {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   return (
-    <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4 text-[13px]">
-      <button className="flex w-full items-center gap-2 text-left font-semibold" onClick={() => setOpen((v) => !v)}><Info size={15} className="text-[var(--accent)]" />{tr("Como o controle funciona")}</button>
+    <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] text-[13px]">
+      <button className="flex w-full items-center gap-2 px-4 py-3 text-left font-semibold" onClick={() => setOpen((v) => !v)}>
+        <Info size={15} className="text-[var(--accent)]" />{tr("Como o controle funciona")}
+        <ChevronDown size={15} className={cx('ml-auto text-faint transition-transform', open && 'rotate-180')} />
+      </button>
       {open && (
-        <ul className="mt-2 list-disc space-y-1 pl-6 text-muted">
+        <ul className="list-disc space-y-1 px-4 pb-3 pl-9 text-muted">
           <li>{tr("O CleanCode só muda as ventoinhas que você tirar do modo Automático. As outras continuam com o controle da placa.")}</li>
+          <li>{tr("Depois de cada comando, o CleanCode confere o valor que a placa informa. Se a placa não obedecer por 6 segundos, o CleanCode devolve a ventoinha ao modo automático e avisa nesta tela.")}</li>
           <li>{tr("Se o processador ou a placa de vídeo chegar a 90 °C, o CleanCode coloca as ventoinhas controladas em 100% até a temperatura cair para 85 °C.")}</li>
           <li>{tr("Quando você fecha o CleanCode, cada ventoinha volta ao modo automático da placa. Isso também acontece se o CleanCode travar por mais de 12 segundos.")}</li>
           <li>{tr("Se o programa dos sensores fechar de repente, uma ventoinha pode ficar na última velocidade até você reiniciar o Windows.")}</li>
@@ -161,170 +545,5 @@ function HowItWorks() {
         </ul>
       )}
     </div>
-  );
-}
-
-// ---------- cartão de uma ventoinha ----------
-type TestStep = { phase: 'low' | 'high' | 'done'; low?: number; high?: number };
-function FanCard({ fan, cfg, temps, onChange, live }: { fan: FanControlInfo; cfg?: FanConfig; temps: FanTempSource[]; onChange: (p: Partial<FanConfig>) => void; live: React.MutableRefObject<FanState | null> }) {
-  const mode = cfg?.mode || 'auto';
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(cfg?.label || '');
-  const [test, setTest] = useState<TestStep | null>(null);
-  const testing = !!test && test.phase !== 'done';
-  const source = cfg?.source && temps.some((t) => t.id === cfg.source) ? cfg.source : defaultSource(fan, temps);
-  const points: Points = cfg?.points?.length ? cfg.points : PRESETS[1].points;
-  const temp = temps.find((t) => t.id === source)?.value;
-  const rpm = fan.rpm;
-  const spin = rpm && rpm > 0 ? Math.max(0.25, Math.min(3, 1200 / rpm)) : 0;
-
-  const setMode = (m: FanConfig['mode']) => {
-    if (m === 'fixed') onChange({ mode: m, value: cfg?.value ?? Math.round(fan.pct ?? 50) });
-    else if (m === 'curve') onChange({ mode: m, source, points });
-    else onChange({ mode: m });
-  };
-  const runTest = async () => {
-    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
-    const read = () => live.current?.controls.find((c) => c.id === fan.id)?.rpm;
-    try {
-      setTest({ phase: 'low' }); await cc.fanTest(fan.id, 30); await wait(8000); const low = read();
-      setTest({ phase: 'high', low }); await cc.fanTest(fan.id, 100); await wait(8000); const high = read();
-      setTest({ phase: 'done', low, high });
-    } finally { await cc.fanTest(fan.id, null); }
-  };
-
-  const st = fan.status;
-  const statusText = mode === 'auto' ? tr("A placa controla esta ventoinha.")
-    : !st ? tr("O CleanCode está aplicando a configuração.")
-    : st.error === 'notfound' ? tr("A tarefa de administrador não encontrou esta ventoinha.")
-    : st.error === 'nosource' ? tr("A temperatura escolhida está sem leitura agora. Por isso, a ventoinha ficou no modo automático.")
-    : st.error ? tr("A placa recusou o comando: {0}", st.error.replace(/^error:\s*/, ''))
-    : st.mode === 'emergency' ? tr("A proteção de temperatura colocou esta ventoinha em 100%.")
-    : tr("O CleanCode está aplicando {0}%.", fmt(st.pct ?? undefined));
-
-  return (
-    <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
-      <div className="flex items-start gap-3">
-        <Fan size={30} className="mt-0.5 shrink-0 text-[var(--accent)]" style={spin ? { animation: `spin ${spin}s linear infinite` } : undefined} />
-        <div className="min-w-0 flex-1">
-          {editing ? (
-            <form className="flex items-center gap-1.5" onSubmit={(e) => { e.preventDefault(); onChange({ label: name.trim() || undefined }); setEditing(false); }}>
-              <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={fan.name} className="h-7 min-w-0 flex-1 rounded-md border border-[var(--line)] bg-[var(--bg)] px-2 text-[13px] outline-none focus:border-[var(--accent)]" />
-              <Button size="sm" type="submit" icon={<Check size={13} />}>{tr("Salvar")}</Button>
-            </form>
-          ) : (
-            <div className="flex items-center gap-1.5">
-              <span className="font-semibold">{cfg?.label || fan.name}</span>
-              <button title={tr("Dar um nome para esta ventoinha")} onClick={() => { setName(cfg?.label || ''); setEditing(true); }} className="rounded p-0.5 text-faint hover:bg-[var(--hover)] hover:text-[var(--fg)]"><Pencil size={12} /></button>
-            </div>
-          )}
-          <div className="text-[12px] text-muted">{cfg?.label ? `${fan.name}, ${fan.hw}` : fan.hw}</div>
-        </div>
-        <div className="text-right">
-          <div className="text-[20px] font-semibold tabular-nums">{rpm === undefined ? '—' : `${fmt(rpm)} RPM`}</div>
-          <div className="text-[12px] text-muted tabular-nums">{fan.pct === undefined ? '' : tr("{0}% da velocidade", fmt(fan.pct))}</div>
-        </div>
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Segmented value={mode} onChange={setMode} options={[
-          { value: 'auto', label: tr("Automático") },
-          { value: 'fixed', label: tr("Velocidade fixa") },
-          { value: 'curve', label: tr("Curva") },
-        ]} />
-        <Button size="sm" variant="outline" icon={testing ? <Loader2 size={13} className="animate-spin" /> : <FlaskConical size={13} />} disabled={testing} onClick={runTest}>{tr("Testar")}</Button>
-      </div>
-      <div className={cx('mt-2 text-[12.5px]', st?.error ? 'text-[var(--warn)]' : st?.mode === 'emergency' ? 'text-[var(--danger)]' : 'text-muted')}>{statusText}</div>
-
-      {mode === 'fixed' && (
-        <div className="mt-3">
-          <div className="flex items-center gap-3">
-            <input type="range" min={0} max={100} step={1} value={cfg?.value ?? 50} onChange={(e) => onChange({ value: Number(e.target.value) })} className="flex-1 accent-[var(--accent)]" aria-label={tr("Velocidade fixa")} />
-            <span className="w-12 text-right font-semibold tabular-nums">{fmt(cfg?.value ?? 50)}%</span>
-          </div>
-          {(cfg?.value ?? 50) < 30 && <div className="mt-1 text-[12px] text-[var(--warn)]">{tr("Abaixo de 30%, algumas ventoinhas param de girar. A proteção de temperatura continua ligada.")}</div>}
-        </div>
-      )}
-
-      {mode === 'curve' && (
-        <div className="mt-3 space-y-2">
-          <div>
-            <div className="mb-1 text-[12.5px] text-muted">{tr("Temperatura que guia a curva")}</div>
-            <Select className="w-full" value={source || ''} onChange={(v) => onChange({ source: v })}
-              options={temps.map((t) => ({ value: t.id, label: `${t.name}, ${t.hw}: ${fmt(t.value)} °C` }))} />
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[12.5px] text-muted">{tr("Começar de um modelo")}</span>
-            {PRESETS.map((p) => <Button key={p.id} size="sm" variant="outline" onClick={() => onChange({ points: p.points, source })}>{p.label}</Button>)}
-          </div>
-          <CurveEditor points={points} temp={temp} onChange={(pts) => onChange({ points: pts, source })} />
-          <div className="text-[12px] text-muted">{tr("Arraste os pontos para mudar a curva. A linha tracejada mostra a temperatura de agora e a velocidade que a curva pede.")}</div>
-        </div>
-      )}
-
-      {test && (
-        <div className="mt-3 rounded-lg bg-[var(--surface-2)] p-3 text-[12.5px]">
-          {test.phase === 'low' ? tr("Teste em andamento: a ventoinha está em 30% por 8 segundos.")
-            : test.phase === 'high' ? tr("Teste em andamento: a ventoinha está em 100% por 8 segundos.")
-            : testResult(test.low, test.high)}
-        </div>
-      )}
-    </div>
-  );
-}
-function testResult(low?: number, high?: number) {
-  if (low === undefined || high === undefined) return tr("Esta saída não informa o RPM. Por isso, o teste não consegue conferir se a ventoinha obedeceu. Depois do teste, a ventoinha voltou à configuração anterior.");
-  if (!low && !high) return tr("A ventoinha não girou no teste. Talvez não exista uma ventoinha ligada nesta saída. Depois do teste, a ventoinha voltou à configuração anterior.");
-  if (high - low > Math.max(150, high * 0.15)) return tr("A ventoinha obedeceu ao comando: ela girou a {0} RPM em 30% e a {1} RPM em 100%. Depois do teste, a ventoinha voltou à configuração anterior.", fmt(low), fmt(high));
-  return tr("O RPM quase não mudou: {0} RPM em 30% e {1} RPM em 100%. A placa pode estar ignorando o comando. Depois do teste, a ventoinha voltou à configuração anterior.", fmt(low), fmt(high));
-}
-
-// ---------- editor da curva (temperatura no eixo horizontal, velocidade no vertical) ----------
-const W = 420, H = 190, PL = 34, PR = 22, PT = 10, PB = 24;
-const sx = (t: number) => PL + ((t - T_MIN) / (T_MAX - T_MIN)) * (W - PL - PR);
-const sy = (p: number) => PT + (1 - p / 100) * (H - PT - PB);
-function CurveEditor({ points, temp, onChange }: { points: Points; temp?: number; onChange: (p: Points) => void }) {
-  const svg = useRef<SVGSVGElement>(null);
-  const [local, setLocalState] = useState<Points>(points);
-  // a última posição fica também numa referência: o fim do arrasto pode chegar antes de a tela redesenhar o último movimento
-  const localRef = useRef<Points>(points);
-  const setLocal = (f: (p: Points) => Points) => { localRef.current = f(localRef.current); setLocalState(localRef.current); };
-  const drag = useRef<number | null>(null);
-  useEffect(() => { if (drag.current === null) { localRef.current = points; setLocalState(points); } }, [points]);
-  const move = (e: React.PointerEvent) => {
-    const i = drag.current; if (i === null || !svg.current) return;
-    const r = svg.current.getBoundingClientRect();
-    const x = ((e.clientX - r.left) / r.width) * W, y = ((e.clientY - r.top) / r.height) * H;
-    const cur = localRef.current;
-    const lo = i > 0 ? cur[i - 1][0] + 1 : T_MIN, hi = i < cur.length - 1 ? cur[i + 1][0] - 1 : T_MAX;
-    const t = Math.round(Math.max(lo, Math.min(hi, T_MIN + ((x - PL) / (W - PL - PR)) * (T_MAX - T_MIN))));
-    const p = Math.round(Math.max(0, Math.min(100, (1 - (y - PT) / (H - PT - PB)) * 100)));
-    setLocal((pts) => pts.map((q, k) => (k === i ? [t, p] : q)) as Points);
-  };
-  const end = () => { if (drag.current !== null) { drag.current = null; onChange(localRef.current); } };
-  const path = useMemo(() => {
-    const pts = [[T_MIN, local[0][1]] as [number, number], ...local, [T_MAX, local[local.length - 1][1]] as [number, number]];
-    return pts.map(([t, p], k) => `${k ? 'L' : 'M'}${sx(t).toFixed(1)},${sy(p).toFixed(1)}`).join(' ');
-  }, [local]);
-  const now = temp !== undefined ? Math.max(T_MIN, Math.min(T_MAX, temp)) : undefined;
-  return (
-    <svg ref={svg} viewBox={`0 0 ${W} ${H}`} className="w-full touch-none select-none" onPointerMove={move} onPointerUp={end} onPointerLeave={end} role="img" aria-label={tr("Curva de velocidade pela temperatura")}>
-      {[0, 25, 50, 75, 100].map((p) => <g key={p}><line x1={PL} x2={W - PR} y1={sy(p)} y2={sy(p)} stroke="var(--line)" /><text x={PL - 5} y={sy(p) + 3.5} textAnchor="end" fontSize="9.5" fill="var(--faint)">{p}%</text></g>)}
-      {[20, 40, 60, 80, 100].map((t) => <text key={t} x={sx(t)} y={H - 7} textAnchor="middle" fontSize="9.5" fill="var(--faint)">{t} °C</text>)}
-      <path d={path} fill="none" stroke="var(--accent)" strokeWidth={2.2} />
-      {now !== undefined && (
-        <g>
-          <line x1={sx(now)} x2={sx(now)} y1={PT} y2={H - PB} stroke="var(--fg)" strokeOpacity={0.5} strokeDasharray="3 3" />
-          <circle cx={sx(now)} cy={sy(interp(local, now))} r={3.5} fill="var(--fg)" />
-          <text x={sx(now) + 5} y={PT + 9} fontSize="9.5" fill="var(--fg)">{`${fmt(temp)} °C: ${fmt(interp(local, now))}%`}</text>
-        </g>
-      )}
-      {local.map(([t, p], i) => (
-        <circle key={i} cx={sx(t)} cy={sy(p)} r={6.5} fill="var(--surface)" stroke="var(--accent)" strokeWidth={2.2} className="cursor-grab active:cursor-grabbing"
-          onPointerDown={(e) => { drag.current = i; try { (e.target as Element).setPointerCapture?.(e.pointerId); } catch { /* sem captura: o arrasto continua pela área do gráfico */ } }}>
-          <title>{tr("{0} °C: {1}%", t, p)}</title>
-        </circle>
-      ))}
-    </svg>
   );
 }

@@ -5,6 +5,17 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.20', date: '2026-11-24', headline: 'Ventoinhas com tela nova e controle mais seguro',
+    groups: [
+      { title: 'Ventoinhas', icon: 'chip', items: [
+        'A tela Ventoinhas ganhou um visual novo, com cartões menores e um painel para a ventoinha que você escolher. A curva agora aceita pontos novos e mostra a faixa de proteção.',
+        'Depois de cada comando, o CleanCode confere o valor que a placa informa. Se a placa não obedecer, o CleanCode devolve a ventoinha ao modo automático e avisa na tela.',
+        'Você pode marcar uma saída como bomba do water cooler. Assim, o CleanCode nunca deixa a bomba abaixo de 60%.',
+        'O controle da ventoinha da placa de vídeo chega numa próxima versão. Por enquanto, a tela só mostra a velocidade dela.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.19', date: '2026-11-24', headline: 'Controle das ventoinhas no Windows',
     groups: [
       { title: 'Ventoinhas', icon: 'chip', items: [

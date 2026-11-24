@@ -22,14 +22,22 @@ let paused = false;
 let timer: ReturnType<typeof setInterval> | null = null;
 
 const num = (v: number) => String(Math.round(v * 10) / 10);
+/** Velocidade mínima de uma saída marcada como bomba do water cooler: uma bomba lenta ou parada esquenta o processador rápido. */
+export const PUMP_MIN = 60;
+// Placas de vídeo: o controle da ventoinha fica para uma próxima versão (a tela mostra "em breve"). O LibreHardwareMonitor 0.9.6
+// só controla placas AMD pela interface antiga do driver (Overdrive 5, ADL2_Overdrive5_FanSpeed_Set), e as placas AMD recentes
+// ignoram esse comando sem dar erro. O caminho previsto é o SDK ADLX da AMD. Até lá, o app não envia pedidos para nenhuma
+// placa de vídeo (AMD, NVIDIA ou Intel), e a ventoinha delas fica só para leitura.
+const gpuLocked = (id: string) => id.startsWith('/gpu-');
 function lines(until: number): string {
   const out = [`until\t${until}`];
   if (!until) return out.join('\n') + '\n';
-  for (const [id, pct] of tests) out.push(`fixed\t${id}\t${num(pct)}`);
+  const floor = (id: string, p: number) => (config[id]?.pump ? Math.max(PUMP_MIN, p) : p);
+  for (const [id, pct] of tests) if (!gpuLocked(id)) out.push(`fixed\t${id}\t${num(floor(id, pct))}`);
   for (const [id, c] of Object.entries(config)) {
-    if (tests.has(id) || !c || c.mode === 'auto') continue;
-    if (c.mode === 'fixed' && typeof c.value === 'number') out.push(`fixed\t${id}\t${num(c.value)}`);
-    else if (c.mode === 'curve' && c.source && c.points?.length) out.push(`curve\t${id}\t${c.source}\t${c.points.map(([t, p]) => `${num(t)}:${num(p)}`).join(',')}`);
+    if (tests.has(id) || !c || c.mode === 'auto' || gpuLocked(id)) continue;
+    if (c.mode === 'fixed' && typeof c.value === 'number') out.push(`fixed\t${id}\t${num(floor(id, c.value))}`);
+    else if (c.mode === 'curve' && c.source && c.points?.length) out.push(`curve\t${id}\t${c.source}\t${c.points.map(([t, p]) => `${num(t)}:${num(floor(id, p))}`).join(',')}`);
   }
   return out.join('\n') + '\n';
 }
@@ -91,7 +99,7 @@ export async function state(): Promise<FanState> {
         const fan = sensors.find((y) => y.type === 'Fan' && y.name === x.name);
         controls.push({
           id: x.id, name: x.name, hw: top === h ? h.name : `${top.name} (${h.name})`, kind: KIND[h.type] || KIND[top.type] || 'other',
-          pct: x.value ?? undefined, rpm: fan?.value ?? undefined, status: status.get(x.id),
+          pct: x.value ?? undefined, rpm: fan?.value ?? undefined, status: status.get(x.id), locked: gpuLocked(x.id) || undefined,
         });
       } else if (x.type === 'Temperature' && typeof x.value === 'number' && x.value > 0 && x.value < 125 && !NOT_TEMP.test(x.name)) {
         temps.push({ id: x.id, name: x.name, hw: h.name, kind: TEMP_KIND[h.type] || TEMP_KIND[top.type] || 'board', value: x.value });

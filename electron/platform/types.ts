@@ -250,11 +250,11 @@ export interface MetricsApi {
 }
 
 /** Configuração de uma ventoinha: automático (a placa decide), velocidade fixa ou curva pela temperatura de um sensor. */
-export interface FanConfig { mode: 'auto' | 'fixed' | 'curve'; value?: number; source?: string; points?: [number, number][]; label?: string }
+export interface FanConfig { mode: 'auto' | 'fixed' | 'curve'; value?: number; source?: string; points?: [number, number][]; label?: string; pump?: boolean }
 export interface FanControlInfo {
-  id: string; name: string; hw: string; kind: 'board' | 'gpu' | 'cooler' | 'other'; pct?: number; rpm?: number;
+  id: string; name: string; hw: string; kind: 'board' | 'gpu' | 'cooler' | 'other'; pct?: number; rpm?: number; locked?: boolean;
   /** o que a tarefa de administrador aplicou: modo, porcentagem e erro (notfound, nosource ou error: mensagem) */
-  status?: { mode: 'fixed' | 'curve' | 'emergency'; pct: number | null; error: string | null };
+  status?: { mode: 'fixed' | 'curve' | 'emergency'; pct: number | null; read?: number | null; error: string | null };
 }
 export interface FanTempSource { id: string; name: string; hw: string; kind: string; value: number }
 /** helperReady: a tarefa de administrador está rodando uma versão do helper que controla as ventoinhas */

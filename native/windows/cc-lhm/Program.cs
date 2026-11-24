@@ -291,13 +291,20 @@ static class Program
     // - Ao fechar, o helper devolve cada ventoinha ao modo automático.
     internal static class Fans
     {
-        internal class Want { public string Mode; public string Id; public float Value; public string Source; public List<KeyValuePair<float, float>> Points; }
-        class State { public string Id; public string Mode; public float Pct = -1; public string Error; }
+        internal class Want { public string Mode; public string Id; public float Value; public string Source; public List<KeyValuePair<float, float>> Points; public string Sig; }
+        class State { public string Id; public string Mode; public float Pct = -1; public float Read = -1; public string Error; }
 
         static readonly object L = new object();
         static readonly Dictionary<string, IControl> Touched = new Dictionary<string, IControl>();
         static readonly Dictionary<string, float> Applied = new Dictionary<string, float>();
         static List<State> Status = new List<State>();
+        // conferência: quantas leituras seguidas a placa informou um valor diferente do pedido, e as ventoinhas que a placa
+        // recusou (com o pedido recusado; um pedido diferente tenta de novo)
+        static readonly Dictionary<string, int> Mismatch = new Dictionary<string, int>();
+        static readonly Dictionary<string, string> Refused = new Dictionary<string, string>();
+        // ventoinhas soltas há pouco: depois de 3 segundos, o registro anota o que a placa informa
+        static readonly Dictionary<string, KeyValuePair<IControl, int>> Released = new Dictionary<string, KeyValuePair<IControl, int>>();
+        const float Tolerance = 8f; const int MismatchLimit = 6;
         static bool emergency, lastValid;
         const float HotOn = 90f, HotOff = 85f;
 
@@ -311,8 +318,9 @@ static class Program
             foreach (var raw in (text ?? "").Split('\n'))
             {
                 var p = raw.TrimEnd('\r').Split('\t');
+                var sig = raw.TrimEnd('\r');
                 if (p.Length >= 2 && p[0] == "until") long.TryParse(p[1], out until);
-                else if (p.Length >= 3 && p[0] == "fixed") list.Add(new Want { Mode = "fixed", Id = p[1], Value = F(p[2]) });
+                else if (p.Length >= 3 && p[0] == "fixed") list.Add(new Want { Mode = "fixed", Id = p[1], Value = F(p[2]), Sig = sig });
                 else if (p.Length >= 4 && p[0] == "curve")
                 {
                     var pts = new List<KeyValuePair<float, float>>();
@@ -322,7 +330,7 @@ static class Program
                         if (tp.Length == 2) pts.Add(new KeyValuePair<float, float>(F(tp[0]), F(tp[1])));
                     }
                     pts.Sort((a, b) => a.Key.CompareTo(b.Key));
-                    if (pts.Count > 0) list.Add(new Want { Mode = "curve", Id = p[1], Source = p[2], Points = pts });
+                    if (pts.Count > 0) list.Add(new Want { Mode = "curve", Id = p[1], Source = p[2], Points = pts, Sig = sig });
                 }
             }
             return list;
@@ -343,13 +351,19 @@ static class Program
             return pts[pts.Count - 1].Value;
         }
 
-        static void Walk(IHardware h, Dictionary<string, IControl> controls, Dictionary<string, ISensor> sensors, ref float hot)
+        static void Walk(IHardware h, Dictionary<string, IControl> controls, Dictionary<string, ISensor> sensors, Dictionary<string, ISensor> fanOf, ref float hot)
         {
             foreach (var s in h.Sensors)
             {
                 var id = s.Identifier.ToString();
                 sensors[id] = s;
-                if (s.Control != null) controls[id] = s.Control;
+                if (s.Control != null)
+                {
+                    controls[id] = s.Control;
+                    // o RPM de cada saída: o sensor de ventoinha da mesma peça, com o mesmo nome (por exemplo, "Fan #2")
+                    var fan = h.Sensors.FirstOrDefault((y) => y.SensorType == SensorType.Fan && y.Name == s.Name);
+                    if (fan != null) fanOf[id] = fan;
+                }
                 if (s.SensorType == SensorType.Temperature && s.Value.HasValue && s.Value.Value > 0 && s.Value.Value < 125)
                 {
                     var t = h.HardwareType;
@@ -358,7 +372,7 @@ static class Program
                     if ((cpu || gpu) && s.Value.Value > hot) hot = s.Value.Value;
                 }
             }
-            foreach (var sub in h.SubHardware) Walk(sub, controls, sensors, ref hot);
+            foreach (var sub in h.SubHardware) Walk(sub, controls, sensors, fanOf, ref hot);
         }
 
         internal static void Tick(IHardware[] list)
@@ -367,8 +381,17 @@ static class Program
             {
                 var controls = new Dictionary<string, IControl>();
                 var sensors = new Dictionary<string, ISensor>();
+                var fanOf = new Dictionary<string, ISensor>();
                 float hot = 0;
-                foreach (var h in list) Walk(h, controls, sensors, ref hot);
+                foreach (var h in list) Walk(h, controls, sensors, fanOf, ref hot);
+                // 3 segundos depois de soltar uma ventoinha, o registro anota o que a placa informa (para conferir se ela voltou)
+                foreach (var id in Released.Keys.ToList())
+                {
+                    var r = Released[id];
+                    if (r.Value > 1) { Released[id] = new KeyValuePair<IControl, int>(r.Key, r.Value - 1); continue; }
+                    Released.Remove(id);
+                    Log("ventoinha " + id + ": 3 segundos depois de voltar ao modo automático, a placa informa " + Pct(r.Key.Sensor?.Value) + " e " + Rpm(fanOf, id));
+                }
 
                 List<Want> wants;
                 long until = 0;
@@ -388,9 +411,28 @@ static class Program
                 {
                     var st = new State { Id = w.Id, Mode = w.Mode };
                     status.Add(st);
+                    if (Refused.TryGetValue(w.Id, out var refusedSig))
+                    {
+                        if (refusedSig == w.Sig) { st.Error = "refused"; continue; } // a placa recusou este pedido: a ventoinha fica no automático
+                        Refused.Remove(w.Id); // um pedido diferente: tenta de novo
+                    }
                     if (!controls.TryGetValue(w.Id, out var ctl)) { st.Error = "notfound"; continue; }
                     try
                     {
+                        // conferência: a placa informa o valor que o CleanCode aplicou na leitura anterior?
+                        var read = ctl.Sensor?.Value;
+                        if (read.HasValue) st.Read = read.Value;
+                        if (Touched.ContainsKey(w.Id) && Applied.TryGetValue(w.Id, out var was) && read.HasValue)
+                        {
+                            if (Math.Abs(read.Value - was) > Tolerance) Mismatch[w.Id] = (Mismatch.TryGetValue(w.Id, out var m) ? m : 0) + 1;
+                            else Mismatch.Remove(w.Id);
+                            if (Mismatch.TryGetValue(w.Id, out var misses) && misses >= MismatchLimit)
+                            {
+                                Log("ventoinha " + w.Id + ": a placa informa " + Pct(read) + " em vez de " + Pct(was) + " há " + misses + " segundos; a placa não obedece, e a ventoinha volta ao modo automático");
+                                Mismatch.Remove(w.Id); Refused[w.Id] = w.Sig; st.Error = "refused";
+                                continue; // fica fora de keep: a ventoinha é solta logo abaixo
+                            }
+                        }
                         float pct;
                         if (w.Mode == "fixed") pct = w.Value;
                         else if (sensors.TryGetValue(w.Source ?? "", out var src) && src.Value.HasValue && src.Value.Value > 0) pct = Interp(w.Points, src.Value.Value);
@@ -404,7 +446,7 @@ static class Program
                         {
                             ctl.SetSoftware(pct);
                             Applied[w.Id] = pct;
-                            if (!Touched.ContainsKey(w.Id)) { Touched[w.Id] = ctl; Log("ventoinha " + w.Id + ": o CleanCode assumiu o controle (" + w.Mode + ")"); }
+                            if (!Touched.ContainsKey(w.Id)) { Touched[w.Id] = ctl; Released.Remove(w.Id); Log("ventoinha " + w.Id + ": o CleanCode assumiu o controle (" + w.Mode + "); antes, a placa informava " + Pct(read) + " e " + Rpm(fanOf, w.Id)); }
                         }
                         st.Pct = pct;
                         keep.Add(w.Id);
@@ -417,11 +459,17 @@ static class Program
             }
         }
 
+        static string Pct(float? v) => v.HasValue ? v.Value.ToString("0", CultureInfo.InvariantCulture) + "%" : "sem leitura";
+        static string Rpm(Dictionary<string, ISensor> fanOf, string id) => fanOf.TryGetValue(id, out var f) && f.Value.HasValue ? f.Value.Value.ToString("0", CultureInfo.InvariantCulture) + " RPM" : "sem RPM";
+
         static void Release(string id, string why)
         {
-            try { Touched[id].SetDefault(); } catch (Exception e) { Log("ventoinha " + id + ": não voltou ao modo automático (" + e.Message + ")"); }
-            Touched.Remove(id); Applied.Remove(id);
-            Log("ventoinha " + id + ": " + why);
+            var ctl = Touched[id];
+            var before = ctl.Sensor?.Value;
+            try { ctl.SetDefault(); } catch (Exception e) { Log("ventoinha " + id + ": não voltou ao modo automático (" + e.Message + ")"); }
+            Touched.Remove(id); Applied.Remove(id); Mismatch.Remove(id);
+            Released[id] = new KeyValuePair<IControl, int>(ctl, 3);
+            Log("ventoinha " + id + ": " + why + " (estava em " + Pct(before) + ")");
         }
 
         internal static void RestoreAll(string why)
@@ -434,6 +482,7 @@ static class Program
             lock (L)
             {
                 return string.Join(",", Status.Select((s) => "{\"id\":\"" + Esc(s.Id) + "\",\"mode\":\"" + s.Mode + "\",\"pct\":" + (s.Pct < 0 ? "null" : s.Pct.ToString("0.#", CultureInfo.InvariantCulture))
+                    + ",\"read\":" + (s.Read < 0 ? "null" : s.Read.ToString("0.#", CultureInfo.InvariantCulture))
                     + ",\"error\":" + (s.Error == null ? "null" : "\"" + Esc(s.Error) + "\"") + "}"));
             }
         }
