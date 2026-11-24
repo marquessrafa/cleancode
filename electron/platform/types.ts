@@ -3,6 +3,8 @@
 // só conversa com o SO através de ./fs (workers) e ./index (processo principal).
 
 /** Atributos no formato do Windows; o macOS traduz o que tem equivalente. */
+/** Resultado da validação de uma peça depois da ativação: ok, aviso (a peça não informa esse dado neste PC) ou falha. */
+export interface HwCheck { id: 'cpu' | 'gpu' | 'ram' | 'board' | 'disk' | 'power'; status: 'ok' | 'warn' | 'fail'; detail: string }
 export const ATTR = {
   READONLY: 0x1, HIDDEN: 0x2, SYSTEM: 0x4, DIRECTORY: 0x10, ARCHIVE: 0x20, DEVICE: 0x40,
   NORMAL: 0x80, TEMPORARY: 0x100, SPARSE: 0x200, REPARSE: 0x400, COMPRESSED: 0x800,
@@ -223,7 +225,10 @@ export interface MetricsApi {
   /** leituras ao vivo de GPU, energia, frequência e ventoinhas */
   hwLive(): Promise<HwLive>;
   /** ativa/desativa o monitoramento avançado (só Windows; no Mac já é automático) */
-  advancedActivate?(): Promise<{ ok: boolean; message: string }>;
+  /** onStep: etapa da ativação (0 conferir, 1 driver, 2 instalar, 3 ler os sensores, 4 validar as peças); driverPresent = o PawnIO já estava instalado */
+  advancedActivate?(onStep?: (step: number, info?: { driverPresent?: boolean }) => void): Promise<{ ok: boolean; message: string; checks?: HwCheck[] }>;
+  /** Monta o relatório dos sensores (sem dados pessoais) para abrir uma issue no GitHub. */
+  advancedReport?(checks?: HwCheck[]): Promise<string>;
   advancedDeactivate?(): Promise<{ ok: boolean; message: string }>;
   /** discos físicos com detalhes (modelo, firmware, saúde, SMART) */
   disks(): Promise<DiskDetail[]>;

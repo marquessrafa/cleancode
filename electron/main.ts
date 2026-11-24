@@ -201,9 +201,33 @@ ipcMain.handle('metrics:eject', (_e, root: string) => ejectDrive(root));
 ipcMain.handle('hardware:info', () => hardwareInfo());
 ipcMain.handle('hardware:live', () => hardwareLive());
 ipcMain.handle('hardware:disks', () => system.metrics.disks().catch(() => []));
-ipcMain.handle('hardware:advanced', async (_e, on: boolean) => {
-  const f = on ? system.metrics.advancedActivate : system.metrics.advancedDeactivate;
+ipcMain.handle('hardware:advanced', async (e, on: boolean) => {
+  if (on && system.metrics.advancedActivate) {
+    // cada etapa vai para a tela, que mostra o popup de ativação com os passos
+    return system.metrics.advancedActivate((step, info) => { if (!e.sender.isDestroyed()) e.sender.send('hardware:advancedStep', { step, ...info }); });
+  }
+  const f = on ? undefined : system.metrics.advancedDeactivate;
   return f ? f() : { ok: false, message: tr("No Mac, o monitoramento avançado já é automático") };
+});
+// relatório dos sensores: abre uma issue nova no GitHub, já preenchida, para a pessoa revisar e enviar.
+// O link leva só um resumo (o endereço tem limite de tamanho); o relatório completo vai para a área de transferência.
+const ISSUES = 'https://github.com/marquessrafa/cleancode/issues/new';
+ipcMain.handle('hardware:report', async (_e, checks?: any[]) => {
+  if (!system.metrics.advancedReport) return { ok: false, truncated: false };
+  const full = await system.metrics.advancedReport(checks);
+  clipboard.writeText(full);
+  const title = tr("Sensores do Windows: relatório do monitoramento avançado (CleanCode {0})", app.getVersion());
+  const url = (body: string) => `${ISSUES}?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+  let body = full, truncated = false;
+  // corta as linhas mais antigas do registro até o endereço caber (cerca de 7.500 caracteres)
+  while (url(body).length > 7500) {
+    const lines = body.split('\n'); const at = lines.findIndex((l) => l.startsWith('```log'));
+    if (at < 0 || lines.length - at < 4) { body = body.slice(0, 2500); truncated = true; break; }
+    lines.splice(at + 1, 1); body = lines.join('\n'); truncated = true;
+  }
+  if (truncated) body += '\n\n' + tr("O registro foi cortado para caber no link. O relatório completo está na área de transferência, e você pode colar aqui se quiser.");
+  await shell.openExternal(url(body));
+  return { ok: true, truncated };
 });
 // ---------- limpeza ----------
 const activityFile = path.join(userDir, 'activity.json');

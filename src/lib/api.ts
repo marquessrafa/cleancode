@@ -4,6 +4,8 @@ export interface Row {
   mtime: number; atime: number; ctime: number; attr: number; err: number; link: number; level: number;
   hasChildren: boolean; prevSize?: number; prevFiles?: number; owner?: string; path?: string; dir?: string;
 }
+/** Resultado da validação de uma peça depois da ativação: ok, aviso (a peça não informa esse dado neste PC) ou falha. */
+export interface HwCheck { id: 'cpu' | 'gpu' | 'ram' | 'board' | 'disk' | 'power'; status: 'ok' | 'warn' | 'fail'; detail: string }
 export interface Progress {
   scanId: number; scanning: boolean; files: number; dirs: number; size: number; alloc: number;
   current: string; errors: number; elapsed: number; pending: number;
@@ -173,7 +175,9 @@ interface CC {
   hardwareInfo(): Promise<HardwareInfo>;
   hardwareLive(): Promise<HardwareLive>;
   hardwareDisks(): Promise<DiskDetail[]>;
-  hardwareAdvanced(on: boolean): Promise<{ ok: boolean; message: string }>;
+  hardwareAdvanced(on: boolean): Promise<{ ok: boolean; message: string; checks?: HwCheck[] }>;
+  /** Abre uma issue no GitHub com o relatório dos sensores e copia o relatório completo. */
+  hardwareReport(checks?: HwCheck[]): Promise<{ ok: boolean; truncated: boolean }>;
   whatsNewSeen(): Promise<boolean>;
   clutterScan(): Promise<ClutterReport>;
   clutterCancel(): Promise<boolean>;
@@ -265,6 +269,7 @@ interface CC {
     panelShown(cb: () => void): () => void;
     settingsChanged(cb: (s: Settings) => void): () => void;
     updateState(cb: (s: UpdateState) => void): () => void;
+    advancedStep(cb: (d: { step: number; driverPresent?: boolean }) => void): () => void;
     appSize(cb: (d: { id: string; size: number }) => void): () => void;
     uninstallProgress(cb: (d: { id: string; status: string; message?: string }) => void): () => void;
   };

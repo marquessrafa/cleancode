@@ -289,4 +289,4 @@ async function disks(): Promise<DiskDetail[]> {
 }
 
 export const metrics: MetricsApi = { machineName, memory, battery, temperatures, network, devices, memoryDetail, batteryHealth, networkInfo, eject, hardware, hwLive, disks,
-  advancedActivate: () => Lhm.activate(), advancedDeactivate: () => Lhm.deactivate() };
+  advancedActivate: (onStep) => Lhm.activate(onStep), advancedReport: (checks) => Lhm.report(checks), advancedDeactivate: () => Lhm.deactivate() };

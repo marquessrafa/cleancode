@@ -11,6 +11,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { t } from '../../i18n';
+import type { HwCheck } from '../types';
 
 export interface LhmSensor { name: string; type: string; value: number | null; min: number | null; max: number | null }
 export interface LhmHardware { name: string; type: string; id: string; stuck?: boolean; sensors: LhmSensor[]; sub: LhmHardware[] }
@@ -110,12 +111,14 @@ export async function pawnioInstalled(): Promise<boolean> {
   }
   return false;
 }
-export async function activate(): Promise<{ ok: boolean; message: string }> {
+export async function activate(onStep: (step: number, info?: { driverPresent?: boolean }) => void = () => {}): Promise<{ ok: boolean; message: string; checks?: HwCheck[] }> {
+  onStep(0);
   const exe = helperPath();
   if (!exe) return { ok: false, message: t("O componente dos sensores não foi encontrado nesta instalação") };
   const dir = path.join(os.tmpdir(), 'cleancode-pawnio'); fs.mkdirSync(dir, { recursive: true });
   const setup = path.join(dir, 'PawnIO_setup.exe');
   const needPawn = !(await pawnioInstalled());
+  onStep(1, { driverPresent: !needPawn });
   if (needPawn) {
     // download do endereço oficial e conferência da assinatura digital antes de executar
     const dl = await ps(`$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -Uri ${psq(PAWNIO_URL)} -OutFile ${psq(setup)}; $s=Get-AuthenticodeSignature ${psq(setup)}; "$($s.Status)|$($s.SignerCertificate.Subject)"`, 180000);
@@ -142,14 +145,101 @@ export async function activate(): Promise<{ ok: boolean; message: string }> {
     `Register-ScheduledTask -TaskName ${psq(TASK)} -Action $a -Trigger $t -Principal $p -Settings $s -Force | Out-Null`,
     `Start-ScheduledTask -TaskName ${psq(TASK)}`,
   ].filter(Boolean).join('; ');
+  onStep(2, { driverPresent: !needPawn });
   const r = await psAdmin(script);
   taskInstalled = null;
   try { fs.unlinkSync(setup); } catch { /* */ }
   if (!r.ok) return { ok: false, message: /cancel/i.test(r.err) ? t("Cancelado") : needPawn && !(await pawnioInstalled()) ? t("O driver PawnIO não pôde ser instalado") : t("Sem permissão de administrador") };
   child?.kill(); child = null;
+  // espera a primeira leitura da tarefa de administrador (até 25 segundos)
+  onStep(3, { driverPresent: !needPawn });
+  for (let i = 0; i < 25; i++) {
+    if (await advancedActive()) { const s = await readTaskFile(); if (s?.hardware?.length) { dataAt = Date.now(); break; } }
+    await new Promise((res) => setTimeout(res, 1000));
+    taskInstalled = null;
+  }
+  onStep(4, { driverPresent: !needPawn });
+  const checks = await validate();
+  await new Promise((res) => setTimeout(res, 400));
   const reboot = fs.existsSync(path.join(path.dirname(DATA), 'reboot'));
-  return { ok: true, message: needPawn ? (reboot ? t("Driver instalado. Reinicie o Windows para ler todos os sensores.") : t("Driver instalado e monitoramento avançado ativo")) : t("Monitoramento avançado ativo") };
+  return { checks, ok: true, message: needPawn ? (reboot ? t("Driver instalado. Reinicie o Windows para ler todos os sensores.") : t("Driver instalado e monitoramento avançado ativo")) : t("Monitoramento avançado ativo") };
 }
+// ---------- validação das peças e relatório ----------
+/**
+ * Confere, na leitura atual, se cada peça entregou os dados que geram as métricas. "warn" quer dizer que a peça
+ * não informa esse dado neste PC (por exemplo, uma placa-mãe sem chip de sensores reconhecido); "fail" quer dizer
+ * que a leitura da peça travou, caiu ou deu erro.
+ */
+export async function validate(): Promise<HwCheck[]> {
+  const s = await snapshot().catch(() => null);
+  const flat = flatten(s);
+  const g = s?.groups || {};
+  if (!s?.hardware?.length) {
+    const d = t("O programa dos sensores não entregou nenhuma leitura.");
+    return (['cpu', 'gpu', 'ram', 'board', 'disk', 'power'] as const).map((id) => ({ id, status: 'fail' as const, detail: d }));
+  }
+  const of = (kind: string, group?: string) => flat.filter((x) => x.kind === kind && (!group || x.group === group));
+  const bad = (grp: string) => { const st = g[grp] || ''; return st === 'timeout' || st === 'skipped' || st.startsWith('error') ? st : ''; };
+  const why = (st: string) => st === 'timeout' ? t("A abertura passou de 20 segundos.") : st === 'skipped' ? t("A leitura caiu numa execução anterior, então essa peça fica de fora por um dia.") : t("Erro: {0}", st.replace(/^error:\s*/, ''));
+  const n = (k: number) => t("{0} sensores com leitura.", k);
+  const out: HwCheck[] = [];
+  const cpuT = of('cpu', 'temp'), cpuAll = of('cpu');
+  out.push(cpuT.length ? { id: 'cpu', status: 'ok', detail: t("{0} sensores com leitura, incluindo a temperatura.", cpuAll.length) }
+    : bad('cpu') ? { id: 'cpu', status: 'fail', detail: why(bad('cpu')) }
+    : { id: 'cpu', status: 'warn', detail: s.pawnio === false ? t("Sem o driver PawnIO, o processador não informa a temperatura.") : t("O processador não informou a temperatura.") });
+  const gpu = of('gpu');
+  out.push(gpu.length ? { id: 'gpu', status: 'ok', detail: n(gpu.length) } : bad('base') ? { id: 'gpu', status: 'fail', detail: why(bad('base')) } : { id: 'gpu', status: 'warn', detail: t("A placa de vídeo não informou nenhum sensor.") });
+  const ram = of('ram');
+  out.push(ram.length ? { id: 'ram', status: 'ok', detail: n(ram.length) } : bad('memory') ? { id: 'ram', status: 'fail', detail: why(bad('memory')) } : { id: 'ram', status: 'warn', detail: t("A memória não informou nenhum sensor.") });
+  const board = of('board').filter((x) => x.group === 'temp' || x.group === 'fan' || x.group === 'volt');
+  out.push(board.length ? { id: 'board', status: 'ok', detail: n(board.length) } : bad('motherboard') ? { id: 'board', status: 'fail', detail: why(bad('motherboard')) } : { id: 'board', status: 'warn', detail: t("A placa-mãe não tem um chip de sensores que o LibreHardwareMonitor reconheça.") });
+  const disk = of('disk', 'temp');
+  out.push(disk.length ? { id: 'disk', status: 'ok', detail: t("{0} discos com temperatura.", new Set(disk.map((x) => x.hwId)).size) } : { id: 'disk', status: 'warn', detail: t("Nenhum disco informou a temperatura.") });
+  const power = [...of('cpu', 'power'), ...of('battery'), ...of('psu')];
+  out.push(power.length ? { id: 'power', status: 'ok', detail: n(power.length) } : bad('cpu') ? { id: 'power', status: 'fail', detail: why(bad('cpu')) } : { id: 'power', status: 'warn', detail: t("Nenhuma peça informou o consumo de energia.") });
+  return out;
+}
+
+/** Troca o nome do usuário, o nome do computador e a pasta pessoal por textos genéricos. */
+function anonymize(text: string): string {
+  let out = text;
+  const pairs: [string, string][] = [[os.homedir(), '%USERPROFILE%'], [os.userInfo().username, 'usuario'], [os.hostname(), 'computador']];
+  for (const [a, b] of pairs) if (a && a.length > 2) out = out.split(a).join(b).replace(new RegExp(a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), b);
+  return out;
+}
+/** Relatório dos sensores em Markdown, sem dados pessoais, para a issue do GitHub. */
+export async function report(checks?: HwCheck[]): Promise<string> {
+  const s = await snapshot().catch(() => null);
+  const list = checks?.length ? checks : await validate();
+  const names = (re: RegExp) => (s?.hardware || []).filter((h) => re.test(h.type)).map((h) => h.name).join(', ') || '-';
+  // o registro mais recente entre o da tarefa de administrador e o do helper comum
+  const logs = [logPath(true), logPath(false)].filter((f) => fs.existsSync(f)).sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
+  const log = logs[0] ? fs.readFileSync(logs[0], 'utf8').split(/\r?\n/).filter(Boolean).slice(-80).join('\n') : t("Sem registro.");
+  const icon = { ok: '✅', warn: '⚠️', fail: '❌' } as const;
+  const body = [
+    '### ' + t("O que aconteceu"),
+    t("Descreva aqui, se quiser, o que você viu na tela."),
+    '',
+    '### ' + t("Sistema"),
+    `- CleanCode: ${app.getVersion()}`,
+    `- Windows: ${os.release()} (${os.arch()})`,
+    `- ${t("Processador")}: ${names(/^Cpu$/)}`,
+    `- ${t("Placa de vídeo")}: ${names(/^Gpu/)}`,
+    `- ${t("Placa-mãe")}: ${names(/^Motherboard$/)}`,
+    `- ${t("Administrador")}: ${s ? (s.admin ? t("sim") : t("não")) : '-'}; PawnIO: ${s?.pawnio === undefined ? '-' : s.pawnio ? t("instalado") : t("não instalado")}; ${t("tarefa ativa")}: ${(await advancedActive()) ? t("sim") : t("não")}`,
+    `- ${t("Etapas do helper")}: ${s?.groups ? Object.entries(s.groups).map(([k, v]) => `${k}=${v}`).join(', ') : '-'}`,
+    '',
+    '### ' + t("Validação das peças"),
+    ...list.map((c) => `- ${icon[c.status]} ${c.id}: ${c.detail}`),
+    '',
+    '### ' + t("Registro do helper (lhm.log)"),
+    '```log',
+    log,
+    '```',
+  ].join('\n');
+  return anonymize(body);
+}
+
 export async function deactivate() {
   const r = await psAdmin(`Stop-ScheduledTask -TaskName ${psq(TASK)} -ErrorAction SilentlyContinue; Get-Process cc-lhm -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Unregister-ScheduledTask -TaskName ${psq(TASK)} -Confirm:$false; Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path ${psq(SENSORS_DIR)}`);
   taskInstalled = null;

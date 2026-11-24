@@ -12,6 +12,7 @@ import Viewer3D, { LiveInput } from '../hw3d/Viewer';
 import { gpuModel, cpuModel, ramModel, boardModel, ssdModel, powerModel, pcModel, laptopModel } from '../hw3d/models';
 import { socModel, gpuChipModel, soDimmModel, solderedMemModel, macLogicBoardModel, laptopBoardModel, onboardFlashModel } from '../hw3d/mobile';
 import { t as tr, LOCALE } from '../lib/i18n';
+import { AdvancedSetupModal, OPEN_ADVANCED, needsAdvanced } from '../components/AdvancedSetupModal';
 
 type Tab = 'overview' | 'cpu' | 'gpu' | 'ram' | 'board' | 'storage' | 'power' | 'sensors';
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
@@ -145,29 +146,17 @@ function SensorTable({ live, stats, kinds, title = 'Sensores' }: { live: Hardwar
   );
 }
 function AdvancedBanner({ live }: { live: HardwareLive | null }) {
-  const { toast } = useApp();
-  const [busy, setBusy] = useState(false);
   const adv = live?.live?.advanced;
-  if (isMac || !adv) return null;
-  const blocked = adv.cpuBlocked;
-  if (adv.active && !blocked) return null;
-  // texto do aviso de acordo com o motivo (issue #1: processador AMD com 0 °C ou sem sensores)
-  const title = blocked === 'nodata' ? tr("Os sensores avançados não estão respondendo") : blocked === 'crash' ? tr("A leitura do processador travou neste PC") : blocked === 'admin' ? tr("Atualize o monitoramento avançado") : tr("Ative o monitoramento avançado");
-  const text = blocked === 'nodata'
-    ? tr("O programa que lê os sensores fechou sem entregar nenhuma leitura. Por isso, o CleanCode mostra só o que o Windows informa, como a temperatura da placa de vídeo e dos discos. Clique em Ativar de novo para reinstalar esse programa. Se o problema continuar, o registro de cada passo fica em {0}.", adv.logPath || 'lhm.log')
-    : blocked === 'crash'
-    ? tr("Para não travar as outras leituras, o CleanCode deixou os sensores do processador de fora e vai tentar de novo amanhã. As outras peças continuam com leitura normal.")
-    : blocked === 'admin'
-      ? tr("O driver PawnIO já está instalado, mas a tarefa que lê os sensores como administrador não está ativa. Ative de novo para que o CleanCode volte a ler o processador.")
-      : blocked === 'driver'
-        ? tr("O Windows só deixa ler a temperatura e o consumo deste processador com o driver PawnIO. Quando você ativa o monitoramento avançado, o CleanCode instala o driver, que é assinado, e o Windows pede a sua permissão uma única vez.")
-        : tr("Com o monitoramento avançado, o CleanCode lê a temperatura e a frequência de cada núcleo, as tensões, as ventoinhas da placa-mãe, o consumo e a saúde dos discos (SMART). Para isso, ele usa o LibreHardwareMonitor e o driver assinado PawnIO. O Windows pede a sua permissão uma única vez.");
+  // a ativação (e a reativação) é feita pelo popup de ativação; este aviso fica só para a leitura que travou
+  if (isMac || !adv || adv.cpuBlocked !== 'crash') return null;
   return (
     <div className="flex items-center gap-3 rounded-xl border border-[color-mix(in_srgb,var(--accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] p-4">
       <ShieldCheck size={22} className="shrink-0 text-[var(--accent)]" />
-      <div className="min-w-0 flex-1 text-[13px]"><div className="font-semibold">{title}</div><div className="text-muted">{text}</div></div>
-      {blocked !== 'crash' && <button disabled={busy || !adv.available} onClick={async () => { setBusy(true); const r = await cc.hardwareAdvanced(true); toast(r.message, r.ok ? 'ok' : 'error'); setBusy(false); }}
-        className="flex shrink-0 items-center gap-2 rounded-lg bg-[var(--accent)] px-3.5 py-2 text-[13px] font-semibold text-[var(--on-accent)] disabled:opacity-60">{busy && <Loader2 size={14} className="animate-spin" />}{adv.available ? (blocked === 'admin' || blocked === 'nodata' ? tr("Ativar de novo") : tr("Ativar")) : tr("Componente ausente")}</button>}
+      <div className="min-w-0 flex-1 text-[13px]">
+        <div className="font-semibold">{tr("A leitura do processador travou neste PC")}</div>
+        <div className="text-muted">{tr("Para não travar as outras leituras, o CleanCode deixou os sensores do processador de fora e vai tentar de novo amanhã. As outras peças continuam com leitura normal.")}</div>
+      </div>
+      <button onClick={() => cc.hardwareReport()} className="flex shrink-0 items-center gap-2 rounded-lg border border-[var(--line)] px-3.5 py-2 text-[13px] font-semibold hover:bg-[var(--hover)]">{tr("Enviar relatório")}</button>
     </div>
   );
 }
@@ -251,7 +240,10 @@ export default function Hardware() {
           <h1 className="text-xl font-semibold">{tr("Monitor de hardware")}</h1>
           <p className="truncate text-[13px] text-muted">{info ? [info.board.system || info.board.model, cpuShort, tr("{0} de RAM", fmtSize(info.memory.total, 'auto', 0)), info.gpus[0]?.name].filter(Boolean).join(' · ') : tr("Lendo o hardware…")}</p>
         </div>
-        {L?.advanced?.active && <span className="flex items-center gap-1.5 rounded-full bg-[var(--accent-soft)] px-3 py-1 text-[12px] font-semibold text-[var(--accent)]"><Activity size={13} />{L.advanced.source}</span>}
+        {needsAdvanced(live)
+          ? <button onClick={() => window.dispatchEvent(new Event(OPEN_ADVANCED))} className="flex items-center gap-1.5 rounded-full bg-[var(--accent)] px-3 py-1 text-[12px] font-semibold text-[var(--on-accent)] hover:brightness-110"><ShieldCheck size={13} />{tr("Ativar sensores avançados")}</button>
+          : L?.advanced?.active && <span className="flex items-center gap-1.5 rounded-full bg-[var(--accent-soft)] px-3 py-1 text-[12px] font-semibold text-[var(--accent)]"><Activity size={13} />{L.advanced.source}</span>}
+        <AdvancedSetupModal live={live} />
       </div>
       {/* abas e aviso ficam por cima do 3D, que vaza para cima delas em fade */}
       <div className="relative z-10 mt-4 inline-flex flex-wrap gap-1 rounded-xl border border-[var(--line)] bg-[color-mix(in_srgb,var(--surface)_70%,transparent)] p-1 backdrop-blur-md">

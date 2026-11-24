@@ -10,7 +10,10 @@ export const CHANGELOG: Release[] = [
       { title: 'Monitor de hardware', icon: 'chip', items: [
         'No Windows, os sensores do processador, da placa-mãe, da memória e da energia voltaram a aparecer em PCs Intel. Desde a versão 1.4.12, o programa que lê os sensores fechava antes da primeira leitura nesses PCs.',
         'Agora o programa abre todas as peças antes de começar a ler. Se uma peça travar, só ela fica de fora, e as outras continuam com leitura.',
-        'Se os sensores avançados pararem de responder, o Monitor de hardware mostra um aviso e o botão Ativar de novo, em vez de deixar a tela vazia.',
+        'Se os sensores avançados pararem de responder, o popup de ativação aparece de novo, em vez de deixar a tela vazia.',
+        'Quando você abre o Monitor de hardware e os sensores avançados não estão ativos, um popup oferece a ativação. Ele mostra cada etapa da instalação e fecha sozinho no fim.',
+        'Depois de ativar, o popup confere se o processador, a placa de vídeo, a memória, a placa-mãe, os discos e a energia entregaram leituras.',
+        'Se a leitura de alguma peça falhar, você pode enviar um relatório para o GitHub com um clique. O relatório não leva o seu nome de usuário nem o nome do computador.',
       ] },
     ],
   },
