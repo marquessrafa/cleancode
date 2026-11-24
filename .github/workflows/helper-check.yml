@@ -29,6 +29,16 @@ jobs:
           if ($j.clean -ne 'Corsair - CMT32GX5M2X6200C36 (#3)') { throw "nome limpo errado: [$($j.clean)]" }
           if ($j.quote -ne "a`"b\c`td") { throw 'aspas, barra ou tabulação escapadas errado' }
           'OK: o JSON é válido e o nome saiu limpo.'
+      - name: Autoteste do controle das ventoinhas (pedido e curva, sem tocar no hardware)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath .\out\cc-lhm.exe -ArgumentList '--fan-selftest' -RedirectStandardOutput fan.json -PassThru -NoNewWindow -Wait
+          $raw = Get-Content fan.json -Raw
+          $raw
+          $j = $raw | ConvertFrom-Json
+          if ($j.until -ne 1700000000000 -or $j.count -ne 2 -or $j.fixed -ne 45) { throw 'o pedido das ventoinhas foi lido errado' }
+          if ($j.at20 -ne 20 -or $j.at40 -ne 30 -or $j.at60 -ne 70 -or $j.at90 -ne 100) { throw 'a curva de velocidade calculou errado' }
+          'OK: o pedido foi lido e a curva calculou certo.'
       - name: Testar uma leitura (com tempo limite)
         shell: pwsh
         run: |

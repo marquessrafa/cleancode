@@ -42,7 +42,13 @@ export interface Settings {
   runInBackground: boolean; startWithWindows: boolean; notifyEnabled: boolean; notifyDisk: boolean; notifyApps: boolean; notifyThresholdMB: number;
   updateSource: string; autoCheckUpdates: boolean; autoInstallUpdates: boolean;
   language: 'auto' | 'pt' | 'en' | 'es';
+  fans: Record<string, FanConfig>;
 }
+/** Ventoinhas (Windows): configuração de cada uma, estado das ventoinhas com controle e temperaturas que guiam uma curva. */
+export interface FanConfig { mode: 'auto' | 'fixed' | 'curve'; value?: number; source?: string; points?: [number, number][]; label?: string }
+export interface FanControlInfo { id: string; name: string; hw: string; kind: 'board' | 'gpu' | 'cooler' | 'other'; pct?: number; rpm?: number; status?: { mode: 'fixed' | 'curve' | 'emergency'; pct: number | null; error: string | null } }
+export interface FanTempSource { id: string; name: string; hw: string; kind: string; value: number }
+export interface FanState { available: boolean; active: boolean; helperReady: boolean; controls: FanControlInfo[]; temps: FanTempSource[]; emergency: boolean; preview?: boolean }
 export interface UpdateNote { version: string; date: string; headline: string; groups: { title: string; icon: string; items: string[] }[] }
 export interface UpdateState {
   status: 'idle' | 'checking' | 'available' | 'none' | 'downloading' | 'ready' | 'installing' | 'restarting' | 'error';
@@ -191,6 +197,8 @@ interface CC {
   hardwareAdvanced(on: boolean): Promise<{ ok: boolean; message: string; checks?: HwCheck[] }>;
   /** Abre uma issue no GitHub com o relatório dos sensores e copia o relatório completo. */
   hardwareReport(checks?: HwCheck[]): Promise<{ ok: boolean; truncated: boolean }>;
+  fanState(): Promise<FanState | null>;
+  fanTest(id: string, pct: number | null): Promise<boolean>;
   whatsNewSeen(): Promise<boolean>;
   clutterScan(): Promise<ClutterReport>;
   clutterCancel(): Promise<boolean>;

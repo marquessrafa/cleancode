@@ -101,7 +101,7 @@ static class Program
         foreach (var s in h.Sensors)
         {
             if (!first) sb.Append(','); first = false;
-            sb.Append("{\"name\":\"").Append(Esc(Clean(s.Name))).Append("\",\"type\":\"").Append(s.SensorType).Append("\",\"value\":").Append(Num(s.Value))
+            sb.Append("{\"name\":\"").Append(Esc(Clean(s.Name))).Append("\",\"id\":\"").Append(Esc(s.Identifier.ToString())).Append("\",\"type\":\"").Append(s.SensorType).Append("\",\"value\":").Append(Num(s.Value))
               .Append(",\"min\":").Append(Num(s.Min)).Append(",\"max\":").Append(Num(s.Max)).Append('}');
         }
         sb.Append("],\"sub\":[");
@@ -123,17 +123,19 @@ static class Program
         if (!t.Join(4000)) { Stuck[id] = true; Log("a atualização de " + h.Name + " passou de 4 segundos; essa peça deixa de ser atualizada"); }
     }
 
-    static string Snapshot(Computer c, bool pawnio)
+    static string Snapshot(Computer c, bool pawnio, bool fanControl = false)
     {
         IHardware[] list;
         try { list = c.Hardware.ToArray(); } catch { list = new IHardware[0]; }
         foreach (var h in list) UpdateWithTimeout(h);
+        // o controle das ventoinhas usa as leituras que acabaram de chegar (só no modo tarefa, que roda como administrador)
+        if (fanControl) { try { Fans.Tick(list); } catch (Exception e) { Log("erro no controle das ventoinhas: " + e.Message); } }
         var sb = new StringBuilder(64 * 1024);
         sb.Append("{\"at\":").Append(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()).Append(",\"admin\":")
           .Append(IsAdmin() ? "true" : "false").Append(",\"pawnio\":").Append(pawnio ? "true" : "false").Append(",\"groups\":{");
         bool first = true;
         foreach (var kv in Groups) { if (!first) sb.Append(','); first = false; sb.Append('"').Append(kv.Key).Append("\":\"").Append(Esc(kv.Value)).Append('"'); }
-        sb.Append("},\"hardware\":[");
+        sb.Append("},\"fanControl\":").Append(fanControl ? "true" : "false").Append(",\"fans\":[").Append(fanControl ? Fans.StatusJson() : "").Append("],\"hardware\":[");
         first = true;
         foreach (var h in list)
         {
@@ -277,6 +279,176 @@ static class Program
         }
     }
 
+    // ---------- controle das ventoinhas (só na tarefa de administrador) ----------
+    // O app grava o pedido em %LOCALAPPDATA%\CleanCode\fans.txt. A tarefa roda com a mesma conta, então lê a mesma pasta,
+    // e só essa conta (e os administradores) consegue gravar nela. Uma linha por item, separada por tabulação:
+    //   until <hora em ms>                                    até quando o pedido vale (o app renova a cada 3 segundos)
+    //   fixed <id do controle> <porcentagem>                  velocidade fixa
+    //   curve <id do controle> <id da temperatura> t:p,t:p    curva de velocidade pela temperatura
+    // Proteções:
+    // - Quando o pedido vence (o app travou ou fechou) ou some, cada ventoinha volta ao modo automático da placa.
+    // - Se o processador ou a placa de vídeo chegar a 90 °C, as ventoinhas controladas vão para 100% até cair para 85 °C.
+    // - Ao fechar, o helper devolve cada ventoinha ao modo automático.
+    internal static class Fans
+    {
+        internal class Want { public string Mode; public string Id; public float Value; public string Source; public List<KeyValuePair<float, float>> Points; }
+        class State { public string Id; public string Mode; public float Pct = -1; public string Error; }
+
+        static readonly object L = new object();
+        static readonly Dictionary<string, IControl> Touched = new Dictionary<string, IControl>();
+        static readonly Dictionary<string, float> Applied = new Dictionary<string, float>();
+        static List<State> Status = new List<State>();
+        static bool emergency, lastValid;
+        const float HotOn = 90f, HotOff = 85f;
+
+        static string ConfigPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CleanCode", "fans.txt");
+        static float F(string s) { float.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v); return v; }
+
+        internal static List<Want> Parse(string text, out long until)
+        {
+            until = 0;
+            var list = new List<Want>();
+            foreach (var raw in (text ?? "").Split('\n'))
+            {
+                var p = raw.TrimEnd('\r').Split('\t');
+                if (p.Length >= 2 && p[0] == "until") long.TryParse(p[1], out until);
+                else if (p.Length >= 3 && p[0] == "fixed") list.Add(new Want { Mode = "fixed", Id = p[1], Value = F(p[2]) });
+                else if (p.Length >= 4 && p[0] == "curve")
+                {
+                    var pts = new List<KeyValuePair<float, float>>();
+                    foreach (var pair in p[3].Split(','))
+                    {
+                        var tp = pair.Split(':');
+                        if (tp.Length == 2) pts.Add(new KeyValuePair<float, float>(F(tp[0]), F(tp[1])));
+                    }
+                    pts.Sort((a, b) => a.Key.CompareTo(b.Key));
+                    if (pts.Count > 0) list.Add(new Want { Mode = "curve", Id = p[1], Source = p[2], Points = pts });
+                }
+            }
+            return list;
+        }
+
+        /// <summary>Porcentagem da curva para uma temperatura: reta entre os pontos vizinhos, e o primeiro ou o último ponto fora deles.</summary>
+        internal static float Interp(List<KeyValuePair<float, float>> pts, float temp)
+        {
+            if (temp <= pts[0].Key) return pts[0].Value;
+            for (int i = 1; i < pts.Count; i++)
+            {
+                if (temp <= pts[i].Key)
+                {
+                    var a = pts[i - 1]; var b = pts[i];
+                    return b.Key - a.Key <= 0 ? b.Value : a.Value + (b.Value - a.Value) * (temp - a.Key) / (b.Key - a.Key);
+                }
+            }
+            return pts[pts.Count - 1].Value;
+        }
+
+        static void Walk(IHardware h, Dictionary<string, IControl> controls, Dictionary<string, ISensor> sensors, ref float hot)
+        {
+            foreach (var s in h.Sensors)
+            {
+                var id = s.Identifier.ToString();
+                sensors[id] = s;
+                if (s.Control != null) controls[id] = s.Control;
+                if (s.SensorType == SensorType.Temperature && s.Value.HasValue && s.Value.Value > 0 && s.Value.Value < 125)
+                {
+                    var t = h.HardwareType;
+                    bool cpu = t == HardwareType.Cpu && (s.Name == "CPU Package" || s.Name == "Core Max" || s.Name.Contains("Tctl"));
+                    bool gpu = (t == HardwareType.GpuAmd || t == HardwareType.GpuNvidia || t == HardwareType.GpuIntel) && s.Name == "GPU Core";
+                    if ((cpu || gpu) && s.Value.Value > hot) hot = s.Value.Value;
+                }
+            }
+            foreach (var sub in h.SubHardware) Walk(sub, controls, sensors, ref hot);
+        }
+
+        internal static void Tick(IHardware[] list)
+        {
+            lock (L)
+            {
+                var controls = new Dictionary<string, IControl>();
+                var sensors = new Dictionary<string, ISensor>();
+                float hot = 0;
+                foreach (var h in list) Walk(h, controls, sensors, ref hot);
+
+                List<Want> wants;
+                long until = 0;
+                try { wants = File.Exists(ConfigPath) ? Parse(File.ReadAllText(ConfigPath), out until) : new List<Want>(); }
+                catch { wants = new List<Want>(); }
+                bool valid = until >= DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                if (!valid) wants.Clear();
+                if (lastValid && !valid && Touched.Count > 0) Log("o CleanCode parou de confirmar o controle das ventoinhas; elas voltam ao modo automático");
+                lastValid = valid;
+
+                if (!emergency && hot >= HotOn && wants.Count > 0) { emergency = true; Log("proteção: a temperatura chegou a " + hot.ToString("0", CultureInfo.InvariantCulture) + " °C; as ventoinhas controladas vão para 100%"); }
+                else if (emergency && hot < HotOff) { emergency = false; Log("proteção: a temperatura caiu para " + hot.ToString("0", CultureInfo.InvariantCulture) + " °C; as ventoinhas voltam à configuração escolhida"); }
+
+                var status = new List<State>();
+                var keep = new HashSet<string>();
+                foreach (var w in wants)
+                {
+                    var st = new State { Id = w.Id, Mode = w.Mode };
+                    status.Add(st);
+                    if (!controls.TryGetValue(w.Id, out var ctl)) { st.Error = "notfound"; continue; }
+                    try
+                    {
+                        float pct;
+                        if (w.Mode == "fixed") pct = w.Value;
+                        else if (sensors.TryGetValue(w.Source ?? "", out var src) && src.Value.HasValue && src.Value.Value > 0) pct = Interp(w.Points, src.Value.Value);
+                        else { st.Error = "nosource"; continue; } // sem a temperatura: a ventoinha fica (ou volta) no modo automático
+                        if (emergency) { pct = 100; st.Mode = "emergency"; }
+                        // na curva, a velocidade sobe na hora e desce até 3 pontos por segundo, para a ventoinha não ficar oscilando
+                        else if (w.Mode == "curve" && Applied.TryGetValue(w.Id, out var before) && pct < before - 3) pct = before - 3;
+                        float lo = Math.Max(0, ctl.MinSoftwareValue), hi = ctl.MaxSoftwareValue > lo ? Math.Min(100, ctl.MaxSoftwareValue) : 100;
+                        pct = Math.Max(lo, Math.Min(hi, pct));
+                        if (!Applied.TryGetValue(w.Id, out var prev) || Math.Abs(prev - pct) >= 0.5f || ctl.ControlMode != ControlMode.Software)
+                        {
+                            ctl.SetSoftware(pct);
+                            Applied[w.Id] = pct;
+                            if (!Touched.ContainsKey(w.Id)) { Touched[w.Id] = ctl; Log("ventoinha " + w.Id + ": o CleanCode assumiu o controle (" + w.Mode + ")"); }
+                        }
+                        st.Pct = pct;
+                        keep.Add(w.Id);
+                    }
+                    catch (Exception e) { st.Error = "error: " + e.Message; }
+                }
+                // as ventoinhas que saíram do pedido (ou ficaram sem temperatura) voltam ao modo automático
+                foreach (var id in Touched.Keys.Where((k) => !keep.Contains(k)).ToList()) Release(id, "voltou ao modo automático");
+                Status = status;
+            }
+        }
+
+        static void Release(string id, string why)
+        {
+            try { Touched[id].SetDefault(); } catch (Exception e) { Log("ventoinha " + id + ": não voltou ao modo automático (" + e.Message + ")"); }
+            Touched.Remove(id); Applied.Remove(id);
+            Log("ventoinha " + id + ": " + why);
+        }
+
+        internal static void RestoreAll(string why)
+        {
+            lock (L) { foreach (var id in Touched.Keys.ToList()) Release(id, "voltou ao modo automático, porque " + why); }
+        }
+
+        internal static string StatusJson()
+        {
+            lock (L)
+            {
+                return string.Join(",", Status.Select((s) => "{\"id\":\"" + Esc(s.Id) + "\",\"mode\":\"" + s.Mode + "\",\"pct\":" + (s.Pct < 0 ? "null" : s.Pct.ToString("0.#", CultureInfo.InvariantCulture))
+                    + ",\"error\":" + (s.Error == null ? "null" : "\"" + Esc(s.Error) + "\"") + "}"));
+            }
+        }
+
+        internal static string SelfTest()
+        {
+            var text = "until\t1700000000000\r\nfixed\t/lpc/nct6798d/0/control/1\t45\ncurve\t/gpu-amd/0/control/0\t/gpu-amd/0/temperature/0\t70:100,30:20,50:40\nlixo\n";
+            var list = Parse(text, out var until);
+            var curve = list.First((w) => w.Mode == "curve").Points;
+            string n(float v) => v.ToString("0.##", CultureInfo.InvariantCulture);
+            return "{\"until\":" + until + ",\"count\":" + list.Count + ",\"fixed\":" + n(list[0].Value) + ",\"at20\":" + n(Interp(curve, 20)) + ",\"at40\":" + n(Interp(curve, 40))
+                + ",\"at60\":" + n(Interp(curve, 60)) + ",\"at90\":" + n(Interp(curve, 90)) + "}";
+        }
+    }
+
     static bool AppRunning()
     {
         try { return Process.GetProcessesByName("CleanCode").Length > 0; } catch { return true; }
@@ -291,6 +463,13 @@ static class Program
             var raw = "Corsair - CMT32GX5M2X6200C36\0\0\0\0\0\u001aA\u001aA\0} (#3)";
             var w = new StreamWriter(Console.OpenStandardOutput(), new UTF8Encoding(false)) { AutoFlush = true };
             w.WriteLine("{\"clean\":\"" + Esc(Clean(raw)) + "\",\"raw\":\"" + Esc(raw) + "\",\"quote\":\"" + Esc("a\"b\\c\td") + "\"}");
+            Environment.Exit(0);
+        }
+        // autoteste do controle das ventoinhas: lê um pedido de exemplo e calcula as curvas, sem tocar no hardware
+        if (args.Contains("--fan-selftest"))
+        {
+            var w = new StreamWriter(Console.OpenStandardOutput(), new UTF8Encoding(false)) { AutoFlush = true };
+            w.WriteLine(Fans.SelfTest());
             Environment.Exit(0);
         }
         bool once = args.Contains("--once");
@@ -331,10 +510,17 @@ static class Program
         if (outFile != null) { try { Directory.CreateDirectory(Path.GetDirectoryName(outFile)); } catch { /* */ } }
         var started = Stopwatch.StartNew(); int missing = 0, reads = 0;
         var stdout = new StreamWriter(Console.OpenStandardOutput(), new UTF8Encoding(false)) { AutoFlush = true };
+        // só a tarefa de administrador controla as ventoinhas. Antes de fechar, ela devolve cada ventoinha ao modo automático.
+        bool fanControl = outFile != null && !once && IsAdmin();
+        if (fanControl)
+        {
+            AppDomain.CurrentDomain.ProcessExit += (s, e) => Fans.RestoreAll("o helper está fechando");
+            AppDomain.CurrentDomain.UnhandledException += (s, e) => Fans.RestoreAll("erro inesperado no helper");
+        }
         do
         {
             string json;
-            try { json = Snapshot(c, pawnio); } catch (Exception e) { json = "{\"error\":\"" + Esc(e.Message) + "\"}"; Log("erro na leitura: " + e); }
+            try { json = Snapshot(c, pawnio, fanControl); } catch (Exception e) { json = "{\"error\":\"" + Esc(e.Message) + "\"}"; Log("erro na leitura: " + e); }
             reads++;
             if (reads == 1) Log("primeira leitura: " + json.Length + " bytes; etapas " + string.Join(", ", Groups.Select(kv => kv.Key + "=" + kv.Value)));
             // três leituras sem cair: as etapas abertas são seguras neste PC
@@ -364,6 +550,7 @@ static class Program
             }
         } while (!once);
         if (once && reads < 3) ClearMarkers();
+        if (fanControl) Fans.RestoreAll("o helper está fechando");
         // uma etapa travada não pode impedir o processo de sair
         if (!risky.IsAlive) { try { c.Close(); } catch { /* */ } }
         Environment.Exit(0);

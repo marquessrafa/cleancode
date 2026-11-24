@@ -13,10 +13,12 @@ import path from 'path';
 import { t } from '../../i18n';
 import type { HwCheck } from '../types';
 
-export interface LhmSensor { name: string; type: string; value: number | null; min: number | null; max: number | null }
+export interface LhmSensor { name: string; id?: string; type: string; value: number | null; min: number | null; max: number | null }
 export interface LhmHardware { name: string; type: string; id: string; stuck?: boolean; sensors: LhmSensor[]; sub: LhmHardware[] }
 /** groups: estado de cada etapa de abertura do helper ("ok", "pending", "timeout", "skipped" ou "error: …") */
-export interface LhmSnapshot { at: number; admin: boolean; pawnio?: boolean; groups?: Record<string, string>; hardware: LhmHardware[] }
+/** fanControl: a tarefa de administrador controla as ventoinhas; fans: o que ela aplicou em cada ventoinha (ver fans.ts) */
+export interface LhmFanStatus { id: string; mode: 'fixed' | 'curve' | 'emergency'; pct: number | null; error: string | null }
+export interface LhmSnapshot { at: number; admin: boolean; pawnio?: boolean; groups?: Record<string, string>; fanControl?: boolean; fans?: LhmFanStatus[]; hardware: LhmHardware[] }
 
 const TASK = 'CleanCodeSensors';
 const DATA = path.join(process.env.ProgramData || 'C:\\ProgramData', 'CleanCode', 'sensors.json');
@@ -88,6 +90,13 @@ async function readTaskFile(): Promise<LhmSnapshot | null> {
   } catch { return null; }
 }
 let taskInstalled: boolean | null = null;
+/**
+ * Chamado antes de encerrar a tarefa de administrador (ativar de novo ou desativar). O controle das ventoinhas (fans.ts)
+ * usa este gancho para devolver as ventoinhas ao modo automático antes, porque um processo encerrado à força não consegue.
+ */
+let beforeTaskStop: () => Promise<void> = async () => {};
+let afterTaskStart: () => void = () => {};
+export function onTaskRestart(before: () => Promise<void>, after: () => void) { beforeTaskStop = before; afterTaskStart = after; }
 const sha = (f: string) => { try { return crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex'); } catch { return ''; } };
 /** A cópia em Arquivos de Programas é a mesma versão do helper deste app? (senão, é preciso ativar de novo) */
 function copyCurrent(): boolean {
@@ -183,8 +192,10 @@ export async function activate(onStep: (step: number, info?: { driverPresent?: b
   ].filter(Boolean).join('; ');
   onStep(2, { driverPresent: !needPawn });
   child?.kill(); child = null; last = null;
+  await beforeTaskStop().catch(() => {});
   const r = await psAdmin(script);
   taskInstalled = null;
+  afterTaskStart();
   try { fs.unlinkSync(setup); } catch { /* */ }
   if (!r.ok) return { ok: false, message: /cancel/i.test(r.err) ? t("Cancelado") : needPawn && !(await pawnioInstalled()) ? t("O driver PawnIO não pôde ser instalado") : t("Sem permissão de administrador") };
   // espera a primeira leitura da tarefa de administrador (até 25 segundos)
@@ -366,8 +377,10 @@ export async function report(checks?: HwCheck[]): Promise<string> {
 }
 
 export async function deactivate() {
+  await beforeTaskStop().catch(() => {});
   const r = await psAdmin(`Stop-ScheduledTask -TaskName ${psq(TASK)} -ErrorAction SilentlyContinue; Get-Process cc-lhm -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Unregister-ScheduledTask -TaskName ${psq(TASK)} -Confirm:$false; Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path ${psq(SENSORS_DIR)}`);
   taskInstalled = null;
+  afterTaskStart();
   return { ok: r.ok, message: r.ok ? t("O monitoramento avançado foi desligado. Você pode remover o driver PawnIO em Aplicativos instalados.") : t("Cancelado") };
 }
 
@@ -397,7 +410,7 @@ const GROUP: Record<string, { g: string; unit: string }> = {
   Load: { g: 'load', unit: '%' }, Fan: { g: 'fan', unit: 'RPM' }, Control: { g: 'control', unit: '%' }, Level: { g: 'level', unit: '%' }, Data: { g: 'data', unit: 'GB' }, SmallData: { g: 'data', unit: 'MB' },
   Throughput: { g: 'throughput', unit: 'B/s' }, Energy: { g: 'energy', unit: t("mWh") }, Frequency: { g: 'clock', unit: t("Hz") }, Factor: { g: 'factor', unit: '' }, TimeSpan: { g: 'time', unit: 's' },
 };
-export interface FlatSensor { kind: string; group: string; hw: string; hwId: string; name: string; value: number; min?: number; max?: number; unit: string }
+export interface FlatSensor { kind: string; group: string; hw: string; hwId: string; id?: string; name: string; value: number; min?: number; max?: number; unit: string }
 export function flatten(s: LhmSnapshot | null): FlatSensor[] {
   const out: FlatSensor[] = [];
   const walk = (h: LhmHardware, parent?: LhmHardware) => {
@@ -411,7 +424,7 @@ export function flatten(s: LhmSnapshot | null): FlatSensor[] {
       if ((kind === 'cpu' || kind === 'board') && ['power', 'volt', 'clock', 'current'].includes(g.g) && x.value === 0 && !x.max) continue;
       // limites de fábrica ("Warning/Critical Temperature" dos SSDs NVMe, "Thermal Sensor High Limit"…) não são leituras
       const group = g.g === 'temp' && /warning|critical|limit|alarm|threshold/i.test(x.name) ? 'limit' : g.g;
-      out.push({ kind, group, hw: h.name, hwId: h.id, name: x.name, value: x.value, min: x.min ?? undefined, max: x.max ?? undefined, unit: g.unit });
+      out.push({ kind, group, hw: h.name, hwId: h.id, id: x.id, name: x.name, value: x.value, min: x.min ?? undefined, max: x.max ?? undefined, unit: g.unit });
     }
     (h.sub || []).forEach((c) => walk(c, h));
   };

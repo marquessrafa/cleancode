@@ -15,6 +15,7 @@
     "preview:sensores": "npm run build && CLEANCODE_PROFILE=dev CLEANCODE_PREVIEW_SENSORS=aviso electron .",
     "preview:sensores:ok": "npm run build && CLEANCODE_PROFILE=dev CLEANCODE_PREVIEW_SENSORS=ok electron .",
     "preview:sensores:falha": "npm run build && CLEANCODE_PROFILE=dev CLEANCODE_PREVIEW_SENSORS=falha electron .",
+    "preview:ventoinhas": "npm run build && CLEANCODE_PROFILE=dev CLEANCODE_PREVIEW_FANS=1 electron .",
     "dev": "vite",
     "dist": "npm run build && electron-builder --win nsis --x64 --publish never --config.directories.output=release-build && node scripts/publish-local.cjs",
     "dist:mac": "npm run build && electron-builder --mac --publish never --config.directories.output=release-build && node scripts/publish-local.cjs",

@@ -17,7 +17,8 @@ import { system, drives, isAdmin, isMac } from './platform';
 import { setupFdaAssistant } from './fdaAssistant';
 import * as AppData from './appdata';
 import type { AppEntry } from './platform';
-import type { DossierQuery, GameInfo } from './platform/types';
+import type { DossierQuery, GameInfo, FanConfig } from './platform/types';
+import { previewState as previewFanState, previewTest as previewFanTest } from './fansPreview';
 import { toCSV, toXLSX, toHTML, writeText } from './exporter';
 import { snapshot as metricsSnapshot, speedTest, details as metricsDetails, eject as ejectDrive , hardwareInfo, hardwareLive } from './metrics';
 import * as Cleanup from './cleanup';
@@ -63,6 +64,8 @@ const DEFAULTS = {
   gameDirs: [] as string[],
   // idioma: 'auto' segue o idioma do computador; 'pt', 'en' ou 'es' fixa um idioma
   language: 'auto' as 'auto' | 'pt' | 'en' | 'es',
+  // ventoinhas (Windows): configuração de cada ventoinha, pelo identificador do controle no LibreHardwareMonitor
+  fans: {} as Record<string, FanConfig>,
 };
 type Settings = typeof DEFAULTS;
 let settings: Settings = { ...DEFAULTS };
@@ -201,6 +204,18 @@ ipcMain.handle('metrics:eject', (_e, root: string) => ejectDrive(root));
 ipcMain.handle('hardware:info', () => hardwareInfo());
 ipcMain.handle('hardware:live', () => hardwareLive());
 ipcMain.handle('hardware:disks', () => system.metrics.disks().catch(() => []));
+// ventoinhas: estado (ventoinhas com controle, temperaturas e o que a tarefa aplicou) e teste de uma ventoinha
+// (na versão de desenvolvimento, CLEANCODE_PREVIEW_FANS=1 troca as ventoinhas reais por uma simulação; ver fansPreview.ts)
+const PREVIEW_FANS = !app.isPackaged && !!process.env.CLEANCODE_PREVIEW_FANS;
+ipcMain.handle('fans:state', () => {
+  if (PREVIEW_FANS) return previewFanState(settings.fans);
+  return system.metrics.fanState ? system.metrics.fanState().catch(() => null) : null;
+});
+ipcMain.handle('fans:test', (_e, id: string, pct: number | null) => {
+  const p = typeof pct === 'number' ? pct : null;
+  if (PREVIEW_FANS) previewFanTest(String(id), p); else system.metrics.fanTest?.(String(id), p);
+  return true;
+});
 ipcMain.handle('hardware:advanced', async (e, on: boolean) => {
   if (on && system.metrics.advancedActivate) {
     // cada etapa vai para a tela, que mostra o popup de ativação com os passos
@@ -807,6 +822,8 @@ app.whenReady().then(() => {
   applyMonitor();
 });
 app.whenReady().then(() => { try { system.cleanupUpdate?.(); } catch { /* */ } });
+// ventoinhas: volta a aplicar as configurações salvas (velocidade fixa ou curva) quando o app abre
+app.whenReady().then(() => { try { if (!PREVIEW_FANS) system.metrics.fanApply?.(settings.fans); } catch { /* */ } });
 app.on('before-quit', () => {
   isQuitting = true;
   // saindo com uma atualização já baixada: instala em silêncio (sem reabrir o app depois)
@@ -992,6 +1009,7 @@ ipcMain.handle('settings:set', (_e, patch: Partial<Settings>) => {
   if ('updateSource' in patch || 'autoCheckUpdates' in patch) { watchUpdateSource(); if (settings.autoCheckUpdates) runUpdateCheck(false); }
   if ('theme' in patch) nativeTheme.themeSource = settings.theme as any;
   if ('theme' in patch || 'accent' in patch) applyWindowColors();
+  if ('fans' in patch && !PREVIEW_FANS) system.metrics.fanApply?.(settings.fans);
   // outras janelas (painel da barra de menus, janelas extras) acompanham a mudança
   for (const w of windows) if (!w.isDestroyed() && w.webContents !== _e.sender) w.webContents.send('settings-changed', settings);
   return settings;

@@ -61,6 +61,8 @@ contextBridge.exposeInMainWorld('cc', {
   hardwareDisks: () => inv('hardware:disks'),
   hardwareAdvanced: (on: boolean) => inv('hardware:advanced', on),
   hardwareReport: (checks?: any[]) => inv('hardware:report', checks),
+  fanState: () => inv('fans:state'),
+  fanTest: (id: string, pct: number | null) => inv('fans:test', id, pct),
   whatsNewSeen: () => inv('app:whatsNewSeen'),
   clutterScan: () => inv('clutter:scan'),
   clutterCancel: () => inv('clutter:cancel'),

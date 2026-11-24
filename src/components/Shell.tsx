@@ -3,7 +3,7 @@ import {
   LayoutDashboard, FolderTree, LayoutGrid, FileType2, CalendarClock, Users, ArrowDownWideNarrow, Copy, Search, History,
   Radar, PackageX, Settings as Cog, PanelLeftClose, PanelLeftOpen, Sun, Moon, Monitor, X, HardDrive, ShieldCheck, ShieldAlert,
   CheckCircle2, AlertCircle, Info, Plus, Loader2, ArrowUpCircle, Sparkles, Gauge, Activity, Shield, HeartPulse, Layers, Wrench, Globe, Gamepad2, CircuitBoard, FolderOpen, RefreshCw,
-  FolderCog, ChevronLeft, ChevronRight,
+  FolderCog, ChevronLeft, ChevronRight, Fan,
 } from 'lucide-react';
 import { Page, useApp } from '../lib/store';
 import { cc, isMac } from '../lib/api';
@@ -45,6 +45,8 @@ const NAV: { group: string; items: { page: Page; label: string; icon: React.Reac
   {
     group: 'Hardware', items: [
       { page: 'hardware', label: tr("Monitor de hardware"), icon: <CircuitBoard size={17} /> },
+      // o controle das ventoinhas usa o LibreHardwareMonitor, que só existe no Windows
+      ...(isMac ? [] : [{ page: 'fans' as Page, label: tr("Ventoinhas"), icon: <Fan size={17} /> }]),
     ],
   },
   {

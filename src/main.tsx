@@ -27,6 +27,7 @@ import Browsers from './pages/Browsers';
 import AppDataPage from './pages/AppData';
 import GameMode from './pages/GameMode';
 import Hardware from './pages/Hardware';
+import FansPage from './pages/Fans';
 import SettingsPage from './pages/Settings';
 import { NeedsScan } from './pages/common';
 import FdaHelper from './pages/FdaHelper';
@@ -71,6 +72,7 @@ function Content({ page: forced }: { page?: string } = {}) {
     case 'appdata': return <AppDataPage />;
     case 'game': return <GameMode />;
     case 'hardware': return <Hardware />;
+    case 'fans': return <FansPage />;
     case 'settings': return <SettingsPage />;
     case 'dossier': return <DossierPage />;
   }

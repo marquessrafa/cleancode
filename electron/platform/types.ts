@@ -241,9 +241,24 @@ export interface MetricsApi {
   /** Monta o relatório dos sensores (sem dados pessoais) para abrir uma issue no GitHub. */
   advancedReport?(checks?: HwCheck[]): Promise<string>;
   advancedDeactivate?(): Promise<{ ok: boolean; message: string }>;
+  /** controle das ventoinhas (só Windows, com o monitoramento avançado ativo; ver win32/fans.ts) */
+  fanState?(): Promise<FanState>;
+  fanApply?(cfg: Record<string, FanConfig>): void;
+  fanTest?(id: string, pct: number | null): void;
   /** discos físicos com detalhes (modelo, firmware, saúde, SMART) */
   disks(): Promise<DiskDetail[]>;
 }
+
+/** Configuração de uma ventoinha: automático (a placa decide), velocidade fixa ou curva pela temperatura de um sensor. */
+export interface FanConfig { mode: 'auto' | 'fixed' | 'curve'; value?: number; source?: string; points?: [number, number][]; label?: string }
+export interface FanControlInfo {
+  id: string; name: string; hw: string; kind: 'board' | 'gpu' | 'cooler' | 'other'; pct?: number; rpm?: number;
+  /** o que a tarefa de administrador aplicou: modo, porcentagem e erro (notfound, nosource ou error: mensagem) */
+  status?: { mode: 'fixed' | 'curve' | 'emergency'; pct: number | null; error: string | null };
+}
+export interface FanTempSource { id: string; name: string; hw: string; kind: string; value: number }
+/** helperReady: a tarefa de administrador está rodando uma versão do helper que controla as ventoinhas */
+export interface FanState { available: boolean; active: boolean; helperReady: boolean; controls: FanControlInfo[]; temps: FanTempSource[]; emergency: boolean; preview?: boolean }
 
 export interface DiskDetail {
   id: string; name: string; model?: string; firmware?: string; serialHidden?: boolean; bus?: string; media?: string; size?: number;
