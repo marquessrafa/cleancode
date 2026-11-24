@@ -248,7 +248,7 @@ function Consumers({ list, by, unit, delay = 0 }: { list?: TopApp[]; by: 'cpu' |
         const heavy = by === 'mem' ? a.mem > 2 * 1073741824 : a.cpu > 50;
         return (
           <div key={a.name} className="anim-rise flex items-center gap-3 rounded-lg px-1 py-1.5" style={{ animationDelay: `${delay + 80 + i * 55}ms` }}>
-            {a.icon ? <img src={a.icon} alt="" className="h-7 w-7 shrink-0" /> : <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[12px] font-bold text-white" style={{ background: 'linear-gradient(135deg, var(--p-accent), color-mix(in srgb, var(--p-accent) 45%, #000))' }}>{a.name.slice(0, 1).toUpperCase()}</span>}
+            {a.icon ? <img src={a.icon} alt="" className="h-7 w-7 shrink-0" /> : <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[12px] font-bold text-[var(--on-accent)]" style={{ background: 'linear-gradient(135deg, var(--p-accent), color-mix(in srgb, var(--p-accent) 45%, #000))' }}>{a.name.slice(0, 1).toUpperCase()}</span>}
             <span className="min-w-0 flex-1 truncate text-[14px]">{a.name}</span>
             <span className={cx('w-[84px] text-right text-[14px] tabular-nums', heavy ? 'text-[var(--p-warn)]' : 'text-[var(--p-soft)]')}>{by === 'mem' ? fmtSize(a.mem, 'auto', 1) : pct1(a.cpu)}</span>
             <button onClick={async () => {
@@ -359,7 +359,7 @@ function FreeMemory() {
   };
   return (
     <div className="mt-4 flex items-center gap-3">
-      <button onClick={run} disabled={busy} className="flex items-center gap-2 rounded-full bg-[var(--p-accent)] px-4 py-1.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60">
+      <button onClick={run} disabled={busy} className="flex items-center gap-2 rounded-full bg-[var(--p-accent)] px-4 py-1.5 text-[13px] font-semibold text-[var(--on-accent)] transition-opacity hover:opacity-90 disabled:opacity-60">
         {busy ? <Loader2 size={14} className="animate-spin" /> : <MemoryStick size={14} />}{busy ? tr("Liberando…") : tr("Liberar memória")}
       </button>
       <span className="text-[12px] text-[var(--p-muted)]">{msg || (isMac ? tr("O macOS pede a sua senha (purge).") : tr("Esvazia a memória parada dos programas."))}</span>
@@ -625,7 +625,7 @@ function DevicesDetail() {
   const [msg, setMsg] = useState<Record<string, string>>({});
   const eject = async (root: string) => { setMsg((m) => ({ ...m, [root]: 'Ejetando…' })); const r = await cc.metricsEject(root); setMsg((m) => ({ ...m, [root]: r.message })); };
   const tile = 'anim-rise rounded-2xl border border-[var(--p-line)] bg-[var(--p-card)] p-3.5';
-  const badge = (icon: React.ReactNode) => <span className="flex h-8 w-8 items-center justify-center rounded-lg text-white" style={{ background: 'linear-gradient(135deg, var(--p-accent), color-mix(in srgb, var(--p-accent) 50%, #000))' }}>{icon}</span>;
+  const badge = (icon: React.ReactNode) => <span className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--on-accent)]" style={{ background: 'linear-gradient(135deg, var(--p-accent), color-mix(in srgb, var(--p-accent) 50%, #000))' }}>{icon}</span>;
   return (
     <>
       <Title>{tr("Dispositivos conectados")}</Title>
@@ -894,7 +894,7 @@ export default function Panel() {
           <div className="anim-rise px-1 pb-2 pt-4 text-[15px] font-semibold text-[var(--p-muted)]" style={{ animationDelay: '320ms' }}>{tr("Recomendação de hoje")}</div>
           <Card delay={340}>
             <div className="flex gap-3.5">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" style={{ background: 'linear-gradient(135deg, var(--p-accent), color-mix(in srgb, var(--p-accent) 45%, #ffffff))' }}><Sparkles size={21} className="text-white" /></div>
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" style={{ background: 'linear-gradient(135deg, var(--p-accent), color-mix(in srgb, var(--p-accent) 45%, #ffffff))' }}><Sparkles size={21} className="text-[var(--on-accent)]" /></div>
               <div className="min-w-0 flex-1">
                 <div className="text-[14px] font-semibold">{tip.title}</div>
                 <div className="mt-0.5 text-xs leading-snug text-[var(--p-muted)]">{tip.text}</div>

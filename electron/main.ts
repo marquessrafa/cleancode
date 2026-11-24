@@ -705,6 +705,7 @@ ipcMain.handle('app:loginItemStatus', () => ({ packaged: app.isPackaged, openAtL
 const ACCENTS: Record<string, { l: string; d: string }> = {
   green: { l: '#0e9f6e', d: '#34d399' }, purple: { l: '#7c3aed', d: '#a78bfa' },
   blue: { l: '#2563eb', d: '#60a5fa' }, orange: { l: '#e5803f', d: '#fdba74' },
+  white: { l: '#18181b', d: '#f4f4f5' },
 };
 function mixHex(a: string, b: string, t: number) {
   const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);

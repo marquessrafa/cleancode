@@ -132,7 +132,7 @@ export default function Clutter() {
     <div className="flex h-full flex-col">
       <PageBody className="flex-1">
         <div className="mb-5 flex flex-wrap items-center gap-4 anim-page">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl text-white" style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 50%, #ffffff))' }}><Layers size={26} /></div>
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl text-[var(--on-accent)]" style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 50%, #ffffff))' }}><Layers size={26} /></div>
           <div className="min-w-0 flex-1"><div className="text-[26px] font-semibold tracking-tight text-fg">{tr("Acúmulos")}</div><div className="text-sm text-muted">{fmtNum(rep.scanned)} {tr("arquivos em")} {rep.roots.length} {tr("pastas pessoais")}</div></div>
           <Button variant="ghost" icon={<RotateCcw size={14} />} onClick={scan}>{tr("Analisar de novo")}</Button>
         </div>

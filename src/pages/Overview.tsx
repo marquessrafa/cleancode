@@ -66,7 +66,7 @@ export default function Overview() {
             return (
               <div key={d.root} className="group relative overflow-hidden rounded-xl border border-line bg-surface p-4 transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-lg" style={{ animation: `fade-up .3s ${i * 50}ms both`, background: 'linear-gradient(150deg, color-mix(in srgb, var(--accent) 9%, var(--surface)), var(--surface) 60%)' }}>
                 <div className="flex items-start gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-md" style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000))' }}><Icon size={20} /></div>
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-[var(--on-accent)] shadow-md" style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000))' }}><Icon size={20} /></div>
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[14px] font-semibold text-fg">{d.label || t("Disco local")}</div>
                     <div className="truncate text-[12px] text-muted">{driveTag(d.root)} · {d.fs}</div>

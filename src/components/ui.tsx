@@ -108,7 +108,7 @@ export function Toggle({ checked, onChange, label, hint, disabled }: { checked: 
         aria-checked={checked}
         className={cx('relative mt-0.5 block h-5 w-9 shrink-0 overflow-hidden rounded-full p-0 transition-colors duration-200', checked ? 'bg-accent' : 'bg-line-strong')}
       >
-        <span className={cx('absolute left-0.5 top-0.5 block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out', checked ? 'translate-x-4' : 'translate-x-0')} />
+        <span className={cx('absolute left-0.5 top-0.5 block h-4 w-4 rounded-full bg-[var(--knob)] shadow-sm transition-transform duration-200 ease-out', checked ? 'translate-x-4' : 'translate-x-0')} />
       </button>
     </label>
   );

@@ -21,7 +21,7 @@ export interface AppEntry {
   bundleId?: string; origin?: string;
 }
 export interface Settings {
-  theme: 'system' | 'light' | 'dark'; accent: 'green' | 'purple' | 'blue' | 'orange'; units: string; decimals: number; displayMode: 'size' | 'alloc' | 'files' | 'pct';
+  theme: 'system' | 'light' | 'dark'; accent: 'green' | 'purple' | 'blue' | 'orange' | 'white'; units: string; decimals: number; displayMode: 'size' | 'alloc' | 'files' | 'pct';
   showFilesInTree: boolean; hideEmpty: boolean; boldLarge: boolean; sizeBars: boolean; compressedBlue: boolean;
   datesWithTime: boolean; showErrorsAfterScan: boolean; autoSaveHistory: boolean; alwaysAdmin: boolean;
   staleMonths: number; sidebarCollapsed: boolean; silentUninstall: boolean; columns: string[]; recent: string[];

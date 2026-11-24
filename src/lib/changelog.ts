@@ -5,6 +5,16 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.14', date: '2026-11-24', headline: 'Cor de destaque branca',
+    groups: [
+      { title: 'Aparência', icon: 'sparkles', items: [
+        'Nas Configurações, você pode escolher a nova cor de destaque Branco.',
+        'No tema escuro, os destaques ficam brancos, e o texto e os ícones sobre eles ficam pretos. A bolinha das chaves também fica preta.',
+        'No tema claro, os destaques ficam pretos, sem o brilho no fundo e sem o brilho na borda das caixas.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.13', date: '2026-11-24', headline: 'Atualização no Windows instala até o fim e reabre o app',
     groups: [
       { title: 'Atualizações', icon: 'download', items: [

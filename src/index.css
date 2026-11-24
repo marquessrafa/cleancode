@@ -29,6 +29,12 @@
 :root[data-accent="purple"]         { --accent-l: #7c3aed; --accent-d: #a78bfa; --accent-fg-l: #ffffff; --accent-fg-d: #1e1038; }
 :root[data-accent="blue"]           { --accent-l: #2563eb; --accent-d: #60a5fa; --accent-fg-l: #ffffff; --accent-fg-d: #0b1d3a; }
 :root[data-accent="orange"]         { --accent-l: #e5803f; --accent-d: #fdba74; --accent-fg-l: #ffffff; --accent-fg-d: #3a1d06; }
+/* Branco: no tema escuro, os destaques ficam brancos; no tema claro, ficam pretos. */
+:root[data-accent="white"]          { --accent-l: #18181b; --accent-d: #f4f4f5; --accent-fg-l: #ffffff; --accent-fg-d: #111111; }
+/* bolinha das chaves: branca nas outras cores; com o destaque branco no tema escuro, fica preta para aparecer */
+:root { --knob: #ffffff; --on-accent: #ffffff; }
+/* texto e ícones sobre a cor de destaque: brancos nas outras cores; pretos com o destaque branco no tema escuro */
+:root.dark[data-accent="white"] { --knob: #111111; --on-accent: #111111; }
 
 /* Fundos e superfícies sempre neutros; a cor escolhida aparece só nos destaques. */
 :root {
@@ -246,6 +252,8 @@ body.panel-body, body.panel-body #root { background: transparent !important; hei
   filter: blur(36px);
   transition: background .5s ease;
 }
+/* destaque branco no tema claro: sem o brilho radial do fundo (o destaque é preto e o brilho sujaria o fundo) */
+:root:not(.dark)[data-accent="white"] .app-glow { display: none; }
 
 /* ---------- menu lateral: painel flutuante, solto das bordas ---------- */
 .side-panel {
@@ -322,6 +330,8 @@ aside.side-panel { transition: width .32s cubic-bezier(.2,.8,.2,1), box-shadow .
 .seg-on { background: color-mix(in srgb, var(--fg) 11%, transparent); box-shadow: 0 1px 0 0 color-mix(in srgb, #fff 8%, transparent) inset, 0 1px 2px rgb(0 0 0 / .18); }
 
 .glint-in::after { top: 0; }
+/* destaque branco no tema claro: sem o brilho na borda de cima das caixas */
+:root:not(.dark)[data-accent="white"] .glint::after { display: none; }
 
 /* primeiro bloco da tela (marcado por useGlint): vidro deixando o brilho do fundo aparecer */
 .glass-first {

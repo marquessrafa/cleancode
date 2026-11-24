@@ -14,7 +14,7 @@ function Switch({ on, onChange, disabled, busy }: { on: boolean; onChange: (v: b
   return (
     <button disabled={disabled || busy} onClick={() => onChange(!on)} role="switch" aria-checked={on}
       className={cx('relative h-[22px] w-[38px] shrink-0 rounded-full transition-colors duration-200 disabled:opacity-50', on ? 'bg-accent' : 'bg-line-strong')}>
-      <span className={cx('absolute top-[3px] h-4 w-4 rounded-full bg-white shadow transition-[left] duration-200', on ? 'left-[19px]' : 'left-[3px]')} />
+      <span className={cx('absolute top-[3px] h-4 w-4 rounded-full bg-[var(--knob)] shadow transition-[left] duration-200', on ? 'left-[19px]' : 'left-[3px]')} />
       {busy && <Loader2 size={12} className="absolute -right-5 top-[5px] animate-spin text-muted" />}
     </button>
   );
@@ -196,7 +196,7 @@ export default function Performance() {
   return (
     <PageBody>
       <div className="mb-6 flex flex-wrap items-center gap-4 anim-page">
-        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl text-white" style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 50%, #ffffff))', boxShadow: '0 8px 28px color-mix(in srgb, var(--accent) 35%, transparent)' }}><Gauge size={26} /></div>
+        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl text-[var(--on-accent)]" style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 50%, #ffffff))', boxShadow: '0 8px 28px color-mix(in srgb, var(--accent) 35%, transparent)' }}><Gauge size={26} /></div>
         <div className="min-w-0 flex-1">
           <h1 className="text-[26px] font-semibold tracking-tight text-fg">{tr("Desempenho")}</h1>
           <p className="text-sm text-muted">{tr("Rotinas de manutenção, o que abre junto com o")} {OS_NAME} {tr("e os apps que mais pesam agora.")}</p>

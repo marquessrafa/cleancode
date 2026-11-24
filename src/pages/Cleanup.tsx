@@ -227,7 +227,7 @@ export default function Cleanup() {
     <div className="flex h-full flex-col">
       <PageBody className="flex-1">
         <div className="mb-6 flex flex-wrap items-end gap-4 anim-page">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl text-white" style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 50%, #ffffff))' }}><Sparkles size={26} /></div>
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl text-[var(--on-accent)]" style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 50%, #ffffff))' }}><Sparkles size={26} /></div>
           <div className="min-w-0 flex-1">
             <div className="text-sm text-muted">{tr("Encontrados")}</div>
             <div className="text-[34px] font-semibold leading-none tracking-tight text-fg tabular-nums">{fmtSize(foundT, units)}</div>

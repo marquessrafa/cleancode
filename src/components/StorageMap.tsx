@@ -87,7 +87,7 @@ export function StorageMapCard({ drives, apps }: { drives: Drive[] | null; apps:
       {/* cabeçalho */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line px-4 py-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg text-white shadow-md" style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000))' }}><HardDrive size={16} /></span>
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--on-accent)] shadow-md" style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000))' }}><HardDrive size={16} /></span>
           <div className="min-w-0">
             <div className="text-[13px] font-semibold text-fg">{t("Mapa do armazenamento")}</div>
             <div className="truncate text-[11.5px] text-muted">{sys.label || t("Disco do sistema")} ({driveTag(sys.root)}{t(") · o que ocupa o espaço usado")}</div>

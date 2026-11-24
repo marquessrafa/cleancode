@@ -73,7 +73,7 @@ export default function Activity() {
   return (
     <PageBody>
       <div className="mb-6 flex flex-wrap items-center gap-4 anim-page">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl text-white" style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 50%, #ffffff))', boxShadow: '0 8px 28px color-mix(in srgb, var(--accent) 35%, transparent)' }}><ActivityIcon size={26} /></div>
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl text-[var(--on-accent)]" style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 50%, #ffffff))', boxShadow: '0 8px 28px color-mix(in srgb, var(--accent) 35%, transparent)' }}><ActivityIcon size={26} /></div>
         <div className="min-w-0 flex-1">
           <h1 className="text-[26px] font-semibold tracking-tight text-fg">{tr("Atividades")}</h1>
           <p className="text-sm text-muted">{tr("Esta tela mostra tudo o que o CleanCode já fez, como limpezas, manutenções, mudanças nos itens de início, desinstalações e exclusões.")}</p>

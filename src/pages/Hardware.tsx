@@ -165,7 +165,7 @@ function AdvancedBanner({ live }: { live: HardwareLive | null }) {
       <ShieldCheck size={22} className="shrink-0 text-[var(--accent)]" />
       <div className="min-w-0 flex-1 text-[13px]"><div className="font-semibold">{title}</div><div className="text-muted">{text}</div></div>
       {blocked !== 'crash' && <button disabled={busy || !adv.available} onClick={async () => { setBusy(true); const r = await cc.hardwareAdvanced(true); toast(r.message, r.ok ? 'ok' : 'error'); setBusy(false); }}
-        className="flex shrink-0 items-center gap-2 rounded-lg bg-[var(--accent)] px-3.5 py-2 text-[13px] font-semibold text-white disabled:opacity-60">{busy && <Loader2 size={14} className="animate-spin" />}{adv.available ? (blocked === 'admin' ? tr("Ativar de novo") : tr("Ativar")) : tr("Componente ausente")}</button>}
+        className="flex shrink-0 items-center gap-2 rounded-lg bg-[var(--accent)] px-3.5 py-2 text-[13px] font-semibold text-[var(--on-accent)] disabled:opacity-60">{busy && <Loader2 size={14} className="animate-spin" />}{adv.available ? (blocked === 'admin' ? tr("Ativar de novo") : tr("Ativar")) : tr("Componente ausente")}</button>}
     </div>
   );
 }
@@ -253,7 +253,7 @@ export default function Hardware() {
       </div>
       {/* abas e aviso ficam por cima do 3D, que vaza para cima delas em fade */}
       <div className="relative z-10 mt-4 inline-flex flex-wrap gap-1 rounded-xl border border-[var(--line)] bg-[color-mix(in_srgb,var(--surface)_70%,transparent)] p-1 backdrop-blur-md">
-        {TABS.map((t) => <button key={t.id} onClick={() => setTab(t.id)} className={cx('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors', tab === t.id ? 'bg-[var(--accent)] text-white' : 'text-muted hover:bg-[var(--hover)] hover:text-[var(--fg)]')}>{t.icon}{t.label}</button>)}
+        {TABS.map((t) => <button key={t.id} onClick={() => setTab(t.id)} className={cx('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors', tab === t.id ? 'bg-[var(--accent)] text-[var(--on-accent)]' : 'text-muted hover:bg-[var(--hover)] hover:text-[var(--fg)]')}>{t.icon}{t.label}</button>)}
       </div>
       <div className="relative z-10 mt-4"><AdvancedBanner live={live} /></div>
       <div key={tab} className="anim-fade-in mt-4 space-y-4">

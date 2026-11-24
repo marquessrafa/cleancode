@@ -27,7 +27,7 @@ export default function WhatsNew() {
         <div className="relative px-7 pb-5 pt-7" style={{ background: 'linear-gradient(160deg, color-mix(in srgb, var(--accent) 28%, transparent), transparent 70%)' }}>
           <button onClick={close} className="absolute right-4 top-4 rounded-lg p-1.5 text-muted hover:bg-[var(--hover)]"><X size={16} /></button>
           <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl text-white" style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 50%, #000))' }}><Sparkles size={22} /></span>
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl text-[var(--on-accent)]" style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 50%, #000))' }}><Sparkles size={22} /></span>
             <div><div className="text-[12px] font-semibold uppercase tracking-wider text-[var(--accent)]">{tr("Novidades da versão")} {top.version}</div><div className="text-[22px] font-semibold tracking-tight">{tr(top.headline)}</div></div>
           </div>
         </div>
@@ -51,7 +51,7 @@ export default function WhatsNew() {
           ))}
         </div>
         <div className="flex justify-end border-t border-[var(--line)] px-7 py-4">
-          <button onClick={close} className="rounded-lg px-5 py-2 text-[13px] font-semibold text-white" style={{ background: 'var(--accent)' }}>{tr("Começar a usar")}</button>
+          <button onClick={close} className="rounded-lg px-5 py-2 text-[13px] font-semibold text-[var(--on-accent)]" style={{ background: 'var(--accent)' }}>{tr("Começar a usar")}</button>
         </div>
       </div>
     </div>

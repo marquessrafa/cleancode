@@ -34,7 +34,7 @@ export function Float3D({ icon, active, tone = 'var(--accent)', size = 260 }: { 
                 <div key={i} className="absolute" style={{ transform: `translate(-50%, -50%) translateZ(${(i - L / 2) * 2.2}px)` }}>
                   {React.cloneElement(icon, {
                     size: isz, strokeWidth: 2.3,
-                    style: { display: 'block', color: front ? '#fff' : `color-mix(in srgb, ${tone} ${35 + (i / L) * 55}%, #000)`, filter: front ? `drop-shadow(0 0 ${active ? 22 : 14}px ${tone}) drop-shadow(0 0 2px ${tone})` : undefined },
+                    style: { display: 'block', color: front ? 'var(--on-accent)' : `color-mix(in srgb, ${tone} ${35 + (i / L) * 55}%, #000)`, filter: front ? `drop-shadow(0 0 ${active ? 22 : 14}px ${tone}) drop-shadow(0 0 2px ${tone})` : undefined },
                   })}
                 </div>
               );
@@ -67,7 +67,7 @@ export function Hero({ icon, title, text, bullets, action, busy, busyText, note 
         </ul>
         {note && <div className="mt-4 rounded-lg border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2 text-[12px] text-muted">{note}</div>}
         <button disabled={busy} onClick={action.onClick}
-          className="mt-7 flex h-[86px] w-[86px] items-center justify-center rounded-full text-[15px] font-semibold text-white shadow-lg transition-transform hover:scale-105 active:scale-95 disabled:opacity-80"
+          className="mt-7 flex h-[86px] w-[86px] items-center justify-center rounded-full text-[15px] font-semibold text-[var(--on-accent)] shadow-lg transition-transform hover:scale-105 active:scale-95 disabled:opacity-80"
           style={{ background: 'radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent) 70%, #fff), var(--accent))' }}>
           {busy ? <span className="text-[12px] leading-tight">{busyText || '…'}</span> : action.label}
         </button>

@@ -73,7 +73,7 @@ export function UpdateModal() {
 
         {/* cabeçalho */}
         <div className="relative flex items-center gap-4 px-7 pb-4 pt-7">
-          <div className={cx('relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg', phase === 'download' && 'upd-bob')}
+          <div className={cx('relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-[var(--on-accent)] shadow-lg', phase === 'download' && 'upd-bob')}
             style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000))', boxShadow: '0 10px 30px -10px var(--accent)' }}>
             {phase === 'restart' ? <Check size={28} strokeWidth={2.6} /> : phase === 'error' ? <AlertTriangle size={26} /> : phase === 'install' ? <Loader2 size={26} className="animate-spin" /> : phase === 'download' ? <Download size={26} /> : <ArrowUp size={28} strokeWidth={2.6} />}
             {phase === 'intro' && <span className="absolute -right-1 -top-1 flex h-4 w-4"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" /><span className="relative inline-flex h-4 w-4 rounded-full border-2 border-[var(--surface)] bg-accent" /></span>}

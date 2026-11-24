@@ -8,11 +8,12 @@ import { t } from '../lib/i18n';
 import { LANG_NAMES } from '../locales/core';
 import type { Settings } from '../lib/api';
 
-const ACCENT_OPTIONS: { key: 'green' | 'purple' | 'blue' | 'orange'; label: string; light: string; dark: string }[] = [
+const ACCENT_OPTIONS: { key: 'green' | 'purple' | 'blue' | 'orange' | 'white'; label: string; light: string; dark: string }[] = [
   { key: 'green', label: t("Verde"), light: '#0e9f6e', dark: '#34d399' },
   { key: 'purple', label: t("Roxo"), light: '#7c3aed', dark: '#a78bfa' },
   { key: 'blue', label: t("Azul"), light: '#2563eb', dark: '#60a5fa' },
   { key: 'orange', label: t("Laranja suave"), light: '#e5803f', dark: '#fdba74' },
+  { key: 'white', label: t("Branco"), light: '#18181b', dark: '#f4f4f5' },
 ];
 
 function UpdatesCard() {
@@ -92,9 +93,9 @@ export default function SettingsPage() {
                   title={a.label}
                   onClick={() => set({ accent: a.key })}
                   className={'relative h-7 w-7 rounded-full transition-transform duration-150 hover:scale-110 ' + (s.accent === a.key ? 'ring-2 ring-offset-2 ring-offset-[var(--surface)]' : '')}
-                  style={{ background: `linear-gradient(135deg, ${a.light}, ${a.dark})`, ['--tw-ring-color' as any]: a.light }}
+                  style={{ background: `linear-gradient(135deg, ${a.light}, ${a.dark})`, ['--tw-ring-color' as any]: a.key === 'white' ? 'var(--accent)' : a.light }}
                 >
-                  {s.accent === a.key && <svg viewBox="0 0 24 24" className="absolute inset-0 m-auto h-3.5 w-3.5" fill="none" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>}
+                  {s.accent === a.key && <svg viewBox="0 0 24 24" className="absolute inset-0 m-auto h-3.5 w-3.5" style={a.key === 'white' ? { mixBlendMode: 'difference' } : undefined} fill="none" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>}
                 </button>
               ))}
             </div>

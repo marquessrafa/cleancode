@@ -132,6 +132,9 @@ try {
   $muted = if ($Dark -eq '1') { '#FF9AA0A8' } else { '#FF5F6670' }
   $faint = if ($Dark -eq '1') { '#66FFFFFF' } else { '#66000000' }
   $track = if ($Dark -eq '1') { '#22FFFFFF' } else { '#1A000000' }
+  # cor da seta sobre o destaque: preta quando o destaque é claro (por exemplo, o branco no tema escuro)
+  $rgb = [Convert]::ToInt32($Accent.TrimStart('#'), 16); $lum = 0.299 * (($rgb -shr 16) -band 255) + 0.587 * (($rgb -shr 8) -band 255) + 0.114 * ($rgb -band 255)
+  $onAccent = if ($lum -gt 190) { '#FF111111' } else { '#FFFFFFFF' }
   $xaml = @"
 <Window xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'
   WindowStyle='None' AllowsTransparency='True' Background='Transparent' Width='470' SizeToContent='Height' ResizeMode='NoResize'
@@ -140,7 +143,7 @@ try {
     <Border.Effect><DropShadowEffect BlurRadius='30' ShadowDepth='6' Opacity='0.45'/></Border.Effect>
     <StackPanel>
       <StackPanel Orientation='Horizontal'>
-        <Border Width='34' Height='34' CornerRadius='9' Background='$Accent'><TextBlock Text='&#x2191;' Foreground='White' FontSize='20' FontWeight='Bold' HorizontalAlignment='Center' VerticalAlignment='Center'/></Border>
+        <Border Width='34' Height='34' CornerRadius='9' Background='$Accent'><TextBlock Text='&#x2191;' Foreground='$onAccent' FontSize='20' FontWeight='Bold' HorizontalAlignment='Center' VerticalAlignment='Center'/></Border>
         <TextBlock x:Name='TopLine' Foreground='$muted' FontSize='13' Margin='12,0,0,0' VerticalAlignment='Center'/>
       </StackPanel>
       <TextBlock x:Name='Head' Foreground='$fg' FontSize='21' FontWeight='SemiBold' Margin='0,16,0,0'/>
