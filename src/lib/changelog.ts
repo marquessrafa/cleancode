@@ -5,6 +5,14 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.16', date: '2026-11-24', headline: 'Varreduras voltam a funcionar',
+    groups: [
+      { title: 'Correções', icon: 'wrench', items: [
+        'As varreduras voltaram a funcionar. Desde a versão 1.4.12, a análise de disco, a limpeza, os acúmulos e os dados de apps paravam logo no início no app instalado.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.15', date: '2026-11-24', headline: 'Sensores do Windows voltam a funcionar em PCs Intel',
     groups: [
       { title: 'Monitor de hardware', icon: 'chip', items: [
