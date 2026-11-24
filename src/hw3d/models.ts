@@ -751,7 +751,7 @@ export function pcModel(opts: { sticks?: number; cpu?: { name?: string; sub?: st
     for (const [x, z] of [[-W / 2 + 0.07, D / 2 - 0.06], [W / 2 - 0.07, D / 2 - 0.06], [-W / 2 + 0.07, -D / 2 + 0.06], [W / 2 - 0.07, -D / 2 + 0.06]]) { const f = rbox(0.08, 0.02, 0.05, 0.006, mat.dark(0x0c0d0f, 0.5)); f.position.set(x, -0.008, z); g.add(f); }
     const back = box(W, H - 0.07, 0.01, innerMat); back.position.set(0, H / 2, -D / 2); g.add(back);
     // lateral esquerda: o fundo do gabinete (traseira com a ventoinha e as tampas dos slots)
-    const rearWall = box(0.012, H - 0.07, D, innerMat); rearWall.position.set(-W / 2, H / 2, 0); g.add(rearWall);
+    const rearWall = box(0.012, H - 0.07, D, frameMat); rearWall.position.set(-W / 2, H / 2, 0); g.add(rearWall);
     for (let i = 0; i < 6; i++) { const slot = box(0.003, 0.012, 0.11, mat.dark(0x1c1e22, 0.4)); slot.position.set(-W / 2 + 0.008, 0.11 + i * 0.016, -D / 2 + 0.09); g.add(slot); }
     // lateral direita branca com faixas pretas
     const stripes = canvasTex(512, 512, (c) => { c.fillStyle = '#f1f2f4'; c.fillRect(0, 0, 512, 512); c.fillStyle = '#111215'; for (let i = 0; i < 28; i++) { const x = 40 + i * 13; c.fillRect(x, 120 + Math.max(0, i - 14) * 0, 5, 380); } for (let i = 0; i < 18; i++) { const y = 300 + i * 11; c.fillRect(260 + i * 6, y, 240 - i * 6, 4); } });
@@ -785,10 +785,14 @@ export function pcModel(opts: { sticks?: number; cpu?: { name?: string; sub?: st
     } };
     // piso em grade e portas frontais na moldura de baixo
     const grille = canvasTex(512, 256, (c) => { c.fillStyle = '#0b0c0e'; c.fillRect(0, 0, 512, 256); c.fillStyle = '#26282d'; for (let x = 8; x < 512; x += 22) c.fillRect(x, 0, 12, 256); });
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.02, D - 0.02), new THREE.MeshStandardMaterial({ map: grille, roughness: 0.7 })); floor.rotation.x = -Math.PI / 2; floor.position.set(0, 0.041, 0); g.add(floor);
+    // contorno interno com o chanfro da frente à direita, para o piso e a tampa da fonte ficarem dentro do vidro
+    const inner = (m: number): [number, number][] => [[-W / 2 + m, -D / 2 + m], [W / 2 - ch - m * 0.4, -D / 2 + m], [W / 2 - m, -D / 2 + ch + m * 0.4], [W / 2 - m, D / 2 - m], [-W / 2 + m, D / 2 - m]];
+    const floorShape = new THREE.Shape(inner(0.012).map(([x, y]) => new THREE.Vector2(x, y)));
+    const floor = new THREE.Mesh(new THREE.ShapeGeometry(floorShape), new THREE.MeshStandardMaterial({ map: grille, roughness: 0.7 }));
+    floor.rotation.x = -Math.PI / 2; floor.position.set(0, 0.041, 0); g.add(floor);
     for (const [i, w] of [[0, 0.006], [1, 0.012], [2, 0.014], [3, 0.012], [4, 0.006]] as [number, number][]) { const port = box(w, 0.01, 0.004, mat.dark(0x0a0a0c, 0.4)); port.position.set(W / 2 - ch - 0.13 + i * 0.022, 0.02, D / 2 + 0.002); g.add(port); }
     // cobertura da fonte
-    const shroud = box(W - 0.02, 0.08, D - 0.02, innerMat); shroud.position.set(0, 0.085, 0); g.add(shroud);
+    const shroud = extrude(inner(0.014), 0.08, innerMat, 0.004); shroud.rotation.x = -Math.PI / 2; shroud.position.set(0, 0.045, 0); g.add(shroud);
   } else {
     const frameMat = mat.dark(0x0d0e11, 0.45);
     // estrutura do gabinete: base, topo, traseira, frente com tela, colunas
@@ -827,8 +831,10 @@ export function pcModel(opts: { sticks?: number; cpu?: { name?: string; sub?: st
   const sideFans: ReturnType<typeof fan>[] = [];
   for (let i = 0; i < 3; i++) {
     const f = fan(0.055, { blades: 9, blade: new THREE.MeshStandardMaterial({ color: 0xdfe6ee, metalness: 0.1, roughness: 0.4, transparent: true, opacity: 0.85, side: THREE.DoubleSide }) });
-    f.group.rotation.y = -Math.PI / 2; f.group.position.set(W / 2 - 0.02, 0.16 + i * 0.12, 0.0); g.add(f.group); sideFans.push(f);
-    const rr = ledRing(0.055, 0.004); rr.mesh.rotation.y = -Math.PI / 2; rr.mesh.position.copy(f.group.position); g.add(rr.mesh); rings.push(rr);
+    if (whiteCase) { f.group.scale.setScalar(0.82); f.group.position.set(0.198, 0.175 + i * 0.096, -D / 2 + 0.03); }
+    else { f.group.rotation.y = -Math.PI / 2; f.group.position.set(W / 2 - 0.02, 0.16 + i * 0.12, 0.0); }
+    g.add(f.group); sideFans.push(f);
+    const rr = ledRing(whiteCase ? 0.045 : 0.055, 0.004); if (!whiteCase) rr.mesh.rotation.y = -Math.PI / 2; rr.mesh.position.copy(f.group.position); g.add(rr.mesh); rings.push(rr);
   }
   const rear = fan(0.05, { blades: 9 }); rear.group.position.set(-W / 2 + 0.07, 0.36, -D / 2 + 0.02); g.add(rear.group); sideFans.push(rear);
   const rr2 = ledRing(0.05, 0.004); rr2.mesh.position.copy(rear.group.position); g.add(rr2.mesh); rings.push(rr2);
@@ -844,7 +850,7 @@ export function pcModel(opts: { sticks?: number; cpu?: { name?: string; sub?: st
       { at: [0.05, 0.33, -D / 2 + 0.03], d: 0.24, az: 0.3, el: 0.18 },       // memórias
       { at: [-0.03, 0.15, -D / 2 + 0.1], d: 0.3, az: 0.2, el: 0.05 },        // placa de vídeo
       { at: [-0.02, H - 0.07, -0.02], d: 0.32, az: -0.1, el: 0.55 },         // ventoinhas e radiador do topo
-      { at: [W / 2 - 0.03, 0.28, 0], d: 0.34, az: -0.55, el: 0.2 },          // ventoinhas da frente
+      whiteCase ? { at: [0.198, 0.27, -D / 2 + 0.03], d: 0.3, az: 0.25, el: 0.15 } : { at: [W / 2 - 0.03, 0.28, 0], d: 0.34, az: -0.55, el: 0.2 }, // ventoinhas ao lado da placa (branco) ou da frente (preto)
       { at: [-0.12, 0.3, -D / 2 + 0.02], d: 0.3, az: 0.35, el: 0.25 },       // placa-mãe e painel de luz
       { at: [0, 0.12, D / 2 - 0.01], d: 0.26, az: 0.1, el: 0.25 },           // faixa de LED e cobertura da fonte
     ],
