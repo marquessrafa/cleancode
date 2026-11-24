@@ -200,7 +200,7 @@ export function TopBar() {
         {info?.canElevate && (info.isAdmin ? (
           <span title="Executando como administrador" className="flex h-7 items-center gap-1 rounded-md px-2 text-xs text-accent"><ShieldCheck size={14} /> Admin</span>
         ) : (
-          <button title="Reinicia com privilégios de administrador para ler todas as pastas" onClick={async () => { toast('Solicitando elevação…', 'info'); await cc.restartAdmin(); }} className="flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted transition-colors hover:bg-hover hover:text-fg"><ShieldAlert size={14} /> Usuário</button>
+          <button title="Abre o CleanCode de novo como administrador, para que ele consiga ler todas as pastas" onClick={async () => { toast('Solicitando elevação…', 'info'); await cc.restartAdmin(); }} className="flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted transition-colors hover:bg-hover hover:text-fg"><ShieldAlert size={14} /> Usuário</button>
         ))}
         <button
           title={`Tema: ${theme === 'system' ? 'sistema' : theme === 'light' ? 'claro' : 'escuro'}`}
@@ -246,11 +246,11 @@ function UpdatePill() {
     const p = update.total ? (update.done || 0) / update.total : undefined;
     return <span className="flex h-7 items-center gap-1.5 rounded-md bg-accent-soft px-2 text-xs text-accent"><Loader2 size={14} className="animate-spin" /> Baixando atualização{p !== undefined ? ` ${Math.round(p * 100)}%` : '…'}</span>;
   }
-  if (update.status === 'installing') return <span className="flex h-7 items-center gap-1.5 rounded-md bg-accent-soft px-2 text-xs text-accent"><Loader2 size={14} className="animate-spin" /> Instalando… o app vai reabrir</span>;
+  if (update.status === 'installing') return <span className="flex h-7 items-center gap-1.5 rounded-md bg-accent-soft px-2 text-xs text-accent"><Loader2 size={14} className="animate-spin" /> Instalando. O app vai abrir de novo sozinho.</span>;
   if ((update.status !== 'available' && update.status !== 'ready') || !update.info) return null;
   const ready = update.status === 'ready';
   return (
-    <button onClick={installUpdate} title={ready ? 'Já baixada: instala agora e reabre o app (ou será instalada sozinha quando você fechar a janela)' : 'Baixa, instala em segundo plano e reabre o app'}
+    <button onClick={installUpdate} title={ready ? 'A versão nova já foi baixada. Clique para instalar agora. Se preferir, ela será instalada sozinha quando você fechar a janela.' : 'Clique para ver as novidades e atualizar o app.'}
       className="flex h-7 items-center gap-1.5 rounded-md bg-accent px-2.5 text-xs font-medium text-accent-fg transition-all hover:brightness-110 anim-fade">
       <ArrowUpCircle size={14} /> {ready ? `Reiniciar para atualizar (${update.info.version})` : `Atualizar para ${update.info.version}`}
     </button>

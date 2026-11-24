@@ -36,7 +36,7 @@ export default function Browsers() {
     const risky = picked.flatMap((p) => p.items.filter((i) => i !== 'cache' && i !== 'gpu').map((i) => ({ p: p.profileId, i })));
     const r0 = await confirm({
       title: 'Limpar os dados selecionados?',
-      message: risky.length ? 'Histórico, cookies e sessões apagados não voltam. Com cookies limpos, você vai precisar entrar de novo nos sites. Senhas e favoritos não são tocados.' : 'Só cache: os navegadores baixam de novo o que precisarem.',
+      message: risky.length ? 'Depois de apagados, o histórico, os cookies e as sessões não voltam. Sem os cookies, você vai precisar entrar de novo nas suas contas nos sites. O CleanCode não mexe nas senhas nem nos favoritos.' : 'Você escolheu apenas o cache. Os navegadores baixam de novo o que precisarem.',
       confirmLabel: 'Limpar', danger: risky.length > 0,
     });
     if (!r0.ok) return;
@@ -59,7 +59,7 @@ export default function Browsers() {
   const close = async (p: BrowserProfile) => {
     setBusy(`close:${p.browserId}`);
     const ok = await cc.browsersClose(p.browserId);
-    toast(ok ? `${p.browser} fechado` : `${p.browser} não fechou (pode estar pedindo para salvar algo)`, ok ? 'ok' : 'error');
+    toast(ok ? `${p.browser} fechado` : `${p.browser} não fechou. Talvez ele esteja perguntando se você quer salvar alguma coisa.`, ok ? 'ok' : 'error');
     const fresh = await cc.browsersScan(); setData(fresh); setBusy(null);
   };
   const toggle = (pid: string, id: BrowserItemId, v: boolean) => setSel((s) => { const n = new Set(s[pid]); v ? n.add(id) : n.delete(id); return { ...s, [pid]: n }; });
@@ -67,11 +67,11 @@ export default function Browsers() {
   if (!data) {
     return (
       <Hero icon={<Globe size={46} />} title="Navegadores"
-        text="Navegadores acumulam gigabytes em cache, histórico, cookies e dados de sites. Veja quanto cada perfil ocupa e limpe só o que quiser."
+        text="Os navegadores acumulam gigabytes em cache, histórico, cookies e dados de sites. Nesta tela, você vê quanto cada perfil ocupa e limpa apenas o que quiser."
         bullets={[
           { icon: <Sparkles size={15} />, text: 'Chrome, Edge, Brave, Opera, Vivaldi, Firefox' + (isMac ? ' e Safari' : '') },
-          { icon: <Zap size={15} />, text: 'Otimização: compacta os bancos internos' },
-          { icon: <Lock size={15} />, text: 'Senhas e favoritos nunca são apagados' },
+          { icon: <Zap size={15} />, text: 'Compacta os bancos de dados internos, o que deixa o navegador mais leve.' },
+          { icon: <Lock size={15} />, text: 'O CleanCode nunca apaga as senhas e os favoritos.' },
         ]}
         action={{ label: 'Analisar', onClick: scan }} busy={busy === 'scan'} busyText="Medindo…" />
     );
@@ -104,7 +104,7 @@ export default function Browsers() {
                 {p.running && <Badge tone="warn">aberto</Badge>}
                 {p.running && <Button size="sm" variant="ghost" icon={<XCircle size={14} />} onClick={() => close(p)} loading={busy === `close:${p.browserId}`}>Fechar</Button>}
               </div>
-              {p.running && <div className="flex items-center gap-2 bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] px-4 py-2 text-[12px]"><ShieldAlert size={13} className="text-[var(--warn)]" />Aberto: só o cache pode ser limpo agora. Feche para limpar o resto e otimizar.</div>}
+              {p.running && <div className="flex items-center gap-2 bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] px-4 py-2 text-[12px]"><ShieldAlert size={13} className="text-[var(--warn)]" />O navegador está aberto, então agora só dá para limpar o cache. Para limpar o resto e otimizar, feche o navegador.</div>}
               <div>
                 {p.items.map((it) => {
                   const blocked = p.running && !it.safe;

@@ -28,10 +28,10 @@ export default function HistoryPage() {
     if (!active) return;
     await cc.historyCompare(active.id, id);
     setComparing(id); bump();
-    if (id) toast('Comparação ativa: o Explorador mostra as colunas “Anterior” e “Variação”.', 'info');
+    if (id) toast('A comparação está ativa. Por isso, o Explorador mostra as colunas “Anterior” e “Variação”.', 'info');
   };
   const del = async (h: any) => {
-    const r = await confirm({ title: 'Apagar este registro do histórico?', message: `Varredura de ${h.root} em ${fmtDate(h.date, true)}. Isto apaga só o registro salvo pelo CleanCode, nenhum arquivo seu.`, confirmLabel: 'Apagar', danger: true });
+    const r = await confirm({ title: 'Apagar este registro do histórico?', message: `Varredura de ${h.root} em ${fmtDate(h.date, true)}. Esta ação apaga apenas o registro que o CleanCode salvou. Nenhum arquivo seu é apagado.`, confirmLabel: 'Apagar', danger: true });
     if (!r.ok) return;
     if (comparingId === h.id) await compare(null);
     await cc.historyDelete(h.id); load();
@@ -39,7 +39,7 @@ export default function HistoryPage() {
 
   return (
     <PageBody>
-      <PageHeader title="Histórico e comparação" icon={<HistoryIcon size={18} />} description="Cada varredura concluída é salva automaticamente (só a estrutura de pastas, compactada). Compare a varredura ativa com uma anterior para ver o que cresceu."
+      <PageHeader title="Histórico e comparação" icon={<HistoryIcon size={18} />} description="O CleanCode salva cada análise concluída. Ele guarda apenas a estrutura das pastas, de forma compactada. Para ver o que cresceu, compare a análise atual com uma análise anterior."
         actions={<>
           <Button icon={<Upload size={14} />} onClick={async () => { const id = await cc.historyImport(); if (id) { toast('Varredura importada'); load(); } }}>Importar…</Button>
           <Button variant="primary" icon={<Save size={14} />} disabled={!active?.done} onClick={async () => { await cc.historySave(active!.id); toast('Varredura salva no histórico'); load(); }}>Salvar varredura atual</Button>
@@ -71,7 +71,7 @@ export default function HistoryPage() {
       )}
 
       <Card title={`Varreduras salvas (${list.length})`} pad={false}>
-        {list.length === 0 ? <Empty icon={<HistoryIcon size={20} />} title="Nenhuma varredura salva ainda" text="Conclua uma varredura e ela aparecerá aqui." /> : (
+        {list.length === 0 ? <Empty icon={<HistoryIcon size={20} />} title="Nenhuma varredura salva ainda" text="Quando você concluir uma análise, ela vai aparecer aqui." /> : (
           <div className="h-[420px]">
             <DataTable className="h-full" rows={list} rowKey={(r) => r.id} sort={sort} onSort={setSort} columns={[
               { key: 'root', label: 'Pasta', width: 260, flex: true, sortable: true, sortValue: (r) => r.root, render: (r) => <span className="flex items-center gap-2">{r.root}{r.imported && <Badge>importada</Badge>}{comparingId === r.id && <Badge tone="accent">comparando</Badge>}</span> },
@@ -80,7 +80,7 @@ export default function HistoryPage() {
               { key: 'files', label: 'Arquivos', width: 110, align: 'right', sortable: true, sortValue: (r) => r.files, render: (r) => fmtNum(r.files) },
               { key: 'act', label: '', width: 210, render: (r) => (
                 <span className="flex justify-end gap-1">
-                  <Button size="sm" variant="outline" icon={<GitCompare size={12} />} disabled={!sameRoot(r) || !active?.done} title={sameRoot(r) ? '' : 'Inicie uma varredura da mesma pasta para comparar'} onClick={() => compare(r.id)}>Comparar</Button>
+                  <Button size="sm" variant="outline" icon={<GitCompare size={12} />} disabled={!sameRoot(r) || !active?.done} title={sameRoot(r) ? '' : 'Para comparar, analise a mesma pasta de novo.'} onClick={() => compare(r.id)}>Comparar</Button>
                   <Button size="sm" variant="ghost" icon={<Trash2 size={12} />} onClick={() => del(r)} />
                 </span>
               ) },

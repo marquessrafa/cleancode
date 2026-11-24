@@ -96,9 +96,9 @@ export default function Clutter() {
           <div className="anim-pop"><Stack active={phase === 'scanning'} /></div>
           <div className="w-full max-w-md anim-page">
             <h1 className="text-[40px] font-semibold leading-tight tracking-tight text-fg">Acúmulos</h1>
-            <p className="mt-2 text-[15px] text-muted">Encontra o que se acumula nas suas pastas: arquivos duplicados, fotos parecidas, arquivos grandes esquecidos e Transferências antigas.</p>
+            <p className="mt-2 text-[15px] text-muted">Encontra o que se acumula nas suas pastas, como arquivos duplicados, fotos parecidas, arquivos grandes esquecidos e arquivos antigos na pasta de Transferências.</p>
             <div className="mt-6 space-y-3">
-              {[{ i: <Copy size={16} />, t: 'Duplicados com conteúdo idêntico (SHA-1)' }, { i: <Images size={16} />, t: 'Fotos parecidas (sequências, edições, capturas)' }, { i: <FileBox size={16} />, t: 'Grandes (100 MB+) e antigos (1 ano sem mudança)' }].map((f, k) => (
+              {[{ i: <Copy size={16} />, t: 'Encontra arquivos com o conteúdo idêntico.' }, { i: <Images size={16} />, t: 'Encontra fotos parecidas, como sequências, edições e capturas de tela.' }, { i: <FileBox size={16} />, t: 'Encontra arquivos com mais de 100 MB e arquivos que ninguém muda há 1 ano.' }].map((f, k) => (
                 <div key={k} className="flex items-center gap-3 text-[14px] font-medium text-fg anim-page" style={{ animationDelay: `${80 + k * 60}ms` }}><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-soft text-accent">{f.i}</span>{f.t}</div>
               ))}
             </div>
@@ -146,7 +146,7 @@ export default function Clutter() {
         </div>
 
         <div key={tab} className="anim-page">
-          {tab === 'duplicates' && (!rep.duplicates.length ? <Empty icon={<Copy size={20} />} title="Nenhum duplicado" text="Nenhum arquivo com conteúdo idêntico nas pastas pessoais." /> : (
+          {tab === 'duplicates' && (!rep.duplicates.length ? <Empty icon={<Copy size={20} />} title="Nenhum duplicado" text="O CleanCode não encontrou arquivos com o conteúdo idêntico nas suas pastas pessoais." /> : (
             <div className="space-y-3">
               {rep.duplicates.slice(0, 200).map((g) => (
                 <div key={g.files[0].path} className="overflow-hidden rounded-xl border border-line bg-surface">
@@ -156,7 +156,7 @@ export default function Clutter() {
               ))}
             </div>
           ))}
-          {tab === 'similar' && (!rep.similar.length ? <Empty icon={<Images size={20} />} title="Nenhuma foto parecida" text="Nenhum grupo de fotos quase iguais foi encontrado." /> : (
+          {tab === 'similar' && (!rep.similar.length ? <Empty icon={<Images size={20} />} title="Nenhuma foto parecida" text="O CleanCode não encontrou fotos quase iguais." /> : (
             <>
               <div className="mb-3 flex items-center gap-2"><Button size="sm" variant="outline" icon={<Check size={13} />} onClick={() => setSel((s) => {
                 const n = new Set(s);
@@ -184,12 +184,12 @@ export default function Clutter() {
               </div>
             </>
           ))}
-          {tab === 'large' && (!bigOld.length ? <Empty icon={<FileBox size={20} />} title="Nada grande ou antigo" text="Nenhum arquivo acima de 100 MB ou parado há mais de 1 ano." /> : (
+          {tab === 'large' && (!bigOld.length ? <Empty icon={<FileBox size={20} />} title="Nada grande ou antigo" text="O CleanCode não encontrou arquivos com mais de 100 MB nem arquivos parados há mais de 1 ano." /> : (
             <div className="overflow-hidden rounded-xl border border-line bg-surface">
               {bigOld.slice(0, 500).map((f) => <Row key={f.path} f={f} on={sel.has(f.path)} toggle={(v) => toggle(f.path, v)} badge={<>{f.tags.map((t) => <Badge key={t} tone={t === 'grande' ? 'info' : 'warn'}>{t}</Badge>)}</>} />)}
             </div>
           ))}
-          {tab === 'downloads' && (!rep.downloads.length ? <Empty icon={<Download size={20} />} title="Pasta vazia" text="Nada relevante na pasta de transferências." /> : (
+          {tab === 'downloads' && (!rep.downloads.length ? <Empty icon={<Download size={20} />} title="Pasta vazia" text="A pasta de Transferências não tem nada que mereça atenção." /> : (
             <div className="overflow-hidden rounded-xl border border-line bg-surface">
               {rep.downloads.slice(0, 500).map((f) => <Row key={f.path} f={f} on={sel.has(f.path)} toggle={(v) => toggle(f.path, v)} />)}
             </div>

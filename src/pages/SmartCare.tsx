@@ -134,9 +134,9 @@ export default function SmartCare() {
   }
 
   const cards: { id: Mod; value: string; sub: string; tone: 'ok' | 'warn' | 'risk'; action?: React.ReactNode }[] = [
-    { id: 'cleanup', value: fmtSize(safe.size, units), sub: `${fmtNum(safe.count)} itens seguros para limpar${safe.review ? ` · ${fmtSize(safe.review, units)} para revisar` : ''}`, tone: safe.size ? 'warn' : 'ok',
+    { id: 'cleanup', value: fmtSize(safe.size, units), sub: `${fmtNum(safe.count)} itens seguros para limpar${safe.review ? `, e mais ${fmtSize(safe.review, units)} para revisar` : ''}`, tone: safe.size ? 'warn' : 'ok',
       action: <label className="flex items-center gap-2 text-xs text-muted"><Checkbox checked={incl.cleanup} onChange={(v) => setIncl((x) => ({ ...x, cleanup: v }))} />Limpar (vai para a Lixeira)</label> },
-    { id: 'protection', value: protIssues ? `${protIssues} ponto(s)` : 'Protegido', sub: prot ? `${prot.checks.filter((c) => c.ok).length} de ${prot.checks.length} defesas ligadas${protWarn ? ` · ${protWarn} item(ns) para revisar` : ''}` : 'Não verificado', tone: protIssues ? 'risk' : protWarn ? 'warn' : 'ok' },
+    { id: 'protection', value: protIssues ? `${protIssues} ponto(s)` : 'Protegido', sub: prot ? `${prot.checks.filter((c) => c.ok).length} de ${prot.checks.length} defesas ligadas${protWarn ? `, e ${protWarn} item(ns) para revisar` : ''}` : 'Não verificado', tone: protIssues ? 'risk' : protWarn ? 'warn' : 'ok' },
     { id: 'performance', value: `${recommended.length} tarefa(s)`, sub: recommended.map((t) => t.name.toLowerCase()).join(', ') || 'Nada recomendado', tone: 'ok',
       action: <label className="flex items-center gap-2 text-xs text-muted"><Checkbox checked={incl.maintenance} onChange={(v) => setIncl((x) => ({ ...x, maintenance: v }))} />Executar{recommended.some((t) => t.admin) && <Lock size={11} />}</label> },
     { id: 'apps', value: `${stale.length} sem uso`, sub: stale.length ? `há mais de ${settings?.staleMonths || 6} meses · ${fmtSize(staleSize, units)}` : 'Nenhum app esquecido', tone: stale.length ? 'warn' : 'ok' },

@@ -190,7 +190,7 @@ export default function DossierPage() {
             </div>
           </div>
         ) : (
-          <div className="text-[12.5px] text-muted">{online?.error || (online?.facts.length ? 'Sem resumo, mas há dados em "Sobre".' : 'Procurando…')}
+          <div className="text-[12.5px] text-muted">{online?.error || (online?.facts.length ? 'Este app não tem um resumo, mas a seção "Sobre" tem mais informações.' : 'Procurando…')}
             {!!online?.sources.length && <span className="ml-2">{online.sources.map((s) => <button key={s.url} className="ml-2 text-accent hover:underline" onClick={() => cc.openLink(s.url)}>{s.label}</button>)}</span>}
           </div>
         )}
@@ -220,10 +220,10 @@ export default function DossierPage() {
           </Card>
         )}
         <Card title={<span className="flex items-center gap-2"><BadgeCheck size={14} /> Licenças e avisos {local && <span className="text-xs font-normal text-faint">({local.licenses.length})</span>}</span>}>
-          {!local ? <div className="skeleton h-10 rounded" /> : <Files files={local.licenses} empty="Nenhum arquivo de licença dentro do programa. Veja a licença em “Sobre”, quando houver." />}
+          {!local ? <div className="skeleton h-10 rounded" /> : <Files files={local.licenses} empty="O programa não traz um arquivo de licença. Quando existir, a licença aparece na seção “Sobre”." />}
         </Card>
         <Card title={<span className="flex items-center gap-2"><Calendar size={14} /> Dados do programa no seu perfil {local && dataTotal > 0 && <span className="text-xs font-normal text-faint">({fmtSize(dataTotal)})</span>}</span>}>
-          {!local ? <div className="skeleton h-10 rounded" /> : <Files files={local.data} onTree={(p) => openTree(p)} empty={isMac ? 'Nada em ~/Library com o identificador ou o nome deste app.' : 'Nenhuma pasta no AppData ou no ProgramData com o nome deste programa.'} />}
+          {!local ? <div className="skeleton h-10 rounded" /> : <Files files={local.data} onTree={(p) => openTree(p)} empty={isMac ? 'A pasta ~/Library não tem nenhuma pasta com o identificador ou com o nome deste app.' : 'As pastas AppData e ProgramData não têm nenhuma pasta com o nome deste programa.'} />}
         </Card>
       </div>
       {local && local.data.length > 0 && <div className="mt-3 text-[11.5px] text-faint">Para limpar caches e sobras com segurança, use a tela {isMac ? 'Dados de apps' : 'AppData'}. <button className="text-accent hover:underline" onClick={() => go('appdata')}>Abrir</button></div>}

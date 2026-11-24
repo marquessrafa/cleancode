@@ -39,7 +39,7 @@ export default function Types() {
 
   return (
     <PageBody>
-      <PageHeader title="Tipos de arquivo" icon={<FileType2 size={18} />} description="Quanto espaço cada extensão e categoria ocupa. Clique numa extensão para ver os arquivos."
+      <PageHeader title="Tipos de arquivo" icon={<FileType2 size={18} />} description="Mostra quanto espaço cada tipo de arquivo ocupa. Para ver os arquivos de um tipo, clique nele."
         actions={<Segmented value={metric} onChange={setMetric} options={[{ value: 'size', label: 'Por tamanho' }, { value: 'files', label: 'Por quantidade' }]} />} />
       <ScopeBar />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[360px_1fr]">

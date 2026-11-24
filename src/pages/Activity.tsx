@@ -64,7 +64,7 @@ export default function Activity() {
   }, [list, filter]);
 
   const clear = async () => {
-    const r = await confirm({ title: 'Apagar o histórico de atividades?', message: 'Só o registro é apagado; nada do que foi feito é desfeito.', confirmLabel: 'Apagar histórico', danger: true });
+    const r = await confirm({ title: 'Apagar o histórico de atividades?', message: 'O CleanCode apaga apenas a lista de atividades. As limpezas e as mudanças que já foram feitas continuam como estão.', confirmLabel: 'Apagar histórico', danger: true });
     if (!r.ok) return;
     await cc.activityClear(); setList([]); toast('Histórico apagado');
   };
@@ -75,7 +75,7 @@ export default function Activity() {
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl text-white" style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 50%, #ffffff))', boxShadow: '0 8px 28px color-mix(in srgb, var(--accent) 35%, transparent)' }}><ActivityIcon size={26} /></div>
         <div className="min-w-0 flex-1">
           <h1 className="text-[26px] font-semibold tracking-tight text-fg">Atividades</h1>
-          <p className="text-sm text-muted">Tudo o que o CleanCode fez: limpezas, manutenções, itens de início, desinstalações e exclusões.</p>
+          <p className="text-sm text-muted">Esta tela mostra tudo o que o CleanCode já fez, como limpezas, manutenções, mudanças nos itens de início, desinstalações e exclusões.</p>
         </div>
         {!!list?.length && <Button variant="ghost" icon={<Trash size={14} />} onClick={clear}>Apagar histórico</Button>}
       </div>
@@ -114,7 +114,7 @@ export default function Activity() {
         <Segmented size="sm" value={filter} onChange={setFilter} options={[{ value: 'all', label: 'Tudo' }, { value: 'cleanup', label: 'Limpeza' }, { value: 'maintenance', label: 'Desempenho' }, { value: 'apps', label: 'Apps' }, { value: 'files', label: 'Arquivos' }]} />
       </div>
       {list && !days.length ? (
-        <Empty icon={<ActivityIcon size={20} />} title="Nada registrado ainda" text="As limpezas, manutenções e desinstalações feitas pelo CleanCode aparecem aqui." />
+        <Empty icon={<ActivityIcon size={20} />} title="Nada registrado ainda" text="Quando o CleanCode fizer uma limpeza, uma manutenção ou uma desinstalação, a ação vai aparecer aqui." />
       ) : days.map(([day, items], di) => (
         <div key={day} className="mb-5 anim-page" style={{ animationDelay: `${Math.min(di, 6) * 40}ms` }}>
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-faint">{day}</div>

@@ -1,5 +1,5 @@
 // Monitor de hardware: modelos 3D (three.js) de cada componente e monitoramento no estilo AIDA64,
-// com valor atual, mínimo, máximo, média e minigráfico de cada sensor desde que a tela foi aberta.
+// com valor atual, mínimo, máximo, média e minigráfico de cada sensor Valores medidos desde que você abriu esta tela.
 // Windows: LibreHardwareMonitor (com o driver PawnIO, quando ativado). Mac: IOReport + sensores do chip.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Cpu, Gpu, MemoryStick, CircuitBoard, Zap, Thermometer, LayoutGrid, HardDrive, Download, ShieldCheck, Loader2, Activity, Fan } from 'lucide-react';
@@ -114,7 +114,7 @@ function SensorTable({ live, stats, kinds, title = 'Sensores' }: { live: Hardwar
   if (!list.length) return <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-5 text-center text-[13px] text-muted">Nenhum sensor disponível para este componente{!isMac ? ' sem o monitoramento avançado' : ''}.</div>;
   return (
     <div className="overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface)]">
-      <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-2.5"><span className="text-[13px] font-semibold">{title}</span><span className="text-[11px] text-muted">desde que a tela foi aberta</span></div>
+      <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-2.5"><span className="text-[13px] font-semibold">{title}</span><span className="text-[11px] text-muted">Valores medidos desde que você abriu esta tela</span></div>
       <table className="w-full table-fixed text-[12.5px]">
         <thead><tr className="text-left text-[11px] uppercase tracking-wider text-muted"><th className="px-4 py-1.5 font-medium">Sensor</th><th className="w-[92px] px-2 text-right font-medium">Atual</th><th className="w-[84px] px-2 text-right font-medium">Mín.</th><th className="w-[84px] px-2 text-right font-medium">Máx.</th><th className="w-[84px] px-2 text-right font-medium">Média</th><th className="w-[130px] px-4 font-medium">Histórico</th></tr></thead>
         <tbody>
@@ -151,7 +151,7 @@ function AdvancedBanner({ live }: { live: HardwareLive | null }) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-[color-mix(in_srgb,var(--accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] p-4">
       <ShieldCheck size={22} className="shrink-0 text-[var(--accent)]" />
-      <div className="min-w-0 flex-1 text-[13px]"><div className="font-semibold">Ative o monitoramento avançado</div><div className="text-muted">Lê temperatura e frequência de cada núcleo, tensões, ventoinhas da placa-mãe, consumo e SMART dos discos (LibreHardwareMonitor + driver PawnIO, assinado). O Windows pede permissão uma vez.</div></div>
+      <div className="min-w-0 flex-1 text-[13px]"><div className="font-semibold">Ative o monitoramento avançado</div><div className="text-muted">Com o monitoramento avançado, o CleanCode lê a temperatura e a frequência de cada núcleo, as tensões, as ventoinhas da placa-mãe, o consumo e a saúde dos discos (SMART). Para isso, ele usa o LibreHardwareMonitor e o driver assinado PawnIO. O Windows pede a sua permissão uma única vez.</div></div>
       <button disabled={busy || !adv.available} onClick={async () => { setBusy(true); const r = await cc.hardwareAdvanced(true); toast(r.message, r.ok ? 'ok' : 'error'); setBusy(false); }}
         className="flex shrink-0 items-center gap-2 rounded-lg bg-[var(--accent)] px-3.5 py-2 text-[13px] font-semibold text-white disabled:opacity-60">{busy && <Loader2 size={14} className="animate-spin" />}{adv.available ? 'Ativar' : 'Componente ausente'}</button>
     </div>
@@ -182,7 +182,7 @@ function FreeMemoryCard() {
         <Button variant="primary" size="sm" loading={busy === 'quick'} disabled={!!busy} icon={<MemoryStick size={14} />} onClick={() => run(false)}>Liberar memória</Button>
         {!isMac && <Button size="sm" loading={busy === 'deep'} disabled={!!busy} onClick={() => run(true)}>Completa (administrador)</Button>}
       </div>
-      <div className="mt-2 text-[12px] text-muted">{msg || (isMac ? 'Descarta o cache inativo da memória (pede sua senha).' : 'Esvazia a memória parada dos programas. A completa também limpa a memória em espera do Windows.')}</div>
+      <div className="mt-2 text-[12px] text-muted">{msg || (isMac ? 'Libera a memória que os apps não estão usando. O macOS pede a sua senha.' : 'Esvazia a memória que os programas reservaram e não estão usando. A opção completa também limpa a memória em espera do Windows.')}</div>
     </div>
   );
 }
@@ -352,7 +352,7 @@ function StorageTab({ live, stats }: { live: HardwareLive | null; stats: Map<str
         <Stage build={() => (kind === 'onboard' ? onboardFlashModel({ label: d?.size ? fmtSize(d.size / 2, 'auto', 0) : '', chips: 2 }) : ssdModel({ kind, label: d?.model || d?.name }))} buildKey={`ssd-${sel}-${kind}`} live={{ disk: 0.4 }} />
         <div className="space-y-3">
           <Metric label="Saúde" value={d?.healthPct !== undefined ? `${d.healthPct} %` : d?.health || '—'} sub={d?.health && d.healthPct !== undefined ? d.health : undefined} />
-          <Metric label="Temperatura" value={d?.temp !== undefined ? `${Math.round(d.temp)} °C` : '—'} sub={d?.needsAdmin && !isMac ? 'Ative o monitoramento avançado para ler o SMART' : undefined} />
+          <Metric label="Temperatura" value={d?.temp !== undefined ? `${Math.round(d.temp)} °C` : '—'} sub={d?.needsAdmin && !isMac ? 'Para ver a saúde do disco (SMART), ative o monitoramento avançado.' : undefined} />
         </div>
       </div>
       <div className="grid gap-4 xl:grid-cols-2">

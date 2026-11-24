@@ -193,7 +193,7 @@ export default function Visual() {
   return (
     <div className="mx-auto flex h-full max-w-[1400px] flex-col">
       <div className="px-6 pt-6">
-        <PageHeader title="Visualizações" icon={<LayoutGrid size={18} />} description="Mapa de árvore (treemap), gráfico de pizza e de barras da pasta selecionada. Clique numa pasta para entrar nela."
+        <PageHeader title="Visualizações" icon={<LayoutGrid size={18} />} description="Mostra a pasta selecionada como um mapa de blocos (treemap), como um gráfico de pizza ou como um gráfico de barras. Para entrar em uma pasta, clique nela."
           actions={<Segmented value={tab} onChange={setTab} options={[
             { value: 'treemap', label: <><LayoutGrid size={13} /> Treemap</> }, { value: 'pie', label: <><PieChart size={13} /> Pizza</> }, { value: 'bar', label: <><BarChart3 size={13} /> Barras</> },
           ]} />} />
@@ -212,7 +212,7 @@ export default function Visual() {
             <Toggle checked={tm.hierarchy} onChange={(v) => setTm({ hierarchy: v })} label="Mostrar hierarquia" />
             <Toggle checked={tm.labels} onChange={(v) => setTm({ labels: v })} label="Rótulos" />
             <Toggle checked={tm.cushion} onChange={(v) => setTm({ cushion: v })} label="Efeito 3D (relevo)" />
-            <Toggle checked={tm.freeSpace} onChange={(v) => setTm({ freeSpace: v })} label="Espaço livre da unidade" hint="Só na raiz de uma unidade" />
+            <Toggle checked={tm.freeSpace} onChange={(v) => setTm({ freeSpace: v })} label="Espaço livre da unidade" hint="Funciona apenas quando você está na raiz de um disco" />
             {tm.showFiles && (
               <div className="pt-3"><div className="mb-1.5 text-xs font-medium text-muted">Legenda</div>
                 <Legend items={[...CATEGORIES, OTHER].map((c) => ({ label: c.label, color: c.color }))} />

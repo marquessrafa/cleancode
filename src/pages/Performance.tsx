@@ -46,7 +46,7 @@ function Maintenance() {
             <label key={t.id} className={cx('flex cursor-pointer items-center gap-3 px-4 py-3.5 transition-colors hover:bg-hover anim-page', i > 0 && 'border-t border-line')} style={{ animationDelay: `${i * 35}ms` }}>
               <Checkbox checked={sel.has(t.id)} onChange={(v) => setSel((s) => { const n = new Set(s); v ? n.add(t.id) : n.delete(t.id); return n; })} />
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2 text-[14px] font-medium text-fg">{t.name}{t.recommended && <Badge tone="accent">recomendado</Badge>}{t.admin && <span title="Pede a senha de administrador" className="text-faint"><Lock size={12} /></span>}</div>
+                <div className="flex flex-wrap items-center gap-2 text-[14px] font-medium text-fg">{t.name}{t.recommended && <Badge tone="accent">recomendado</Badge>}{t.admin && <span title="O sistema pede a senha de administrador." className="text-faint"><Lock size={12} /></span>}</div>
                 <div className="text-xs text-muted">{t.description}</div>
               </div>
               <div className="w-36 shrink-0 text-right text-xs">
@@ -69,10 +69,10 @@ function Maintenance() {
 // ---------- itens de início ----------
 const KIND_LABEL: Record<StartupItem['kind'], { title: string; hint: string }> = {
   login: { title: 'Itens de login', hint: 'Apps que abrem quando você entra na sua conta.' },
-  agent: { title: 'Agentes em segundo plano', hint: 'Processos de apps que rodam escondidos (atualizadores, ajudantes).' },
-  daemon: { title: 'Serviços do sistema', hint: 'Rodam para todos os usuários, antes do login. Mudar pede senha.' },
-  run: { title: 'Programas de inicialização', hint: 'Registrados no Windows para abrir com o sistema.' },
-  folder: { title: 'Pasta Inicializar', hint: 'Atalhos na pasta Inicializar do menu Iniciar.' },
+  agent: { title: 'Agentes em segundo plano', hint: 'São programas dos apps que rodam escondidos, como os atualizadores e os ajudantes.' },
+  daemon: { title: 'Serviços do sistema', hint: 'Rodam para todos os usuários, antes de alguém entrar na conta. Para mudar esses itens, o macOS pede a sua senha.' },
+  run: { title: 'Programas de inicialização', hint: 'São programas registrados no Windows para abrir junto com o sistema.' },
+  folder: { title: 'Pasta Inicializar', hint: 'São atalhos que ficam na pasta Inicializar do menu Iniciar.' },
 };
 function Startup() {
   const { toast, confirm } = useApp();
@@ -83,7 +83,7 @@ function Startup() {
   useEffect(load, []);
   const set = async (it: StartupItem, enabled: boolean) => {
     if (it.control === 'remove') {
-      const r = await confirm({ title: `Remover "${it.name}" dos itens de login?`, message: 'O app deixa de abrir sozinho quando você entra. Ele continua instalado.', confirmLabel: 'Remover' });
+      const r = await confirm({ title: `Remover "${it.name}" dos itens de login?`, message: 'O app deixa de abrir sozinho quando você entra na sua conta, mas continua instalado.', confirmLabel: 'Remover' });
       if (!r.ok) return;
     }
     setBusy(it.id);
@@ -104,7 +104,7 @@ function Startup() {
         <Button variant="ghost" icon={<RefreshCw size={14} />} onClick={load}>Recarregar</Button>
       </div>
       {!items ? <div className="flex items-center gap-2 py-10 text-sm text-muted"><Loader2 size={16} className="animate-spin" /> Lendo itens de início…</div>
-        : !shown.length ? <Empty icon={<Power size={20} />} title="Nenhum item" text={q ? 'Nada corresponde ao filtro.' : `Nada configurado para abrir com o ${OS_NAME}.`} />
+        : !shown.length ? <Empty icon={<Power size={20} />} title="Nenhum item" text={q ? 'Nenhum item combina com o filtro.' : `Nenhum item está configurado para abrir junto com o ${OS_NAME}.`} />
         : kinds.map((k) => (
           <div key={k} className="mb-5">
             <div className="mb-2 flex items-baseline gap-2"><span className="text-[11px] font-semibold uppercase tracking-wider text-faint">{KIND_LABEL[k].title}</span><span className="text-xs text-faint">· {KIND_LABEL[k].hint}</span></div>
@@ -160,7 +160,7 @@ function Heavy() {
     <>
       <div className="mb-4 flex items-center gap-3">
         <Segmented value={order} onChange={setOrder} options={[{ value: 'cpu', label: <span className="flex items-center gap-1.5"><Cpu size={13} /> Processador</span> }, { value: 'mem', label: <span className="flex items-center gap-1.5"><MemoryStick size={13} /> Memória</span> }]} />
-        <span className="text-xs text-faint">Atualiza a cada 3 s · só apps da sua conta</span>
+        <span className="text-xs text-faint">A lista se atualiza a cada 3 segundos e mostra apenas os apps da sua conta.</span>
       </div>
       {!procs ? <div className="flex items-center gap-2 py-10 text-sm text-muted"><Loader2 size={16} className="animate-spin" /> Lendo processos…</div> : (
         <div className="overflow-hidden rounded-xl border border-line bg-surface">

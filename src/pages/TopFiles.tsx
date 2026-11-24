@@ -16,7 +16,7 @@ export default function TopFiles() {
   const dirs = useScanQuery<(Row & { own: number })[]>(tab === 'dirs' ? 'topDirs' : null, [nodeId, +n]);
   return (
     <PageBody>
-      <PageHeader title="Maiores arquivos" icon={<ArrowDownWideNarrow size={18} />} description="Os maiores itens da pasta selecionada. “Pastas pesadas” ordena pelo conteúdo próprio da pasta (sem subpastas), bom para achar caches."
+      <PageHeader title="Maiores arquivos" icon={<ArrowDownWideNarrow size={18} />} description="Mostra os maiores itens da pasta selecionada. A opção “Pastas pesadas” ordena as pastas pelos arquivos que ficam direto dentro delas, sem contar as subpastas. Essa opção ajuda a encontrar caches."
         actions={<>
           <Segmented value={tab} onChange={setTab} options={[{ value: 'files', label: 'Arquivos' }, { value: 'dirs', label: 'Pastas pesadas' }]} />
           <Select className="w-28" value={n} onChange={setN} options={['50', '100', '250', '500', '1000'].map((v) => ({ value: v, label: `Top ${v}` }))} />

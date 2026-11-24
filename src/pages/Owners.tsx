@@ -22,20 +22,20 @@ export default function Owners() {
   const total = (data || []).reduce((s, o) => s + o.size, 0);
   return (
     <PageBody>
-      <PageHeader title="Proprietários" icon={<Users size={18} />} description="Espaço ocupado por usuário (dono do arquivo no NTFS). A leitura dos donos é feita sob demanda para a pasta selecionada."
+      <PageHeader title="Proprietários" icon={<Users size={18} />} description="Mostra quanto espaço cada usuário ocupa, de acordo com o dono de cada arquivo no Windows. O CleanCode só lê os donos quando você pede, e apenas da pasta selecionada."
         actions={<Button variant="primary" icon={<Play size={14} />} loading={busy} disabled={!active!.done} onClick={run}>{data ? 'Analisar de novo' : 'Analisar proprietários'}</Button>} />
       <ScopeBar />
       {busy && (
         <Card className="mb-4">
           <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted">
-            <span>Lendo descritores de segurança… você pode navegar por outras telas enquanto isso.</span>
+            <span>O CleanCode está lendo o dono de cada arquivo. Enquanto isso, você pode usar as outras telas.</span>
             <span className="flex items-center gap-3"><span className="tnum">{fmtNum(prog?.done)} / {fmtNum(prog?.total)}</span><Button size="sm" variant="ghost" onClick={() => task && cancelTask(task.key)}>Cancelar</Button></span>
           </div>
           <ProgressBar value={prog ? prog.done / (prog.total || 1) : 0} indeterminate={!prog} />
         </Card>
       )}
       {!data && !busy ? (
-        <Card><Empty icon={<Users size={20} />} title={task?.status === 'cancelled' ? 'Análise cancelada' : task?.status === 'error' ? 'A análise falhou' : 'Clique em “Analisar proprietários”'} text={active!.done ? 'Em pastas muito grandes isso pode levar alguns minutos. Os donos ficam disponíveis também na coluna “Proprietário” do Explorador.' : 'Aguarde a varredura terminar.'} /></Card>
+        <Card><Empty icon={<Users size={20} />} title={task?.status === 'cancelled' ? 'Análise cancelada' : task?.status === 'error' ? 'A análise falhou' : 'Clique em “Analisar proprietários”'} text={active!.done ? 'Em pastas muito grandes, a leitura pode levar alguns minutos. Depois, os donos também aparecem na coluna “Proprietário” do Explorador.' : 'Aguarde a varredura terminar.'} /></Card>
       ) : data && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_1fr]">
           <Card className="flex items-center justify-center">

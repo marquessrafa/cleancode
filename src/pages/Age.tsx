@@ -30,7 +30,7 @@ export default function Age() {
 
   return (
     <PageBody>
-      <PageHeader title="Idade dos arquivos" icon={<CalendarClock size={18} />} description="Distribuição do espaço pela data dos arquivos. Ajuda a achar dados antigos que podem ser arquivados ou apagados."
+      <PageHeader title="Idade dos arquivos" icon={<CalendarClock size={18} />} description="Mostra quanto espaço os arquivos ocupam de acordo com a data de cada um. Assim, você encontra arquivos antigos que pode guardar em outro lugar ou apagar."
         actions={<>
           <Segmented value={field} onChange={setField} options={[{ value: 'mtime', label: 'Modificação' }, { value: 'atime', label: 'Acesso' }, { value: 'ctime', label: 'Criação' }]} />
           <Segmented value={metric} onChange={setMetric} options={[{ value: 'size', label: 'Tamanho' }, { value: 'files', label: 'Quantidade' }]} />

@@ -207,7 +207,7 @@ export default function Explorer() {
       owner: { key: 'owner', label: 'Proprietário', width: 160, sortable: true, sortValue: (r) => r.owner || '', render: (r) => <span className="text-muted">{r.owner || (r.kind === 'file' ? '—' : '')}</span> },
       avg: { key: 'avg', label: 'Tam. médio', width: 100, align: 'right', sortable: true, sortValue: (r) => (r.files ? r.size / r.files : 0), render: (r) => (r.kind === 'dir' && r.files ? fmtSize(r.size / r.files, units, dec) : '') },
       compress: { key: 'compress', label: 'Compactação', width: 100, align: 'right', sortable: true, sortValue: (r) => (r.size ? 1 - r.alloc / r.size : 0), render: (r) => (r.attr & 0x800 && r.size ? fmtPct(Math.max(0, 1 - r.alloc / r.size)) : '') },
-      optical: { key: 'optical', label: 'Mídia óptica', width: 110, align: 'right', sortable: true, sortValue: (r) => r.size, render: (r) => fmtSize(r.kind === 'file' ? Math.ceil(r.size / 2048) * 2048 : r.size + r.files * 1024, units, dec), title: () => 'Espaço estimado em CD/DVD (setores ISO de 2 KB)' },
+      optical: { key: 'optical', label: 'Mídia óptica', width: 110, align: 'right', sortable: true, sortValue: (r) => r.size, render: (r) => fmtSize(r.kind === 'file' ? Math.ceil(r.size / 2048) * 2048 : r.size + r.files * 1024, units, dec), title: () => 'Espaço que o arquivo ocuparia em um CD ou DVD, que guarda os dados em blocos de 2 KB' },
       pathLen: { key: 'pathLen', label: 'Compr. caminho', width: 110, align: 'right', sortable: true, sortValue: (r) => r.name.length, render: (r) => rowPath(r, selPath).length },
       level: { key: 'level', label: 'Nível', width: 60, align: 'right', sortable: true, sortValue: (r) => r.level, render: (r) => r.level },
       prev: { key: 'prev', label: 'Anterior', width: 110, align: 'right', sortable: true, sortValue: (r) => r.prevSize ?? -1, render: (r) => (r.prevSize == null ? '' : r.prevSize < 0 ? <span className="text-accent text-xs">novo</span> : fmtSize(r.prevSize, units, dec)) },
@@ -320,7 +320,7 @@ export default function Explorer() {
                       {r.depth === 0 ? active!.root : r.name}
                     </span>
                     {r.err ? <AlertTriangle size={12} className="relative z-[1] ml-1 shrink-0 text-warn"><title>Sem acesso a parte desta pasta</title></AlertTriangle> : null}
-                    {r.link ? <Link2 size={12} className="relative z-[1] ml-1 shrink-0 text-faint"><title>Ponto de junção/link (não seguido)</title></Link2> : null}
+                    {r.link ? <Link2 size={12} className="relative z-[1] ml-1 shrink-0 text-faint"><title>Atalho do sistema para outra pasta (o CleanCode não entra nele)</title></Link2> : null}
                     <span className="relative z-[1] ml-3 shrink-0 text-xs text-muted tnum">{valueOf(r)}</span>
                     {r.prevSize != null && r.prevSize >= 0 && r.size !== r.prevSize && (
                       <span className={cx('relative z-[1] ml-2 shrink-0 text-[11px] tnum', r.size > r.prevSize ? 'text-danger' : 'text-accent')}>{r.size > r.prevSize ? '+' : ''}{fmtSize(r.size - r.prevSize, 'auto', 0)}</span>
@@ -467,7 +467,7 @@ function FilterModal({ open, onClose, scanId, current }: { open: boolean; onClos
       <Button variant="outline" onClick={async () => { await cc.scanQuery(scanId, 'setFilter', null); bump(); onClose(); }}>Limpar filtro</Button>
       <Button variant="primary" onClick={apply}>Aplicar</Button>
     </>}>
-      <p className="mb-3 text-xs text-muted">Regras de <b>inclusão</b> mostram só o que corresponde (qualquer uma delas). Regras de <b>exclusão</b> escondem o que corresponde. Os totais das pastas são recalculados sem precisar varrer de novo.</p>
+      <p className="mb-3 text-xs text-muted">As regras de <b>inclusão</b> mostram apenas os itens que combinam com pelo menos uma delas. As regras de <b>exclusão</b> escondem os itens que combinam com elas. Os totais das pastas são recalculados na hora, sem precisar analisar o disco de novo.</p>
       <div className="space-y-2">
         {rules.map((r, i) => (
           <div key={i} className="flex items-center gap-2 anim-fade">
@@ -491,7 +491,7 @@ function FilterModal({ open, onClose, scanId, current }: { open: boolean; onClos
         <label className="text-xs text-muted">Tamanho máximo do arquivo (MB)<Input className="mt-1" type="number" min="0" value={maxMB} onChange={(e) => setMax(e.target.value)} /></label>
       </div>
       <div className="mt-3 border-t border-line pt-2">
-        <Toggle checked={settings!.hideEmpty} onChange={(v) => setSettings({ hideEmpty: v })} label="Ocultar pastas vazias" hint="Esconde pastas sem arquivos depois de aplicar o filtro." />
+        <Toggle checked={settings!.hideEmpty} onChange={(v) => setSettings({ hideEmpty: v })} label="Ocultar pastas vazias" hint="Depois de aplicar o filtro, esconde as pastas que ficaram sem nenhum arquivo." />
       </div>
     </Modal>
   );
@@ -535,8 +535,8 @@ function ErrorsModal({ open, onClose, scanId }: { open: boolean; onClose: () => 
     <Modal open={open} onClose={onClose} title={`Erros da varredura (${errs?.length ?? 0})`} width={760}>
       <p className="mb-2 text-xs text-muted">
         {isMac
-          ? <>Estas pastas não puderam ser lidas. Ativar o CleanCode em Ajustes do Sistema › Privacidade e Segurança › Acesso Total ao Disco resolve a maioria. <button className="text-accent hover:underline" onClick={() => cc.openFullDiskAccess()}>Abrir Ajustes</button></>
-          : 'Estas pastas não puderam ser lidas. Executar como administrador costuma resolver a maioria.'}
+          ? <>O CleanCode não conseguiu ler estas pastas. Na maioria dos casos, isso se resolve quando você ativa o CleanCode em Ajustes do Sistema, depois em Privacidade e Segurança, e depois em Acesso Total ao Disco. <button className="text-accent hover:underline" onClick={() => cc.openFullDiskAccess()}>Abrir Ajustes</button></>
+          : 'O CleanCode não conseguiu ler estas pastas. Na maioria dos casos, isso se resolve quando você abre o CleanCode como administrador.'}
       </p>
       {!errs ? <Spinner /> : (
         <div className="max-h-[50vh] overflow-auto rounded-md border border-line">
@@ -571,7 +571,7 @@ function ExportModal({ format, onClose, scanId, nodeId }: { format: string | nul
       <Button variant="outline" onClick={onClose}>Cancelar</Button>
       <Button variant="primary" loading={busy} onClick={run}>{format === 'print' ? 'Imprimir…' : 'Salvar…'}</Button>
     </>}>
-      <p className="mb-3 text-xs text-muted">Exporta a pasta selecionada no Explorador e suas subpastas.</p>
+      <p className="mb-3 text-xs text-muted">Exporta a pasta que está selecionada no Explorador, junto com as subpastas dela.</p>
       <label className="block text-xs text-muted">Profundidade de subpastas
         <Select className="mt-1" value={depth} onChange={setDepth} options={[1, 2, 3, 4, 5, 8, 10, 20, 99].map((d) => ({ value: String(d), label: d === 99 ? 'Todas' : `${d} nível(is)` }))} />
       </label>

@@ -52,8 +52,8 @@ export default function Uninstaller() {
     <PageBody>
       <PageHeader title="Desinstalador" icon={<PackageX size={18} />}
         description={isMac
-          ? 'Apps em /Applications, ~/Applications e da App Store (os do sistema aparecem como protegidos). Selecione vários e desinstale em lote: tudo vai para a Lixeira, com os restos em ~/Library se você quiser.'
-          : 'Programas do registro (HKLM/HKCU, 32 e 64 bits) e apps da Microsoft Store/MSIX. Selecione vários e desinstale em lote: cada item é confirmado antes.'}
+          ? 'Mostra os apps de /Applications, de ~/Applications e da App Store. Os apps do sistema aparecem como protegidos. Você pode selecionar vários apps e desinstalar todos de uma vez. Tudo vai para a Lixeira e, se você quiser, as sobras em ~/Library também vão.'
+          : 'Mostra os programas registrados no Windows, de 32 e de 64 bits, e os apps da Microsoft Store. Você pode selecionar vários programas e desinstalar todos de uma vez. Antes, você confirma cada item.'}
         actions={<>
           <Button icon={<Download size={14} />} onClick={() => cc.exportList(
             rows.map((a) => ({ name: a.name, publisher: a.publisher || '', version: a.version || '', source: sourceLabel(a), mtime: a.installDate, atime: a.lastUsed, usedFrom: a.lastUsedSource || '', size: a.size || 0, path: a.location || '' })),
@@ -68,7 +68,7 @@ export default function Uninstaller() {
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3 anim-fade">
           <Unlink size={16} className="shrink-0 text-danger" />
           <div className="min-w-0 flex-1 text-[13px]">
-            <b>{orphanCount} entrada(s) órfã(s)</b><span className="text-muted">: programas cujo desinstalador e pasta já não existem. Os arquivos já foram apagados; só sobrou o registro.</span>
+            <b>{orphanCount} entrada(s) órfã(s)</b><span className="text-muted">. O desinstalador e a pasta desses programas não existem mais. Os arquivos já foram apagados, e só sobrou a entrada no registro.</span>
           </div>
           <Button size="sm" icon={<Eraser size={13} />} onClick={() => removeEntry((apps || []).filter((a) => a.orphan))}>Limpar entradas órfãs</Button>
         </div>
@@ -101,9 +101,9 @@ export default function Uninstaller() {
               { key: 'name', label: 'Programa', width: 300, flex: true, sortable: true, sortValue: (a) => a.name.toLowerCase(), render: (a) => (
                 <span className="flex items-center gap-3"><AppIcon app={a} size={38} /><span className="min-w-0"><button className="block max-w-full truncate text-left font-medium text-fg hover:text-accent hover:underline" title="Ver o dossiê" onMouseEnter={() => prefetchDossier(a)} onMouseLeave={cancelPrefetch} onClick={(e) => { e.stopPropagation(); openDossier({ kind: 'app', app: a }); }}>{a.name}</button><span className="block truncate text-xs text-muted">{a.publisher || '—'}{a.version ? ` · ${a.version}` : ''}</span></span></span>
               ), title: (a) => a.name },
-              { key: 'source', label: 'Origem', width: 190, sortable: true, sortValue: (a) => sourceLabel(a), render: (a) => <span className="flex items-center gap-1 text-xs text-muted">{sourceLabel(a)}{a.orphan && <Badge tone="danger" title="O desinstalador e a pasta não existem mais: só sobrou a entrada no registro">órfão</Badge>}{!a.canUninstall && <Badge tone="warn">protegido</Badge>}{a.background && a.canUninstall && <Badge title="Pacote sem atalho no menu Iniciar (runtime, extensão ou componente)">componente</Badge>}</span> },
+              { key: 'source', label: 'Origem', width: 190, sortable: true, sortValue: (a) => sourceLabel(a), render: (a) => <span className="flex items-center gap-1 text-xs text-muted">{sourceLabel(a)}{a.orphan && <Badge tone="danger" title="O desinstalador e a pasta não existem mais. Só sobrou a entrada no registro.">órfão</Badge>}{!a.canUninstall && <Badge tone="warn">protegido</Badge>}{a.background && a.canUninstall && <Badge title="Este pacote não tem atalho no menu Iniciar, porque é um componente, uma extensão ou uma biblioteca.">componente</Badge>}</span> },
               { key: 'installDate', label: 'Instalado em', width: 110, sortable: true, sortValue: (a) => a.installDate || 0, render: (a) => <span className="text-muted">{fmtDate(a.installDate)}</span> },
-              { key: 'lastUsed', label: 'Último uso', width: 140, sortable: true, sortValue: (a) => a.lastUsed || 0, render: (a) => <span className={a.lastUsed ? 'text-muted' : 'text-faint'}>{fmtRelative(a.lastUsed)}</span>, title: (a) => (a.lastUsedSource ? `${fmtDate(a.lastUsed, true)} · fonte: ${a.lastUsedSource}${a.runCount ? ` · ${a.runCount} execuções` : ''}` : `Sem registro de uso pelo ${OS_NAME}`) },
+              { key: 'lastUsed', label: 'Último uso', width: 140, sortable: true, sortValue: (a) => a.lastUsed || 0, render: (a) => <span className={a.lastUsed ? 'text-muted' : 'text-faint'}>{fmtRelative(a.lastUsed)}</span>, title: (a) => (a.lastUsedSource ? `${fmtDate(a.lastUsed, true)} · fonte: ${a.lastUsedSource}${a.runCount ? ` · ${a.runCount} execuções` : ''}` : `O ${OS_NAME} não registrou quando este app foi usado`) },
               { key: 'size', label: 'Tamanho', width: 100, align: 'right', sortable: true, sortValue: (a) => a.size || 0, render: (a) => (a.size ? <span title={a.sizeSource === 'calculado' ? 'Calculado pela pasta' : 'Informado pelo instalador'}>{fmtSize(a.size, units)}</span> : <span className="text-faint">—</span>) },
               { key: 'act', label: '', width: 150, render: (a) => <span className="flex justify-end">{a.orphan
                 ? <Button size="sm" variant="outline" icon={<Eraser size={12} />} onClick={(e) => { e.stopPropagation(); removeEntry([a]); }}>Remover da lista</Button>

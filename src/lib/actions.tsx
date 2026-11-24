@@ -24,12 +24,12 @@ export function useFileActions(onChanged?: () => void) {
     const total = targets.reduce((s, t) => s + (t.size || 0), 0);
     const r = await confirm({
       title: targets.length === 1 ? `Excluir "${targets[0].name}"?` : `Excluir ${targets.length} itens?`,
-      message: <>Espaço a liberar: <b>{fmtSize(total, units)}</b>. Por padrão os itens vão para a Lixeira e podem ser restaurados.</>,
+      message: <>Espaço a liberar: <b>{fmtSize(total, units)}</b>. Por padrão, os itens vão para a Lixeira, e você pode restaurar todos eles depois.</>,
       items: targets.slice(0, 50).map((t) => ({ label: t.path, detail: t.size != null ? fmtSize(t.size, units) : undefined })),
       danger: true,
       options: [
-        { key: 'trash', label: 'Enviar para a Lixeira', hint: 'Recomendado: dá para restaurar depois.' },
-        { key: 'permanent', label: 'Excluir permanentemente', hint: 'Não pode ser desfeito.' },
+        { key: 'trash', label: 'Enviar para a Lixeira', hint: 'Esta é a opção recomendada, porque você pode restaurar os itens depois.' },
+        { key: 'permanent', label: 'Excluir permanentemente', hint: 'Esta ação não pode ser desfeita.' },
       ],
       defaultOption: 'trash',
       confirmLabel: 'Excluir',
@@ -49,7 +49,7 @@ export function useFileActions(onChanged?: () => void) {
     if (!targets.length) return;
     const r = await confirm({
       title: `Mover ${targets.length === 1 ? `"${targets[0].name}"` : `${targets.length} itens`}?`,
-      message: 'Em seguida você escolhe a pasta de destino.',
+      message: 'Depois, você escolhe a pasta de destino.',
       items: targets.slice(0, 50).map((t) => ({ label: t.path })),
       confirmLabel: 'Escolher destino…',
     });

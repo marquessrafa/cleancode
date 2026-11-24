@@ -23,9 +23,9 @@ const ICONS: Record<string, React.ReactNode> = {
 };
 const HINTS: Record<string, string> = {
   apps: 'Programas instalados', docs: 'Documentos e Mesa', downloads: 'Arquivos baixados', media: 'Imagens, filmes e músicas da sua pasta pessoal',
-  dev: 'SDKs, simuladores, caches de pacotes (npm, Gradle, Cargo…) e Docker', caches: 'O sistema e os apps recriam quando precisam',
+  dev: 'Ferramentas de programação, como SDKs, simuladores, caches de pacotes (npm, Gradle e Cargo) e Docker', caches: 'O sistema e os apps criam esses arquivos de novo quando precisam',
   appdata: 'Configurações e dados que os apps guardam no seu perfil', mail: 'Mensagens e anexos guardados no Mac', trash: 'Itens apagados que ainda ocupam espaço',
-  system: isMac ? 'macOS, arquivos do sistema, memória virtual, snapshots e o que fica fora das pastas acima' : 'Windows, arquivo de paginação, hibernação, pontos de restauração e o que fica fora das pastas acima',
+  system: isMac ? 'O macOS, os arquivos do sistema, a memória virtual, os instantâneos e tudo o que fica fora das pastas acima' : 'O Windows, o arquivo de paginação, o arquivo de hibernação, os pontos de restauração e tudo o que fica fora das pastas acima',
 };
 
 export function StorageMapCard({ drives, apps }: { drives: Drive[] | null; apps: AppEntry[] | null }) {
@@ -132,7 +132,7 @@ export function StorageMapCard({ drives, apps }: { drives: Drive[] | null; apps:
             <><span className="h-2 w-2 rounded-full bg-[var(--line-strong)]" /><span className="font-medium text-fg">Livre</span><span className="text-muted tnum">{fmtSize(sys.free, units)} · {fmtPct(sys.free / total, 1)} do disco</span></>
           ) : hov ? (
             <><span className="h-2 w-2 rounded-full" style={{ background: hov.color, boxShadow: `0 0 8px ${hov.color}` }} /><span className="font-medium text-fg">{hov.label}</span><span className="text-muted tnum">{hov.done ? `${fmtSize(hov.size, units)} · ${fmtPct(hov.size / total, 1)} do disco` : 'medindo…'}</span><span className="truncate text-faint">— {hov.hint}</span></>
-          ) : <span className="text-faint">Passe o mouse na barra para ver cada parte; clique para agir.</span>}
+          ) : <span className="text-faint">Passe o mouse sobre a barra para ver cada parte. Depois, clique em uma parte para ver o que fazer com ela.</span>}
         </div>
 
         {/* categorias */}
@@ -163,7 +163,7 @@ export function StorageMapCard({ drives, apps }: { drives: Drive[] | null; apps:
         {tip && (
           <button onClick={tip.action} className="mt-3 flex w-full items-center gap-2.5 rounded-lg border border-[color-mix(in_srgb,var(--accent)_30%,transparent)] bg-[color-mix(in_srgb,var(--accent)_7%,transparent)] px-3 py-2 text-left text-[12.5px] hover:bg-[color-mix(in_srgb,var(--accent)_11%,transparent)]">
             <Lightbulb size={14} className="shrink-0 text-accent" />
-            <span className="min-w-0 flex-1"><b className="font-medium text-fg">{tip.label}</b> <span className="text-muted">ocupa {fmtSize(tip.size, units)} ({fmtPct(tip.size / total, 1)} do disco). {tip.id === 'downloads' ? 'Costuma ter instaladores e arquivos que já não servem.' : tip.id === 'trash' ? 'Esvaziar a Lixeira libera na hora.' : tip.id === 'dev' ? 'Simuladores, SDKs antigos e caches de pacotes podem ser recriados.' : 'Os apps recriam o que precisarem.'}</span></span>
+            <span className="min-w-0 flex-1"><b className="font-medium text-fg">{tip.label}</b> <span className="text-muted">ocupa {fmtSize(tip.size, units)} ({fmtPct(tip.size / total, 1)} do disco). {tip.id === 'downloads' ? 'Esta pasta costuma ter instaladores e arquivos que já não servem.' : tip.id === 'trash' ? 'Quando você esvazia a Lixeira, o espaço fica livre na hora.' : tip.id === 'dev' ? 'Os simuladores, os SDKs antigos e os caches de pacotes podem ser criados de novo quando você precisar.' : 'Os apps recriam o que precisarem.'}</span></span>
             <span className="shrink-0 font-medium text-accent">{tip.actionLabel} →</span>
           </button>
         )}

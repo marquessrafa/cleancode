@@ -60,27 +60,27 @@ export function FdaAssistantHost() {
         <div className="flex flex-col items-center py-4 text-center">
           <CheckCircle2 size={44} className="text-accent" />
           <div className="mt-3 text-[15px] font-semibold">Acesso liberado</div>
-          <p className="mt-1 max-w-[400px] text-[13px] text-muted">O CleanCode já consegue analisar e limpar caches, logs, anexos e dados de navegadores. Se alguma pasta continuar como “Acesso negado”, reabra o app.</p>
+          <p className="mt-1 max-w-[400px] text-[13px] text-muted">Agora o CleanCode consegue analisar e limpar caches, registros de atividade, anexos e dados de navegadores. Se alguma pasta continuar como “Acesso negado”, feche o app e abra de novo.</p>
         </div>
       ) : (
         <div className="space-y-4">
           <div className="flex gap-3 rounded-lg bg-surface-2 p-3.5">
             <FolderLock size={20} className="mt-0.5 shrink-0 text-accent" />
             <div className="text-[12.5px] leading-relaxed text-muted">
-              <span className="font-medium text-fg">Para que serve:</span> o macOS protege pastas como caches e logs de outros apps, anexos do Mail e do Mensagens, dados do Safari e a Lixeira. Sem esse acesso, elas ficam fora da análise e da limpeza.
-              <div className="mt-1.5"><span className="font-medium text-fg">O que o CleanCode faz com ele:</span> só lê para medir o espaço e só apaga o que você confirmar. Nenhum arquivo sai do seu Mac. Você pode desligar quando quiser nos Ajustes.</div>
+              <span className="font-medium text-fg">Para que serve:</span> o macOS protege algumas pastas, como os caches e os registros de atividade de outros apps, os anexos do Mail e do Mensagens, os dados do Safari e a Lixeira. Sem esse acesso, essas pastas ficam fora da análise e da limpeza.
+              <div className="mt-1.5"><span className="font-medium text-fg">O que o CleanCode faz com ele:</span> o CleanCode só lê as pastas para medir o espaço e só apaga o que você confirmar. Nenhum arquivo sai do seu Mac, e você pode desligar o acesso quando quiser nos Ajustes.</div>
             </div>
           </div>
           <div className="text-[12px] font-semibold uppercase tracking-wider text-muted">Como liberar</div>
           <div className="space-y-3.5">
             <Step n={1} title="Adicione o CleanCode pelo +" icon={<Hand size={13} className="text-accent" />}>
-              Os Ajustes abrem em Privacidade e Segurança: clique em <b className="font-medium text-fg">Acesso Total ao Disco</b>. Ao lado aparece uma janelinha com o caminho do app já copiado: clique no <Key>+</Key> embaixo da lista, aperte <Key>⌘⇧G</Key>, cole e clique em <Key>Abrir</Key>. Depois ligue a chave do CleanCode.
+              Os Ajustes abrem em Privacidade e Segurança. Nessa tela, clique em <b className="font-medium text-fg">Acesso Total ao Disco</b>. Ao lado, aparece uma janela pequena com o caminho do app já copiado. Então, clique no <Key>+</Key> embaixo da lista, aperte <Key>⌘⇧G</Key>, cole o caminho e clique em <Key>Abrir</Key>. Depois, ligue a chave do CleanCode.
             </Step>
             <Step n={2} title="Confirme os avisos do macOS" icon={<MousePointer2 size={13} className="text-accent" />}>
-              Em “Choose Folders”, clique em <Key>Ignorar Proteções do Sistema</Key>. No alerta vermelho, clique nos três <Key tone="danger">OK</Key> (cada um vira “Desfazer”) e depois em <Key tone="danger">Ativar Acesso Total ao Disco</Key>. São os textos padrão da Apple, iguais para qualquer app com esse acesso (antivírus, backup, limpeza).
+              Em “Choose Folders”, clique em <Key>Ignorar Proteções do Sistema</Key>. No alerta vermelho, clique nos três <Key tone="danger">OK</Key> (cada um muda para “Desfazer”). Depois, clique em <Key tone="danger">Ativar Acesso Total ao Disco</Key>. Esses avisos são os textos padrão da Apple e aparecem para qualquer app que pede esse acesso, como antivírus e programas de backup.
             </Step>
             <Step n={3} title="Digite sua senha ou use o Touch ID" icon={<Lock size={13} className="text-accent" />}>
-              Pronto: o CleanCode percebe sozinho e volta para a frente. Isso só precisa ser feito uma vez.
+              Pronto. O CleanCode percebe a mudança sozinho e volta para a frente da tela. Você só precisa fazer isso uma vez.
             </Step>
           </div>
           {phase === 'waiting' && (

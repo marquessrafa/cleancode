@@ -11,19 +11,19 @@ import { PageBody } from './common';
 import { Hero } from './maint';
 
 const CAT: Record<string, { label: string; text: string }> = isMac ? {
-  prefs: { label: 'Preferências corrompidas', text: 'Arquivos .plist que o app não consegue ler. Ele recria um novo ao abrir.' },
+  prefs: { label: 'Preferências corrompidas', text: 'São arquivos de preferências (.plist) que o app não consegue ler. Depois que o arquivo vai para a Lixeira, o app cria um novo ao abrir.' },
   launchagents: { label: 'Inicialização órfã', text: 'Agentes que tentam abrir um programa que já foi apagado.' },
-  shortcuts: { label: 'Links quebrados', text: 'Links na Mesa para arquivos que sumiram.' },
-  launchservices: { label: 'Manutenção', text: 'Ações opcionais para quando algo se comporta de forma estranha.' },
+  shortcuts: { label: 'Links quebrados', text: 'São atalhos na Mesa que apontam para arquivos que não existem mais.' },
+  launchservices: { label: 'Manutenção', text: 'São ações opcionais, para quando algo no sistema se comporta de forma estranha.' },
 } : {
-  startup: { label: 'Inicialização', text: 'Programas que o Windows tenta abrir ao ligar, mas que não existem mais (podem gerar erro na inicialização).' },
-  uninstall: { label: 'Programas fantasmas', text: 'Aparecem como instalados em Configurações, mas já foram removidos.' },
-  apppaths: { label: 'Caminhos de apps', text: 'Atalhos de execução (Win+R) para programas apagados.' },
-  fileassoc: { label: '"Abrir com"', text: 'Programas removidos que continuam na lista "Abrir com".' },
-  contextmenu: { label: 'Menu do botão direito', text: 'Itens do menu de contexto que apontam para programas removidos.' },
-  muicache: { label: 'Cache de nomes', text: 'Nomes guardados de programas que foram apagados.' },
-  shortcuts: { label: 'Atalhos quebrados', text: 'Atalhos na Área de Trabalho e no Menu Iniciar para arquivos que sumiram.' },
-  services: { label: 'Serviços (só aviso)', text: 'Serviços configurados para programas que não existem mais. Reinstale ou desinstale o programa.' },
+  startup: { label: 'Inicialização', text: 'São programas que o Windows tenta abrir quando liga, mas que não existem mais. Eles podem causar mensagens de erro quando o computador liga.' },
+  uninstall: { label: 'Programas fantasmas', text: 'Aparecem como instalados nas Configurações do Windows, mas já foram removidos.' },
+  apppaths: { label: 'Caminhos de apps', text: 'São atalhos do comando Executar (Win+R) que apontam para programas apagados.' },
+  fileassoc: { label: '"Abrir com"', text: 'São programas removidos que continuam aparecendo na lista "Abrir com".' },
+  contextmenu: { label: 'Menu do botão direito', text: 'São itens do menu do botão direito que apontam para programas removidos.' },
+  muicache: { label: 'Cache de nomes', text: 'São nomes de programas apagados que o Windows ainda guarda.' },
+  shortcuts: { label: 'Atalhos quebrados', text: 'São atalhos na Área de Trabalho e no Menu Iniciar que apontam para arquivos que não existem mais.' },
+  services: { label: 'Serviços (só aviso)', text: 'São serviços configurados para programas que não existem mais. Para resolver, reinstale ou desinstale o programa.' },
 };
 
 export default function Repairs() {
@@ -57,7 +57,7 @@ export default function Repairs() {
     const chosen = (items || []).filter((x) => sel.has(x.id));
     const r0 = await confirm({
       title: `Corrigir ${ids.length} item(ns)?`,
-      message: isMac ? 'Os arquivos vão para a Lixeira: dá para colocar de volta se precisar.' : 'Antes de mudar, cada chave é salva num arquivo .reg. Você pode restaurar tudo aqui mesmo, em "Backups".',
+      message: isMac ? 'Os arquivos vão para a Lixeira, então você consegue colocar tudo de volta se precisar.' : 'Antes de mudar uma chave do registro, o CleanCode salva a chave em um arquivo .reg. Se precisar, você restaura tudo nesta mesma tela, na seção "Backups".',
       items: chosen.slice(0, 8).map((x) => ({ label: x.title, detail: CAT[x.category]?.label })),
       confirmLabel: 'Corrigir',
     });
@@ -82,17 +82,17 @@ export default function Repairs() {
   if (!items) {
     return (
       <Hero icon={<Wrench size={46} />} title={isMac ? 'Reparos do sistema' : 'Registro do Windows'}
-        text={isMac ? 'Encontra preferências corrompidas e restos de programas que tentam abrir sozinhos, a causa comum de apps que travam ao abrir.' : 'Encontra entradas do registro que apontam para programas e arquivos que não existem mais: a causa comum de erros ao ligar o PC, itens fantasmas e menus quebrados.'}
+        text={isMac ? 'Encontra preferências corrompidas e restos de programas que tentam abrir sozinhos. Esses problemas costumam fazer os apps travarem ao abrir.' : 'Encontra entradas do registro que apontam para programas e arquivos que não existem mais. Essas entradas costumam causar erros quando o PC liga, itens fantasmas e menus quebrados.'}
         bullets={isMac ? [
           { icon: <Bug size={15} />, text: 'Preferências corrompidas e inicialização órfã' },
-          { icon: <Archive size={15} />, text: 'Tudo vai para a Lixeira' },
-          { icon: <AlertTriangle size={15} />, text: 'Apps que travaram nos últimos dias' },
+          { icon: <Archive size={15} />, text: 'Tudo vai para a Lixeira.' },
+          { icon: <AlertTriangle size={15} />, text: 'Mostra os apps que travaram nos últimos dias.' },
         ] : [
-          { icon: <Bug size={15} />, text: 'Só itens comprovadamente quebrados' },
-          { icon: <Archive size={15} />, text: 'Backup .reg automático antes de corrigir' },
-          { icon: <AlertTriangle size={15} />, text: 'Aviso quando um item quebrado aparecer' },
+          { icon: <Bug size={15} />, text: 'Mostra apenas os itens que estão comprovadamente quebrados.' },
+          { icon: <Archive size={15} />, text: 'Salva uma cópia do registro (.reg) antes de corrigir.' },
+          { icon: <AlertTriangle size={15} />, text: 'Avisa você quando um item quebrado aparecer.' },
         ]}
-        note={isMac ? undefined : 'Não é um "limpador de registro" genérico: nada é removido só por parecer antigo.'}
+        note={isMac ? undefined : 'O CleanCode não é um "limpador de registro" comum. Ele não remove nada só porque parece antigo.'}
         action={{ label: 'Analisar', onClick: scan }} busy={busy === 'scan'} busyText="Analisando…" />
     );
   }
@@ -146,18 +146,18 @@ export default function Repairs() {
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
-          <div className="mb-2 flex items-center gap-2 text-[14px] font-semibold"><AlertTriangle size={16} className="text-[var(--warn)]" />Apps que travaram (3 dias)</div>
+          <div className="mb-2 flex items-center gap-2 text-[14px] font-semibold"><AlertTriangle size={16} className="text-[var(--warn)]" />Apps que travaram nos últimos 3 dias</div>
           {!errors.length ? <div className="text-[13px] text-muted">Nenhum travamento registrado.</div> : (
             <div className="max-h-[220px] space-y-1 overflow-y-auto">
               {errors.map((e, i) => <div key={i} className="flex items-center gap-3 text-[13px]"><span className="min-w-0 flex-1 truncate font-medium">{e.app}</span><span className="text-muted">{e.message}</span><span className="w-24 text-right text-[12px] text-muted">{fmtRelative(e.at)}</span></div>)}
             </div>
           )}
-          <div className="mt-2 text-[12px] text-muted">{isMac ? 'Se um app trava sempre, as preferências corrompidas dele costumam aparecer acima.' : 'Falhas repetidas costumam vir de programas mal desinstalados: veja os itens de inicialização e serviços acima.'}</div>
+          <div className="mt-2 text-[12px] text-muted">{isMac ? 'Se um app trava sempre, as preferências corrompidas desse app costumam aparecer na lista acima.' : 'Falhas repetidas costumam vir de programas que não foram desinstalados por completo. Por isso, confira os itens de inicialização e os serviços na lista acima.'}</div>
         </div>
         {!isMac && (
           <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
             <div className="mb-2 flex items-center gap-2 text-[14px] font-semibold"><Archive size={16} className="text-[var(--accent)]" />Backups do registro</div>
-            {!backups.length ? <div className="text-[13px] text-muted">Os backups aparecem aqui depois da primeira correção.</div> : (
+            {!backups.length ? <div className="text-[13px] text-muted">As cópias de segurança aparecem aqui depois da primeira correção.</div> : (
               <div className="max-h-[220px] space-y-1 overflow-y-auto">
                 {backups.map((b) => <div key={b.id} className="flex items-center gap-3 text-[13px]"><span className="flex-1">{fmtRelative(b.at)}</span><span className="text-muted">{b.files} chave(s)</span><Button size="sm" variant="ghost" onClick={() => restore(b.id)}>Restaurar</Button></div>)}
               </div>

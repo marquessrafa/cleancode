@@ -36,8 +36,8 @@ export default function Discover() {
     <PageBody>
       <PageHeader title="Descoberta" icon={<Radar size={18} />}
         description={isMac
-          ? 'Apps que você não abre há meses, com o espaço que ocupam. O último uso vem do Spotlight (data da última abertura de cada app).'
-          : 'Programas que você não abre há meses, com o espaço que ocupam. O último uso vem do histórico de execução do Windows (UserAssist) e do Prefetch, que exige administrador.'}
+          ? 'Mostra os apps que você não abre há meses e o espaço que eles ocupam. O CleanCode descobre o último uso de cada app pelo Spotlight, que guarda a data da última vez que o app foi aberto.'
+          : 'Mostra os programas que você não abre há meses e o espaço que eles ocupam. O CleanCode descobre o último uso pelo histórico de execução do Windows (UserAssist) e pelo Prefetch. Para ler o Prefetch, o CleanCode precisa rodar como administrador.'}
         actions={<Button icon={<RefreshCw size={14} className={loading ? 'animate-spin' : ''} />} disabled={loading} onClick={reload}>Recarregar</Button>} />
       {un.panel}
       <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3">
@@ -50,7 +50,7 @@ export default function Discover() {
       </div>
       <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
         <Stat label={`Sem uso há ${months}+ meses`} value={apps ? fmtNum(stale.length) : '…'} sub={`${fmtSize(sum(stale), units)} recuperáveis`} icon={<Clock size={16} />} tone="warn" />
-        <Stat label="Sem registro de uso" value={apps ? fmtNum(unknown.length) : '…'} sub={`instalados antes de ${fmtDate(cutoff)} · ${fmtSize(sum(unknown), units)}`} icon={<HelpCircle size={16} />} />
+        <Stat label="Sem registro de uso" value={apps ? fmtNum(unknown.length) : '…'} sub={`Instalados antes de ${fmtDate(cutoff)}, somando ${fmtSize(sum(unknown), units)}`} icon={<HelpCircle size={16} />} />
         <Stat label="Total analisado" value={apps ? fmtNum(apps.length) : '…'} sub="programas Win32 e Store" icon={<HardDrive size={16} />} />
       </div>
 

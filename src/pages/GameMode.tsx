@@ -73,20 +73,20 @@ export default function GameMode() {
   const shaders = async () => {
     setBusy('shaders');
     const r = await cc.gameShaders();
-    toast(`${fmtSize(r.freed)} de cache de shaders limpos`, 'ok');
+    toast(`${fmtSize(r.freed)} de cache de shaders foram limpos`, 'ok');
     setStatus(await cc.gameStatus()); setBusy(null);
   };
 
   if (!started) {
     return (
       <Hero icon={<Gamepad2 size={46} />} title="Modo Jogo"
-        text="Uma sessão de jogo: fecha o que pesa em segundo plano, libera memória e põe o sistema em desempenho máximo. Ao encerrar, tudo volta como estava."
+        text="Durante uma sessão de jogo, o CleanCode fecha o que pesa em segundo plano, libera memória e coloca o sistema em desempenho máximo. Quando você encerra a sessão, tudo volta a ser como era antes."
         bullets={[
-          { icon: <MemoryStick size={15} />, text: 'Fecha apps pesados e libera memória' },
-          { icon: <Power size={15} />, text: isMac ? 'Desliga o Modo Pouca Energia durante a sessão' : 'Plano de energia de alto desempenho e prioridade alta para o jogo' },
-          { icon: <Sparkles size={15} />, text: isMac ? 'Limpa caches de shaders Metal' : 'Ajustes do Windows para jogos e cache de shaders' },
+          { icon: <MemoryStick size={15} />, text: 'Fecha os apps pesados e libera memória.' },
+          { icon: <Power size={15} />, text: isMac ? 'Desliga o Modo Pouca Energia durante a sessão' : 'Liga o plano de energia de alto desempenho e dá prioridade alta para o jogo.' },
+          { icon: <Sparkles size={15} />, text: isMac ? 'Limpa os caches de shaders do Metal, que podem causar travadas.' : 'Ajusta o Windows para jogos e limpa os caches de shaders.' },
         ]}
-        note="O ganho maior vem de tirar programas pesados do caminho. Liberar memória sozinho rende pouco em FPS."
+        note="O maior ganho vem de fechar os programas pesados. Apenas liberar memória melhora pouco a quantidade de quadros por segundo (FPS)."
         action={{ label: 'Preparar', onClick: load }} busy={busy === 'load'} busyText="Lendo…" />
     );
   }
@@ -98,7 +98,7 @@ export default function GameMode() {
         <Orb icon={<Gamepad2 size={30} />} active={active} size={130} />
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-semibold">Modo Jogo {active ? <Badge tone="accent">ativo</Badge> : null}</h1>
-          <p className="mt-1 text-[13px] text-muted">{active ? 'Sistema em desempenho máximo. Encerre quando terminar de jogar para restaurar os ajustes.' : `${close.size} app(s) para fechar · cerca de ${fmtSize(freeing)} de memória livre a mais`}</p>
+          <p className="mt-1 text-[13px] text-muted">{active ? 'O sistema está em desempenho máximo. Quando terminar de jogar, encerre a sessão para que os ajustes voltem ao normal.' : `${close.size} app(s) para fechar · cerca de ${fmtSize(freeing)} de memória livre a mais`}</p>
           {status && <div className="mt-2 flex gap-4 text-[12px] text-muted"><span>Memória livre: {fmtSize(status.memory.free)} de {fmtSize(status.memory.total, 'auto', 0)}</span>{status.powerPlan && <span>Energia: {status.powerPlan}</span>}</div>}
         </div>
         <Button variant="ghost" icon={<RotateCcw size={15} />} onClick={load} disabled={!!busy}>Atualizar</Button>
@@ -125,15 +125,15 @@ export default function GameMode() {
               </label>
             ))}
           </div>
-          <div className="px-4 py-2 text-[11px] text-muted">Os apps recebem um pedido normal para fechar (podem perguntar se você quer salvar).</div>
+          <div className="px-4 py-2 text-[11px] text-muted">O CleanCode pede para os apps fecharem do jeito normal. Por isso, alguns apps podem perguntar se você quer salvar o trabalho.</div>
         </div>
 
         <div className="space-y-4">
           <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
             <div className="mb-2 text-[14px] font-semibold">Na sessão</div>
-            <Toggle checked={power} onChange={setPower} label={isMac ? 'Desligar o Modo Pouca Energia' : 'Plano de energia de alto desempenho'} hint={isMac ? 'Religa ao encerrar a sessão' : 'Volta o plano anterior ao encerrar'} />
+            <Toggle checked={power} onChange={setPower} label={isMac ? 'Desligar o Modo Pouca Energia' : 'Plano de energia de alto desempenho'} hint={isMac ? 'O CleanCode liga de novo quando a sessão termina.' : 'O plano anterior volta quando a sessão termina.'} />
             <div className="h-2" />
-            <Toggle checked={freeMem} onChange={setFreeMem} label="Liberar memória" hint={isMac ? 'Pede sua senha (purge)' : 'Esvazia a memória em espera (pede administrador)'} />
+            <Toggle checked={freeMem} onChange={setFreeMem} label="Liberar memória" hint={isMac ? 'O macOS pede a sua senha para liberar a memória.' : 'Esvazia a memória em espera. O Windows pede permissão de administrador.'} />
             {games.length > 0 && (
               <div className="mt-3">
                 <div className="mb-1 text-[12px] text-muted">Jogo (abre ao ativar{isMac ? '' : ' e ganha prioridade alta'})</div>
@@ -162,7 +162,7 @@ export default function GameMode() {
 
           <div className="flex items-center gap-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
             <Rocket size={20} className="text-[var(--accent)]" />
-            <div className="min-w-0 flex-1"><div className="text-[13px] font-medium">Cache de shaders {status ? `· ${fmtSize(status.shaderCache)}` : ''}</div><div className="text-[12px] text-muted">Limpe se um jogo engasga depois de atualizar o driver de vídeo ou o próprio jogo.</div></div>
+            <div className="min-w-0 flex-1"><div className="text-[13px] font-medium">Cache de shaders {status ? `· ${fmtSize(status.shaderCache)}` : ''}</div><div className="text-[12px] text-muted">Limpe este cache se um jogo começar a travar depois de você atualizar o driver de vídeo ou o próprio jogo.</div></div>
             <Button size="sm" variant="ghost" onClick={shaders} loading={busy === 'shaders'} disabled={!status?.shaderCache}>Limpar</Button>
           </div>
         </div>

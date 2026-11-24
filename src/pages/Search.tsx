@@ -39,7 +39,7 @@ export default function SearchPage() {
 
   return (
     <PageBody>
-      <PageHeader title="Pesquisa avançada" icon={<SearchIcon size={18} />} description="Combine nome (curingas * e ?), tamanho, datas e atributos. Os resultados podem ser exportados, movidos ou enviados para a Lixeira." />
+      <PageHeader title="Pesquisa avançada" icon={<SearchIcon size={18} />} description="Procure arquivos combinando o nome, o tamanho, as datas e os atributos. No nome, o asterisco (*) vale por qualquer sequência de letras, e o ponto de interrogação (?) vale por uma letra. Depois, você pode exportar, mover ou mandar os resultados para a Lixeira." />
       <ScopeBar />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[340px_1fr]">
         <div className="space-y-4">
@@ -57,7 +57,7 @@ export default function SearchPage() {
               </div>
               {what === 'files' && (
                 <div>
-                  <div className="mb-1 text-xs text-muted">Atributos (todos devem estar presentes)</div>
+                  <div className="mb-1 text-xs text-muted">Atributos (o arquivo precisa ter todos os atributos marcados)</div>
                   <div className="grid grid-cols-2 gap-1">
                     {ATTRS.map(([b, l]) => (
                       <label key={b} className="flex cursor-pointer items-center gap-2 text-xs"><Checkbox checked={!!(attrs & b)} onChange={(v) => setAttrs(v ? attrs | b : attrs & ~b)} />{l}</label>
@@ -79,7 +79,7 @@ export default function SearchPage() {
         </div>
         <div>
           {rows ? <FileResults rows={rows} name="resultado da pesquisa" onChanged={() => run()} height={Math.max(420, window.innerHeight - 260)} />
-            : <Card><div className="py-16 text-center text-xs text-muted">Defina os critérios e clique em Pesquisar.</div></Card>}
+            : <Card><div className="py-16 text-center text-xs text-muted">Escolha os critérios e clique em Pesquisar.</div></Card>}
         </div>
       </div>
     </PageBody>

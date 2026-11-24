@@ -101,7 +101,7 @@ export function UpdateModal() {
                   </div>
                 ))}
               </div>
-            )) : <p className="text-[13px] text-muted">Esta versão traz melhorias e correções. As novidades aparecem depois de atualizar.</p>
+            )) : <p className="text-[13px] text-muted">Esta versão traz melhorias e correções. Você vai ver a lista de novidades depois de atualizar.</p>
           )}
 
           {phase === 'download' && (
@@ -113,7 +113,7 @@ export function UpdateModal() {
               <div className="relative h-2.5 overflow-hidden rounded-full bg-[var(--surface-2)]">
                 <div className="upd-stripes relative h-full rounded-full transition-[width] duration-300 ease-out" style={{ width: `${Math.max(3, pct * 100)}%`, background: 'linear-gradient(90deg, color-mix(in srgb, var(--accent) 70%, #fff 0%), var(--accent))', boxShadow: '0 0 14px var(--accent)' }} />
               </div>
-              <p className="mt-3 text-[12.5px] text-muted">Baixando e conferindo a integridade (SHA-512). Você pode continuar usando o app.</p>
+              <p className="mt-3 text-[12.5px] text-muted">O CleanCode está baixando a versão nova e vai conferir se o arquivo chegou inteiro (SHA-512). Enquanto isso, você pode continuar usando o app.</p>
             </div>
           )}
 
@@ -139,8 +139,8 @@ export function UpdateModal() {
               </div>
               <p className="mt-3 text-[12.5px] text-muted">
                 {phase === 'restart' ? `Tudo pronto: o CleanCode ${info.version} está instalado. Reiniciando…`
-                  : isMac ? 'Instalando com o app aberto. Ele só reinicia quando terminar.'
-                  : 'O CleanCode vai fechar e a instalação continua numa janelinha no centro da tela; ele reabre sozinho quando terminar.'}
+                  : isMac ? 'O CleanCode está instalando a versão nova com o app aberto. Ele só reinicia quando a instalação terminar.'
+                  : 'O CleanCode vai fechar, e a instalação continua em uma janela pequena no centro da tela. Quando a instalação terminar, o CleanCode abre de novo sozinho.'}
               </p>
             </div>
           )}
@@ -148,7 +148,7 @@ export function UpdateModal() {
           {phase === 'error' && (
             <div className="py-3">
               <div className="rounded-lg border border-[color-mix(in_srgb,var(--danger)_35%,transparent)] bg-danger-soft px-3.5 py-3 text-[13px] text-fg">{err || update.error || 'Erro desconhecido'}</div>
-              <p className="mt-3 text-[12.5px] text-muted">Nada foi alterado: o CleanCode continua na versão atual.</p>
+              <p className="mt-3 text-[12.5px] text-muted">Nada foi alterado, e o CleanCode continua na versão atual.</p>
             </div>
           )}
         </div>

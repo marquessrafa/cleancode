@@ -38,11 +38,11 @@ export default function Overview() {
     <PageBody>
       <PageHeader
         title="Visão geral"
-        description="Um panorama do armazenamento, do que ocupa espaço e do que dá para limpar."
+        description="Mostra como está o armazenamento, o que ocupa espaço e o que você pode limpar."
         actions={<>
           {info?.canElevate && (info.isAdmin
             ? <Badge tone="accent"><ShieldCheck size={11} /> Administrador</Badge>
-            : <Button variant="outline" icon={<ShieldAlert size={14} />} onClick={() => cc.restartAdmin()} title="Permite ler pastas protegidas e o Prefetch">Reiniciar como admin</Button>)}
+            : <Button variant="outline" icon={<ShieldAlert size={14} />} onClick={() => cc.restartAdmin()} title="Com essa permissão, o CleanCode lê as pastas protegidas e o Prefetch.">Reiniciar como admin</Button>)}
           <Button variant="primary" icon={<FolderOpen size={14} />} onClick={pick}>Analisar pasta…</Button>
         </>}
       />
@@ -52,7 +52,7 @@ export default function Overview() {
       <div className="mb-5">
         <div className="mb-2.5 flex items-baseline justify-between">
           <h2 className="flex items-center gap-2 text-[15px] font-semibold"><HardDrive size={16} className="text-accent" />Escolha um disco para analisar</h2>
-          <span className="text-[12px] text-muted">A análise mostra o que ocupa espaço e libera as telas de Análise de disco</span>
+          <span className="text-[12px] text-muted">A análise mostra o que ocupa espaço. Depois dela, as telas de Análise de disco ficam disponíveis.</span>
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {drives === null && [0, 1].map((i) => <div key={i} className="skeleton h-[148px] rounded-xl" />)}
@@ -107,8 +107,8 @@ export default function Overview() {
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent"><Sparkles size={18} /></div>
             <div>
-              <div className="text-[13px] font-medium text-fg">Analise uma unidade para ver insights</div>
-              <div className="text-xs text-muted">Categorias de arquivos, maiores pastas, arquivos antigos e oportunidades de limpeza aparecem aqui.</div>
+              <div className="text-[13px] font-medium text-fg">Analise um disco para ver as sugestões</div>
+              <div className="text-xs text-muted">Depois da análise, esta área mostra os tipos de arquivo, as maiores pastas, os arquivos antigos e o que você pode limpar.</div>
             </div>
           </div>
           {real[0] && <Button variant="primary" onClick={() => startScan(real[0].root)}>Analisar {isMac ? real[0].label || real[0].root : driveTag(real[0].root)} agora</Button>}
@@ -256,7 +256,7 @@ function ScanInsights() {
             <div className="mb-3 flex h-3 overflow-hidden rounded-full">
               {d.age.buckets.map((b: any, i: number) => <div key={b.key} title={`${b.label}: ${fmtPct(b.size / ageTotal)}`} style={{ width: `${(b.size / ageTotal) * 100}%`, background: AGE_COLORS[i] }} className="transition-[width] duration-700" />)}
             </div>
-            <div className="mb-3 text-xs text-muted"><b className="text-fg">{fmtPct(oldShare, 0)}</b> do espaço está em arquivos sem modificação há mais de 6 meses.</div>
+            <div className="mb-3 text-xs text-muted"><b className="text-fg">{fmtPct(oldShare, 0)}</b> do espaço está em arquivos que ninguém muda há mais de 6 meses.</div>
             <div className="space-y-1">
               {d.age.buckets.map((b: any, i: number) => (
                 <div key={b.key} className="flex items-center gap-2 text-xs">
@@ -301,7 +301,7 @@ function Trend({ history, root, units, onOpen }: { history: any[]; root?: string
       {pts.length < 2 ? (
         <div className="flex h-[170px] flex-col items-center justify-center text-center text-xs text-muted">
           <TrendingUp size={20} className="mb-2 text-faint" />
-          {pts.length === 1 ? 'Só há uma varredura salva desta pasta. Salve outra mais tarde para ver a evolução.' : 'Salve varreduras no histórico para acompanhar o crescimento do uso ao longo do tempo.'}
+          {pts.length === 1 ? 'Existe apenas uma análise salva desta pasta. Para ver a evolução, analise a pasta de novo mais tarde.' : 'Para acompanhar como o uso cresce com o tempo, salve as análises no histórico.'}
         </div>
       ) : (<>
         <div className="mb-1 flex items-baseline gap-2">

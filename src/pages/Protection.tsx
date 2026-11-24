@@ -126,7 +126,7 @@ export default function Protection() {
       {rep.quickScanName && (
         <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface p-4">
           <ScanLine size={18} className="text-accent" />
-          <div className="min-w-0 flex-1"><div className="text-[14px] font-medium text-fg">{rep.quickScanName}</div><div className="text-xs text-muted">{qs.result ? qs.result.message : 'Procura vírus nos locais mais comuns. Leva alguns minutos.'}</div></div>
+          <div className="min-w-0 flex-1"><div className="text-[14px] font-medium text-fg">{rep.quickScanName}</div><div className="text-xs text-muted">{qs.result ? qs.result.message : 'Procura vírus nos locais mais comuns. A verificação leva alguns minutos.'}</div></div>
           <Button variant="primary" icon={qs.running ? <Loader2 size={14} className="animate-spin" /> : <ScanLine size={14} />} disabled={qs.running} onClick={quick}>{qs.running ? 'Verificando…' : 'Verificar agora'}</Button>
         </div>
       )}
@@ -138,7 +138,7 @@ export default function Protection() {
         <Segmented size="sm" value={filter} onChange={setFilter} options={[{ value: 'attention', label: `Para revisar (${issues.risk + issues.warn})` }, { value: 'all', label: `Todos (${rep.persistence.length})` }]} />
       </div>
       <div className="mb-6 overflow-hidden rounded-xl border border-line bg-surface">
-        {!shown.length ? <div className="flex items-center gap-2 px-4 py-6 text-sm text-muted"><CheckCircle2 size={16} className="text-accent" /> Todos os itens estão assinados e em locais esperados.</div> : shown.map((f, i) => (
+        {!shown.length ? <div className="flex items-center gap-2 px-4 py-6 text-sm text-muted"><CheckCircle2 size={16} className="text-accent" /> Todos os itens têm assinatura e estão nos locais esperados.</div> : shown.map((f, i) => (
           <div key={f.id} className={cx('group flex items-start gap-3 px-4 py-3', i > 0 && 'border-t border-line', !f.enabled && 'opacity-60')}>
             <span className={cx('mt-1 h-2.5 w-2.5 shrink-0 rounded-full', f.level === 'risk' ? 'bg-danger' : f.level === 'warn' ? 'bg-warn' : 'bg-accent')} />
             <div className="min-w-0 flex-1">
@@ -172,7 +172,7 @@ export default function Protection() {
           </div>
         ))}
       </div>
-      <p className="mt-3 text-xs text-faint">Extensões são removidas pelo próprio navegador (menu Extensões). Acesso a todos os sites é normal para bloqueadores de anúncio e gerenciadores de senha; desconfie das que você não reconhece.</p>
+      <p className="mt-3 text-xs text-faint">Para remover uma extensão, use o menu Extensões do próprio navegador. É normal que bloqueadores de anúncio e gerenciadores de senha tenham acesso a todos os sites. Mesmo assim, desconfie das extensões que você não reconhece.</p>
     </PageBody>
   );
 }

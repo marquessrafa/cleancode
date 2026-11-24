@@ -44,7 +44,7 @@ export default function Duplicates() {
 
   return (
     <PageBody>
-      <PageHeader title="Arquivos duplicados" icon={<Copy size={18} />} description="Agrupa arquivos de mesmo tamanho e confirma com hash SHA-1 (início do arquivo e, se preciso, o conteúdo completo). Arquivos só na nuvem são ignorados."
+      <PageHeader title="Arquivos duplicados" icon={<Copy size={18} />} description="Primeiro, o CleanCode junta os arquivos que têm o mesmo tamanho. Depois, ele compara o conteúdo desses arquivos com um código chamado hash (SHA-1) para confirmar que são iguais. Os arquivos que estão só na nuvem ficam de fora."
         actions={<>
           <span className="text-xs text-muted">Tamanho mínimo</span>
           <Select className="w-28" value={minSize} onChange={setMin} options={[[4096, '4 KB'], [102400, '100 KB'], [1048576, '1 MB'], [10485760, '10 MB'], [104857600, '100 MB']].map(([v, l]) => ({ value: String(v), label: String(l) }))} />
@@ -60,7 +60,7 @@ export default function Duplicates() {
           <ProgressBar value={prog ? prog.done / (prog.total || 1) : 0} indeterminate={!prog} />
         </Card>
       )}
-      {!groups && !busy && <Card><Empty icon={<Copy size={20} />} title={task?.status === 'cancelled' ? 'Busca cancelada' : task?.status === 'error' ? 'A busca falhou' : 'Procure duplicados na pasta selecionada'} text={active!.done ? 'A busca lê o conteúdo dos arquivos candidatos e pode levar alguns minutos em discos grandes.' : 'Aguarde a varredura terminar.'} /></Card>}
+      {!groups && !busy && <Card><Empty icon={<Copy size={20} />} title={task?.status === 'cancelled' ? 'Busca cancelada' : task?.status === 'error' ? 'A busca falhou' : 'Procure duplicados na pasta selecionada'} text={active!.done ? 'A busca lê o conteúdo dos arquivos parecidos. Por isso, ela pode levar alguns minutos em discos grandes.' : 'Aguarde a varredura terminar.'} /></Card>}
       {groups && (
         <>
           <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">

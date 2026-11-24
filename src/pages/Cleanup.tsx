@@ -107,8 +107,8 @@ export default function Cleanup() {
       message: <>{fmtNum(selection.count)} itens em {chosen.length} categorias.{review.length ? <> Inclui itens para revisar ({review.map((c) => c.name).join(', ')}).</> : null} A Lixeira é sempre esvaziada de vez.</>,
       items: chosen.map((c) => ({ label: c.name, detail: fmtSize(c.special ? results[c.id].size : results[c.id].items.filter((i) => !deselected.has(i.path)).reduce((s, i) => s + i.size, 0), units) })),
       options: [
-        { key: 'trash', label: 'Mover para a Lixeira', hint: 'Dá para recuperar até esvaziar a Lixeira. O espaço só é liberado depois.' },
-        { key: 'delete', label: 'Apagar definitivamente', hint: 'Libera o espaço na hora. Não dá para desfazer.' },
+        { key: 'trash', label: 'Mover para a Lixeira', hint: 'Você consegue recuperar os itens até esvaziar a Lixeira. Por isso, o espaço só fica livre depois que a Lixeira é esvaziada.' },
+        { key: 'delete', label: 'Apagar definitivamente', hint: 'O espaço fica livre na hora, mas não dá para desfazer.' },
       ],
       defaultOption: 'trash', danger: true, confirmLabel: 'Limpar',
       requireCheck: review.length ? 'Revisei os itens marcados para revisão.' : undefined,
@@ -142,8 +142,8 @@ export default function Cleanup() {
                 <div className="mt-6 space-y-3">
                   {[
                     { icon: <Layers size={16} />, t: `${cats.length} categorias analisadas` },
-                    { icon: <ShieldCheck size={16} />, t: 'Itens sensíveis vêm desmarcados' },
-                    { icon: <Trash2 size={16} />, t: 'Vai para a Lixeira por padrão' },
+                    { icon: <ShieldCheck size={16} />, t: 'Os itens sensíveis começam desmarcados.' },
+                    { icon: <Trash2 size={16} />, t: 'Por padrão, tudo vai para a Lixeira.' },
                   ].map((f, i) => (
                     <div key={i} className="flex items-center gap-3 text-[14px] font-medium text-fg anim-page" style={{ animationDelay: `${80 + i * 60}ms` }}>
                       <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-soft text-accent">{f.icon}</span>{f.t}
@@ -158,7 +158,7 @@ export default function Cleanup() {
                 </button>
                 {!isMac && <div className="mt-6 max-w-[340px] text-left">
                   <Toggle checked={aggressive} onChange={toggleAggressive} label="Modo agressivo"
-                    hint="Inclui temporários com mais de 1 hora (em vez de 1 dia). Arquivos em uso são pulados na limpeza." />
+                    hint="Inclui os arquivos temporários com mais de 1 hora, em vez de apenas os que têm mais de 1 dia. Os arquivos que estão em uso ficam de fora da limpeza." />
                 </div>}
               </>
             ) : (
@@ -202,7 +202,7 @@ export default function Cleanup() {
               </>
             ) : summary && (
               <>
-                <div className="mt-2 text-sm text-muted">{fmtNum(summary.removed)} itens removidos{summary.failed.length ? ` · ${summary.failed.length} não puderam ser removidos` : ''}.</div>
+                <div className="mt-2 text-sm text-muted">{fmtNum(summary.removed)} itens removidos{summary.failed.length ? ` · ${summary.failed.length} não puderam ser removidos, porque estavam em uso ou protegidos` : ''}.</div>
                 {summary.failed.length > 0 && (
                   <details className="mt-3 rounded-lg border border-line bg-surface p-3 text-xs">
                     <summary className="cursor-pointer text-muted"><AlertTriangle size={12} className="mr-1 inline text-warn" />Ver itens que ficaram</summary>

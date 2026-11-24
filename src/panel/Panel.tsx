@@ -211,7 +211,7 @@ function InfoCard({ icon, title, value, tone, text, link = 'Saiba mais', onLink,
     <div className="anim-rise flex min-w-0 flex-col overflow-hidden rounded-2xl border border-[var(--p-line)]" style={{ animationDelay: `${delay}ms`, background: tint ? `linear-gradient(160deg, color-mix(in srgb, ${tint} 24%, transparent), var(--p-card) 75%)` : 'var(--p-card)' }}>
       <div className="flex items-center gap-2.5 border-b border-[var(--p-line)] bg-[var(--p-card)] px-3.5 py-3">
         {icon}
-        <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">{title}</span>
+        <span className="min-w-0 flex-1 text-[14px] font-semibold leading-tight">{title}</span>
         {value !== undefined && <span className="shrink-0 text-[14px] font-semibold tabular-nums" style={{ color: tone }}>{value}</span>}
       </div>
       <div className="flex flex-1 flex-col px-3.5 pb-3 pt-2.5">
@@ -457,7 +457,7 @@ function CpuDetail({ hist, open }: { hist: { u: number; s: number }[]; open: Ope
         </div>
       </div>
       <div className="mt-5 grid grid-cols-2 gap-3">
-        <InfoCard delay={200} icon={<Clock size={18} className="text-[var(--p-soft)]" />} title="Funcionamento" value={d ? days(d.uptime) : '…'}
+        <InfoCard delay={200} icon={<Clock size={18} className="text-[var(--p-soft)]" />} title="Ligado há" value={d ? days(d.uptime) : '…'}
           text={!d ? '' : d.uptime < 86400 * 2 ? 'Você iniciou o sistema há pouco tempo.' : d.uptime < 86400 * 7 ? 'Tudo certo. Reinicie de vez em quando para aplicar atualizações.' : 'Ligado há muitos dias. Reiniciar libera memória e aplica atualizações.'} onLink={() => open('performance')} />
         <InfoCard delay={260} icon={<Thermometer size={18} className="text-[var(--p-soft)]" />} title="Temperatura" value={t !== undefined ? `${Math.round(t)}°C` : '—'} tone={t === undefined ? undefined : t >= 90 ? 'var(--p-danger)' : t >= 75 ? 'var(--p-warn)' : undefined} tint={t !== undefined && t >= 90 ? 'var(--p-danger)' : t !== undefined && t >= 75 ? 'var(--p-warn)' : undefined}
           text={t === undefined ? (isMac ? 'Sensor indisponível.' : 'O Windows só informa a temperatura com permissão de administrador ou suporte do fabricante.') : t >= 90 ? `A temperatura do ${isMac ? 'Mac' : 'PC'} está muito acima da recomendada. Feche apps pesados.` : t >= 75 ? 'O processador está aquecido pelo uso intenso.' : 'A temperatura está no intervalo normal.'}
@@ -484,7 +484,7 @@ function SpeedCircle() {
         {running && <svg className="anim-spin-fast absolute inset-[18px]" viewBox="0 0 120 120"><circle cx="60" cy="60" r="57" fill="none" stroke="var(--p-accent)" strokeWidth="3" strokeLinecap="round" strokeDasharray="60 400" style={{ filter: glow('var(--p-accent)') }} /></svg>}
         <span className="absolute inset-[22px] flex flex-col items-center justify-center rounded-full border border-[var(--p-line)] bg-[var(--p-disc-strong)] transition-transform group-hover:scale-[1.03] group-active:scale-[.98]">
           {!started || phase === 'error' ? <span className="px-3 text-[15px] font-semibold leading-tight text-[var(--p-soft)]">{phase === 'error' ? 'Tentar de novo' : <>Testar<br />velocidade</>}</span>
-            : phase === 'done' ? <><span className="text-[30px] font-semibold leading-none tabular-nums">{mbps(p?.download)}</span><span className="mt-1 text-[11px] text-[var(--p-soft)]">Mbps · testar de novo</span></>
+            : phase === 'done' ? <><span className="text-[30px] font-semibold leading-none tabular-nums">{mbps(p?.download)}</span><span className="mt-1 text-[11px] text-[var(--p-soft)]">Mbps. Clique para testar de novo.</span></>
               : <><span className="text-[30px] font-semibold leading-none tabular-nums">{phase === 'ping' || !p ? '…' : mbps(live)}</span><span className="mt-1 text-[11px] text-[var(--p-soft)]">{phase === 'upload' ? 'Mbps envio' : phase === 'download' ? 'Mbps download' : 'medindo latência'}</span></>}
         </span>
       </button>
@@ -494,7 +494,7 @@ function SpeedCircle() {
             {[['Latência', `${p?.ping ?? '—'} ms`], ['Download', `${mbps(p?.download)} Mbps`], ['Upload', `${mbps(p?.upload)} Mbps`]].map(([k, v]) => <div key={k}><div className="text-[12.5px] text-[var(--p-soft)]">{k}</div><div className="text-[16px] font-semibold tabular-nums">{v}</div></div>)}
           </div>
         ) : phase === 'error' ? <div className="text-[12.5px] text-[var(--p-danger)]">Não foi possível testar: {p?.error}</div> : (
-          <><div className="text-[15px] font-semibold">Como funciona</div><div className="mt-1 text-[12.5px] leading-snug text-[var(--p-soft)]">O CleanCode baixa e envia um pequeno arquivo de teste para medir a rede.</div></>
+          <><div className="text-[15px] font-semibold">Como funciona</div><div className="mt-1 text-[12.5px] leading-snug text-[var(--p-soft)]">Para medir a velocidade, o CleanCode baixa e envia um pequeno arquivo de teste.</div></>
         )}
       </div>
     </div>
@@ -508,8 +508,8 @@ function NetworkDetail({ s, hist }: { s: MetricsSnapshot | null; hist: { rx: num
   const lvl = info.securityLevel as string | undefined;
   const secText = !d ? null : !info.security ? (wifi ? 'Conectado.' : 'Conectado por cabo: o tráfego até o roteador não passa pelo ar.')
     : lvl === 'open' ? 'Rede aberta: qualquer pessoa por perto pode ver o que não estiver criptografado. Evite senhas e bancos.'
-      : lvl === 'weak' ? `Criptografia antiga (${info.security}), fácil de quebrar. Se a rede for sua, troque para WPA2 ou WPA3.`
-        : `Rede protegida com ${info.security}: o tráfego até o roteador é criptografado.`;
+      : lvl === 'weak' ? `Esta rede usa uma criptografia antiga (${info.security}), que é fácil de quebrar. Se a rede for sua, troque a segurança do roteador para WPA2 ou WPA3.`
+        : `Esta rede é protegida com ${info.security}, então os dados entre o computador e o roteador são criptografados.`;
   const cards: [string, number | undefined, number | undefined, number[], string][] = [
     ['Download', s?.network?.rxTotal, s?.network?.rxRate, hist.rx, 'var(--p-c4)'],
     ['Upload', s?.network?.txTotal, s?.network?.txRate, hist.tx, 'var(--p-c1)'],
@@ -577,7 +577,7 @@ function GpuDetail({ hist, open }: { hist: number[]; open: Open }) {
       )}
       {live.procs?.length ? (
         <>
-          <SubTitle delay={340}>Mais usam a GPU</SubTitle>
+          <SubTitle delay={340}>Apps que mais usam a placa de vídeo</SubTitle>
           {live.procs.map((p: any, i: number) => <div key={p.pid} className="anim-rise flex items-center gap-3 px-1 py-1.5 text-[14px]" style={{ animationDelay: `${380 + i * 50}ms` }}><span className="min-w-0 flex-1 truncate">{p.name}</span><span className="tabular-nums text-[var(--p-soft)]">{pct1(p.util)} %</span></div>)}
         </>
       ) : null}
@@ -643,7 +643,7 @@ function DevicesDetail() {
         </div>
       )}
       <SubTitle delay={160}>Discos externos</SubTitle>
-      {!d ? null : !d.external.length ? <p className="anim-rise px-4 py-5 text-center text-[13px] leading-snug text-[var(--p-soft)]" style={{ animationDelay: '200ms' }}>Quando conectados, dispositivos de armazenamento externo aparecem aqui.</p> : (
+      {!d ? null : !d.external.length ? <p className="anim-rise px-4 py-5 text-center text-[13px] leading-snug text-[var(--p-soft)]" style={{ animationDelay: '200ms' }}>Quando você conectar um disco externo ou um pendrive, ele vai aparecer aqui.</p> : (
         <>
           <div className="grid grid-cols-2 gap-3">
             {d.external.map((x: any, i: number) => (
@@ -797,7 +797,7 @@ export default function Panel() {
               {settings?.notifyEnabled ? <ShieldCheck size={22} className="text-[var(--p-accent)]" /> : <BellOff size={22} className="text-[var(--p-muted)]" />}
               <div className="min-w-0 flex-1">
                 <div className="text-[14px] font-semibold">Monitoramento {settings?.notifyEnabled ? 'ativo' : 'pausado'}</div>
-                <div className="truncate text-xs text-[var(--p-muted)]">{settings?.notifyEnabled ? `Avisa quando um disco crescer mais de ${fmtSize((settings?.notifyThresholdMB || 1024) * 1048576, 'auto', 0)}${settings?.notifyApps ? ' ou um app for instalado' : ''}` : 'Ative as notificações nas Configurações'}</div>
+                <div className="text-xs leading-snug text-[var(--p-muted)]">{settings?.notifyEnabled ? `O CleanCode avisa quando um disco cresce mais de ${fmtSize((settings?.notifyThresholdMB || 1024) * 1048576, 'auto', 0)}${settings?.notifyApps ? ' ou quando você instala um app' : ''}.` : 'Para receber avisos, ative as notificações nas Configurações.'}</div>
               </div>
               <ChevronRight size={15} className="text-[var(--p-muted)] opacity-60" />
             </div>

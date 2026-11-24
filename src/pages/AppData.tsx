@@ -53,7 +53,7 @@ export default function AppDataPage() {
   };
   const cleanAllSafe = async () => {
     const paths = (items || []).flatMap((i) => i.safePaths.map((s) => s.path));
-    const r = await confirm({ title: 'Limpar caches, logs e atualizações antigas?', message: `${fmtSize(totals.safe, units)} em ${fmtNum(paths.length)} pastas. Os programas recriam o que precisarem. Configurações, logins e saves não são tocados. Feche os programas abertos para limpar mais.`, confirmLabel: 'Limpar' });
+    const r = await confirm({ title: 'Limpar caches, logs e atualizações antigas?', message: `${fmtSize(totals.safe, units)} em ${fmtNum(paths.length)} pastas. Os programas criam esses arquivos de novo quando precisarem. O CleanCode não mexe nas configurações, nos logins nem nos jogos salvos. Para limpar mais, feche os programas que estão abertos.`, confirmLabel: 'Limpar' });
     if (r.ok) doClean(paths, [], 'Limpeza segura');
   };
   const cleanOne = async (i: AppDataItem) => {
@@ -61,7 +61,7 @@ export default function AppDataPage() {
     if (r.ok) doClean(i.safePaths.map((s) => s.path), [], i.name);
   };
   const trashSelected = async () => {
-    const r = await confirm({ title: 'Mover as sobras para a Lixeira?', message: `${fmtNum(trashSel.size)} pasta(s), ${fmtSize(trashSize, units)}. Nenhum programa instalado usa essas pastas, mas confira: podem guardar saves de jogos ou dados de programas portáteis. Dá para restaurar pela Lixeira.`, confirmLabel: 'Mover para a Lixeira', danger: true });
+    const r = await confirm({ title: 'Mover as sobras para a Lixeira?', message: `${fmtNum(trashSel.size)} pasta(s), ${fmtSize(trashSize, units)}. Nenhum programa instalado usa essas pastas. Mesmo assim, confira a lista, porque essas pastas podem guardar jogos salvos ou dados de programas portáteis. Se precisar, você restaura tudo pela Lixeira.`, confirmLabel: 'Mover para a Lixeira', danger: true });
     if (r.ok) doClean([], [...trashSel], 'Sobras');
   };
 
@@ -69,13 +69,13 @@ export default function AppDataPage() {
     return (
       <Hero icon={<FolderCog size={46} />} title={isMac ? 'Dados de apps' : 'AppData'}
         text={isMac
-          ? 'Os apps guardam caches, logs e dados em ~/Library. Veja quanto cada um ocupa e limpe só o que é seguro.'
-          : 'Os programas acumulam gigabytes em AppData\\Local, Roaming e LocalLow: caches, logs, atualizações antigas e sobras de programas já desinstalados. Veja o que é cada pasta e limpe só o que é seguro.'}
+          ? 'Os apps guardam caches, registros de atividade (logs) e dados na pasta ~/Library. Nesta tela, você vê quanto cada app ocupa e limpa apenas o que é seguro.'
+          : 'Os programas acumulam gigabytes nas pastas AppData\\Local, Roaming e LocalLow. Lá ficam caches, registros de atividade (logs), atualizações antigas e sobras de programas que já foram desinstalados. Nesta tela, você vê o que é cada pasta e limpa apenas o que é seguro.'}
         bullets={[
-          { icon: <Sparkles size={15} />, text: 'Caches, logs e relatórios de travamento de cada programa' },
-          { icon: <Archive size={15} />, text: 'Versões antigas deixadas por atualizações (Discord, Slack, Teams…)' },
-          { icon: <PackageX size={15} />, text: 'Sobras de programas desinstalados, com envio para a Lixeira' },
-          { icon: <ShieldCheck size={15} />, text: 'Configurações, logins e saves nunca são apagados na limpeza segura' },
+          { icon: <Sparkles size={15} />, text: 'Mostra os caches, os logs e os relatórios de travamento de cada programa.' },
+          { icon: <Archive size={15} />, text: 'Encontra as versões antigas que as atualizações deixam para trás, como as do Discord, do Slack e do Teams.' },
+          { icon: <PackageX size={15} />, text: 'Encontra as sobras de programas desinstalados e manda essas sobras para a Lixeira.' },
+          { icon: <ShieldCheck size={15} />, text: 'A limpeza segura nunca apaga configurações, logins ou jogos salvos.' },
         ]}
         action={{ label: 'Analisar', onClick: scan }} busy={busy === 'scan'}
         busyText={prog.name ? <>Medindo <b className="font-medium text-fg">{prog.label}</b> › {prog.name} · {fmtNum(prog.count || 0)} pastas</> : 'Medindo…'} />
