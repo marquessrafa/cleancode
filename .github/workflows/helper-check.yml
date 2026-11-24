@@ -19,6 +19,16 @@ jobs:
       - name: Arquivos gerados
         shell: bash
         run: ls -la out
+      - name: Autoteste do JSON (nome de pente com bytes nulos)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath .\out\cc-lhm.exe -ArgumentList '--selftest' -RedirectStandardOutput self.json -PassThru -NoNewWindow -Wait
+          $raw = Get-Content self.json -Raw
+          $raw
+          $j = $raw | ConvertFrom-Json
+          if ($j.clean -ne 'Corsair - CMT32GX5M2X6200C36 (#3)') { throw "nome limpo errado: [$($j.clean)]" }
+          if ($j.quote -ne "a`"b\c`td") { throw 'aspas, barra ou tabulação escapadas errado' }
+          'OK: o JSON é válido e o nome saiu limpo.'
       - name: Testar uma leitura (com tempo limite)
         shell: pwsh
         run: |

@@ -44,6 +44,24 @@ export function helperPath(): string | null {
 }
 
 // ---------- leitura ----------
+/**
+ * Lê o JSON do helper. Se ele vier com caracteres de controle crus (um helper antigo deixava passar os bytes nulos do
+ * nome de um pente de memória), troca esses caracteres por espaço e tenta de novo. O erro fica guardado em parseError,
+ * para o relatório mostrar o motivo em vez de a leitura sumir em silêncio.
+ */
+export let parseError = '';
+function parseSnapshot(text: string, from: string): LhmSnapshot | null {
+  try { const s = JSON.parse(text); parseError = ''; return s; } catch (e: any) {
+    try {
+      const s = JSON.parse(text.replace(/[\u0000-\u001f]/g, ' '));
+      parseError = t("A leitura de {0} veio com caracteres inválidos, e o CleanCode limpou esses caracteres para ler os dados.", from);
+      return s;
+    } catch {
+      parseError = t("A leitura de {0} não pôde ser lida: {1}", from, String(e?.message || e).slice(0, 160));
+      return null;
+    }
+  }
+}
 let child: ChildProcess | null = null;
 let childStarted = 0;
 let last: LhmSnapshot | null = null;
@@ -55,7 +73,7 @@ function startChild() {
   child.stdout!.setEncoding('utf8');
   child.stdout!.on('data', (d: string) => {
     buf += d; let i: number;
-    while ((i = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1); if (line.startsWith('{')) { try { last = JSON.parse(line); } catch { /* linha parcial */ } } }
+    while ((i = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1); if (line.startsWith('{')) { const s = parseSnapshot(line, t("o programa comum dos sensores")); if (s) last = s; } }
   });
   child.on('exit', () => { child = null; });
   app.once('before-quit', () => child?.kill());
@@ -66,7 +84,7 @@ async function readTaskFile(): Promise<LhmSnapshot | null> {
     const st = fs.statSync(DATA);
     if (Date.now() - st.mtimeMs > 6000 && Date.now() - taskKick > 15000) { taskKick = Date.now(); run('schtasks.exe', ['/Run', '/TN', TASK], 15000); }
     if (Date.now() - st.mtimeMs > 60000) return null;
-    return JSON.parse(fs.readFileSync(DATA, 'utf8').replace(/^\uFEFF/, ''));
+    return parseSnapshot(fs.readFileSync(DATA, 'utf8').replace(/^\uFEFF/, ''), t("a tarefa de administrador"));
   } catch { return null; }
 }
 let taskInstalled: boolean | null = null;
@@ -196,7 +214,7 @@ export async function validate(): Promise<HwCheck[]> {
   const flat = flatten(s);
   const g = s?.groups || {};
   if (!s?.hardware?.length) {
-    const why = t("O programa dos sensores não entregou nenhuma leitura.");
+    const why = parseError || t("O programa dos sensores não entregou nenhuma leitura.");
     return (['cpu', 'gpu', 'ram', 'board', 'disk', 'power'] as const).map((id) => ({ id, status: 'fail' as const, detail: why, found: [], missing: [{ what: t("Todos os dados"), why }] }));
   }
   const hw = s.hardware;
@@ -307,9 +325,10 @@ export async function report(checks?: HwCheck[]): Promise<string> {
   const s = await snapshot().catch(() => null);
   const list = checks?.length ? checks : await validate();
   const names = (re: RegExp) => (s?.hardware || []).filter((h) => re.test(h.type)).map((h) => h.name).join(', ') || '-';
-  // o registro mais recente entre o da tarefa de administrador e o do helper comum
-  const logs = [logPath(true), logPath(false)].filter((f) => fs.existsSync(f)).sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
-  const log = logs[0] ? fs.readFileSync(logs[0], 'utf8').split(/\r?\n/).filter(Boolean).slice(-80).join('\n') : t("Sem registro.");
+  // os dois registros: o da tarefa de administrador e o do programa comum (o problema pode estar em qualquer um)
+  const tail = (f: string, n: number) => { try { return fs.readFileSync(f, 'utf8').split(/\r?\n/).filter(Boolean).slice(-n).join('\n'); } catch { return t("Sem registro."); } };
+  let fileAge = '-';
+  try { fileAge = t("{0} segundos", Math.round((Date.now() - fs.statSync(DATA).mtimeMs) / 1000)); } catch { /* sem arquivo */ }
   const icon = { ok: '✅', warn: '⚠️', fail: '❌' } as const;
   const body = [
     '### ' + t("O que aconteceu"),
@@ -323,6 +342,8 @@ export async function report(checks?: HwCheck[]): Promise<string> {
     `- ${t("Placa-mãe")}: ${names(/^Motherboard$/)}`,
     `- ${t("Administrador")}: ${s ? (s.admin ? t("sim") : t("não")) : '-'}; PawnIO: ${s?.pawnio === undefined ? '-' : s.pawnio ? t("instalado") : t("não instalado")}; ${t("tarefa ativa")}: ${(await advancedActive()) ? t("sim") : t("não")}`,
     `- ${t("Etapas do helper")}: ${s?.groups ? Object.entries(s.groups).map(([k, v]) => `${k}=${v}`).join(', ') : '-'}`,
+    `- ${t("Idade do arquivo da tarefa (sensors.json)")}: ${fileAge}`,
+    `- ${t("Erro de leitura")}: ${parseError || t("nenhum")}`,
     '',
     '### ' + t("Validação das peças"),
     ...list.flatMap((c) => [
@@ -331,9 +352,14 @@ export async function report(checks?: HwCheck[]): Promise<string> {
       ...c.missing.map((m) => `  - ${t("não mapeado")}: ${m.what}. ${m.why}`),
     ]),
     '',
-    '### ' + t("Registro do helper (lhm.log)"),
+    '### ' + t("Registro da tarefa de administrador"),
     '```log',
-    log,
+    tail(logPath(true), 40),
+    '```',
+    '',
+    '### ' + t("Registro do programa comum dos sensores"),
+    '```log',
+    tail(logPath(false), 40),
     '```',
   ].join('\n');
   return anonymize(body);

@@ -30,7 +30,39 @@ using LibreHardwareMonitor.Hardware;
 
 static class Program
 {
-    static string Esc(string s) => (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", " ").Replace("\r", " ");
+    /// <summary>
+    /// Escapa um texto para o JSON. Todo caractere de controle (abaixo de 0x20) vira \u00XX: um byte nulo cru no nome
+    /// de um pente de memória deixava o JSON inválido, e o app descartava a leitura inteira (1.4.12 a 1.4.17).
+    /// </summary>
+    static string Esc(string s)
+    {
+        var sb = new StringBuilder((s ?? "").Length + 8);
+        foreach (var ch in s ?? "")
+        {
+            if (ch == '"') sb.Append("\\\"");
+            else if (ch == '\\') sb.Append("\\\\");
+            else if (ch < 0x20) sb.Append("\\u").Append(((int)ch).ToString("x4"));
+            else sb.Append(ch);
+        }
+        return sb.ToString();
+    }
+    /// <summary>
+    /// Limpa o nome de uma peça ou de um sensor. Alguns nomes vêm do chip de identificação do pente de memória (SPD)
+    /// com bytes nulos e lixo depois do nome, por exemplo "Corsair - CMT32GX5M2X6200C36\0\0\u001aA". O nome é cortado
+    /// no primeiro byte nulo, e os outros caracteres de controle saem. Um sufixo como " (#3)" depois do lixo é mantido.
+    /// </summary>
+    static string Clean(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return s ?? "";
+        var suffix = "";
+        var m = System.Text.RegularExpressions.Regex.Match(s, @"\s\(#\d+\)$");
+        if (m.Success && s.IndexOf('\0') >= 0 && s.IndexOf('\0') < m.Index) { suffix = m.Value; s = s.Substring(0, m.Index); }
+        int z = s.IndexOf('\0');
+        if (z >= 0) s = s.Substring(0, z);
+        var sb = new StringBuilder(s.Length);
+        foreach (var ch in s) if (ch >= 0x20 && ch != 0x7f) sb.Append(ch);
+        return (sb.ToString().Trim() + suffix).Trim();
+    }
     static string Num(float? v) => v.HasValue && !float.IsNaN(v.Value) && !float.IsInfinity(v.Value) ? v.Value.ToString("0.###", CultureInfo.InvariantCulture) : "null";
 
     // estado de cada etapa: "pending", "ok", "timeout", "skipped" (travou ou caiu antes) ou "error: mensagem"
@@ -63,13 +95,13 @@ static class Program
 
     static void Hw(StringBuilder sb, IHardware h)
     {
-        sb.Append("{\"name\":\"").Append(Esc(h.Name)).Append("\",\"type\":\"").Append(h.HardwareType).Append("\",\"id\":\"").Append(Esc(h.Identifier.ToString()))
+        sb.Append("{\"name\":\"").Append(Esc(Clean(h.Name))).Append("\",\"type\":\"").Append(h.HardwareType).Append("\",\"id\":\"").Append(Esc(h.Identifier.ToString()))
           .Append("\",\"stuck\":").Append(Stuck.ContainsKey(h.Identifier.ToString()) ? "true" : "false").Append(",\"sensors\":[");
         bool first = true;
         foreach (var s in h.Sensors)
         {
             if (!first) sb.Append(','); first = false;
-            sb.Append("{\"name\":\"").Append(Esc(s.Name)).Append("\",\"type\":\"").Append(s.SensorType).Append("\",\"value\":").Append(Num(s.Value))
+            sb.Append("{\"name\":\"").Append(Esc(Clean(s.Name))).Append("\",\"type\":\"").Append(s.SensorType).Append("\",\"value\":").Append(Num(s.Value))
               .Append(",\"min\":").Append(Num(s.Min)).Append(",\"max\":").Append(Num(s.Max)).Append('}');
         }
         sb.Append("],\"sub\":[");
@@ -253,6 +285,14 @@ static class Program
     [HandleProcessCorruptedStateExceptions, SecurityCritical]
     static int Main(string[] args)
     {
+        // autoteste do JSON: o nome de pente de memória que chegou com bytes nulos num PC real (1.4.17)
+        if (args.Contains("--selftest"))
+        {
+            var raw = "Corsair - CMT32GX5M2X6200C36\0\0\0\0\0\u001aA\u001aA\0} (#3)";
+            var w = new StreamWriter(Console.OpenStandardOutput(), new UTF8Encoding(false)) { AutoFlush = true };
+            w.WriteLine("{\"clean\":\"" + Esc(Clean(raw)) + "\",\"raw\":\"" + Esc(raw) + "\",\"quote\":\"" + Esc("a\"b\\c\td") + "\"}");
+            Environment.Exit(0);
+        }
         bool once = args.Contains("--once");
         int oi = Array.IndexOf(args, "--out");
         string outFile = oi >= 0 && oi + 1 < args.Length ? args[oi + 1] : null;
