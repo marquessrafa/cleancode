@@ -5,6 +5,15 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.18', date: '2026-11-24', headline: 'Sensores do Windows com leitura completa',
+    groups: [
+      { title: 'Monitor de hardware', icon: 'chip', items: [
+        'No Windows, o Monitor de hardware voltou a mostrar todos os sensores. O nome de alguns pentes de memória vinha com caracteres inválidos, e isso fazia o app descartar a leitura inteira.',
+        'O relatório para o GitHub agora inclui os dois registros do programa dos sensores e o erro de leitura, quando ele acontece.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.17', date: '2026-11-24', headline: 'Processador e memória de volta nos sensores do Windows',
     groups: [
       { title: 'Monitor de hardware', icon: 'chip', items: [
