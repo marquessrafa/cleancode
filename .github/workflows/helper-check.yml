@@ -1,4 +1,6 @@
 # Compila o helper de sensores do Windows (cc-lhm) a cada mudança nele, sem publicar nada.
+# O runner do GitHub roda como administrador e sem o driver PawnIO, que é o caso da issue #1.
+# Por isso, o teste também confere que as leituras saem mesmo nesse caso, com um tempo limite.
 name: Helper de sensores (verificação)
 on:
   push:
@@ -17,6 +19,19 @@ jobs:
       - name: Arquivos gerados
         shell: bash
         run: ls -la out
-      - name: Testar uma leitura
-        shell: bash
-        run: ./out/cc-lhm.exe --once | head -c 600
+      - name: Testar uma leitura (com tempo limite)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath .\out\cc-lhm.exe -ArgumentList '--once' -RedirectStandardOutput out.json -PassThru -NoNewWindow
+          if (-not $p.WaitForExit(90000)) { $p.Kill(); throw 'cc-lhm passou de 90 segundos sem terminar' }
+          $raw = Get-Content out.json -Raw
+          if (-not $raw) { throw 'cc-lhm não escreveu nenhuma leitura' }
+          $j = $raw | ConvertFrom-Json
+          "admin: $($j.admin)   pawnio: $($j.pawnio)"
+          "etapas: $($j.groups | ConvertTo-Json -Compress)"
+          foreach ($h in $j.hardware) {
+            $ok = @($h.sensors | Where-Object { $_.value -ne $null }).Count
+            "- $($h.type): $($h.name)  sensores com valor: $ok  travado: $($h.stuck)"
+            $h.sensors | Where-Object { $_.value -ne $null } | Select-Object -First 4 | ForEach-Object { "    $($_.type) $($_.name) = $($_.value)" }
+          }
+          if (-not $j.hardware) { throw 'nenhuma peça na leitura' }
