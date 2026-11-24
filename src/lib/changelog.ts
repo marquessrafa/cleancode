@@ -5,6 +5,17 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.19', date: '2026-11-24', headline: 'Controle das ventoinhas no Windows',
+    groups: [
+      { title: 'Ventoinhas', icon: 'chip', items: [
+        'No Windows, a tela nova Ventoinhas, no grupo Hardware, deixa você escolher a velocidade de cada ventoinha da placa-mãe e da placa de vídeo. Você pode usar uma velocidade fixa ou uma curva que acompanha a temperatura.',
+        'Se o processador ou a placa de vídeo chegar a 90 °C, o CleanCode coloca as ventoinhas controladas em 100%. Quando você fecha o CleanCode, cada ventoinha volta ao modo automático da placa.',
+        'O botão Testar muda a velocidade de uma ventoinha por alguns segundos e mostra se ela obedeceu ao comando.',
+        'O controle usa o monitoramento avançado. Depois de atualizar, ative o monitoramento avançado de novo, porque o programa dos sensores mudou.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.18', date: '2026-11-24', headline: 'Sensores do Windows com leitura completa',
     groups: [
       { title: 'Monitor de hardware', icon: 'chip', items: [
