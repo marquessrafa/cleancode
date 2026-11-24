@@ -4,7 +4,18 @@
 
 /** Atributos no formato do Windows; o macOS traduz o que tem equivalente. */
 /** Resultado da validação de uma peça depois da ativação: ok, aviso (a peça não informa esse dado neste PC) ou falha. */
-export interface HwCheck { id: 'cpu' | 'gpu' | 'ram' | 'board' | 'disk' | 'power'; status: 'ok' | 'warn' | 'fail'; detail: string }
+export interface HwCheck {
+  id: 'cpu' | 'gpu' | 'ram' | 'board' | 'disk' | 'power';
+  /** nome da peça (por exemplo, o modelo da placa de vídeo ou do disco), quando ajuda a identificar */
+  name?: string;
+  status: 'ok' | 'warn' | 'fail';
+  /** resumo em uma frase */
+  detail: string;
+  /** dados que foram mapeados, com o valor lido */
+  found: { what: string; value?: string }[];
+  /** dados que não foram mapeados e o motivo */
+  missing: { what: string; why: string }[];
+}
 export const ATTR = {
   READONLY: 0x1, HIDDEN: 0x2, SYSTEM: 0x4, DIRECTORY: 0x10, ARCHIVE: 0x20, DEVICE: 0x40,
   NORMAL: 0x80, TEMPORARY: 0x100, SPARSE: 0x200, REPARSE: 0x400, COMPRESSED: 0x800,

@@ -367,3 +367,7 @@ aside.side-panel { transition: width .32s cubic-bezier(.2,.8,.2,1), box-shadow .
 .upd-indeterminate { animation: upd-indeterminate 1.25s cubic-bezier(.45, 0, .55, 1) infinite; box-shadow: 0 0 12px var(--accent); }
 @keyframes upd-pop { 0% { transform: scale(.4); } 70% { transform: scale(1.15); } 100% { transform: scale(1); } }
 .upd-pop { animation: upd-pop .35s cubic-bezier(.2, .8, .2, 1); }
+/* validação das peças: cada linha entra em fade suave, da direita para a esquerda */
+@keyframes chk-in { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+.chk-in { animation: chk-in .55s cubic-bezier(.22, 1, .36, 1) both; }
+@media (prefers-reduced-motion: reduce) { .chk-in { animation: none; } }

@@ -241,7 +241,7 @@ export default function Hardware() {
           <p className="truncate text-[13px] text-muted">{info ? [info.board.system || info.board.model, cpuShort, tr("{0} de RAM", fmtSize(info.memory.total, 'auto', 0)), info.gpus[0]?.name].filter(Boolean).join(' · ') : tr("Lendo o hardware…")}</p>
         </div>
         {needsAdvanced(live)
-          ? <button onClick={() => window.dispatchEvent(new Event(OPEN_ADVANCED))} className="flex items-center gap-1.5 rounded-full bg-[var(--accent)] px-3 py-1 text-[12px] font-semibold text-[var(--on-accent)] hover:brightness-110"><ShieldCheck size={13} />{tr("Ativar sensores avançados")}</button>
+          ? <button onClick={() => window.dispatchEvent(new Event(OPEN_ADVANCED))} className="flex items-center gap-1.5 rounded-full bg-[var(--accent)] px-3 py-1 text-[12px] font-semibold text-[var(--on-accent)] hover:brightness-110"><ShieldCheck size={13} />{tr("Mapear os sensores")}</button>
           : L?.advanced?.active && <span className="flex items-center gap-1.5 rounded-full bg-[var(--accent-soft)] px-3 py-1 text-[12px] font-semibold text-[var(--accent)]"><Activity size={13} />{L.advanced.source}</span>}
         <AdvancedSetupModal live={live} />
       </div>

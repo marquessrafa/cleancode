@@ -166,37 +166,114 @@ export async function activate(onStep: (step: number, info?: { driverPresent?: b
 }
 // ---------- validação das peças e relatório ----------
 /**
- * Confere, na leitura atual, se cada peça entregou os dados que geram as métricas. "warn" quer dizer que a peça
- * não informa esse dado neste PC (por exemplo, uma placa-mãe sem chip de sensores reconhecido); "fail" quer dizer
- * que a leitura da peça travou, caiu ou deu erro.
+ * Confere, na leitura atual, cada dado que gera as métricas de cada peça. Para cada peça, devolve o que foi mapeado
+ * (com o valor lido) e o que não foi mapeado, com o motivo. O motivo vem do estado de cada etapa do helper, do driver
+ * PawnIO, da permissão de administrador ou do próprio tipo de peça (por exemplo, uma placa de vídeo integrada).
+ * - "ok": tudo foi mapeado;
+ * - "warn": a peça funciona, mas não informa alguns dados neste PC;
+ * - "fail": a leitura da peça travou, caiu ou deu erro.
  */
 export async function validate(): Promise<HwCheck[]> {
   const s = await snapshot().catch(() => null);
   const flat = flatten(s);
   const g = s?.groups || {};
   if (!s?.hardware?.length) {
-    const d = t("O programa dos sensores não entregou nenhuma leitura.");
-    return (['cpu', 'gpu', 'ram', 'board', 'disk', 'power'] as const).map((id) => ({ id, status: 'fail' as const, detail: d }));
+    const why = t("O programa dos sensores não entregou nenhuma leitura.");
+    return (['cpu', 'gpu', 'ram', 'board', 'disk', 'power'] as const).map((id) => ({ id, status: 'fail' as const, detail: why, found: [], missing: [{ what: t("Todos os dados"), why }] }));
   }
-  const of = (kind: string, group?: string) => flat.filter((x) => x.kind === kind && (!group || x.group === group));
-  const bad = (grp: string) => { const st = g[grp] || ''; return st === 'timeout' || st === 'skipped' || st.startsWith('error') ? st : ''; };
-  const why = (st: string) => st === 'timeout' ? t("A abertura passou de 20 segundos.") : st === 'skipped' ? t("A leitura caiu numa execução anterior, então essa peça fica de fora por um dia.") : t("Erro: {0}", st.replace(/^error:\s*/, ''));
-  const n = (k: number) => t("{0} sensores com leitura.", k);
+  const hw = s.hardware;
+  // motivo de uma etapa do helper que travou, caiu ou deu erro
+  const stageWhy = (grp: string) => {
+    const st = g[grp] || '';
+    if (st === 'timeout') return t("A abertura dessa peça passou de 20 segundos, então o programa dos sensores seguiu sem ela.");
+    if (st === 'skipped') return t("A leitura dessa peça caiu numa execução anterior, então ela fica de fora por um dia.");
+    if (st.startsWith('error')) return t("A abertura dessa peça deu erro: {0}", st.replace(/^error:\s*/, ''));
+    return '';
+  };
+  // dados que só o driver libera (temperatura, consumo e tensão do processador, sensores da placa-mãe e da memória)
+  const driverWhy = s.pawnio === false ? t("O Windows só libera esse dado com o driver PawnIO, e ele não está instalado.")
+    : !s.admin ? t("O programa dos sensores não está rodando como administrador, e o Windows só libera esse dado assim.") : '';
+  const fmt = (x: FlatSensor) => {
+    const v = x.group === 'volt' ? x.value.toFixed(2) : x.group === 'power' ? (Math.round(x.value * 10) / 10).toLocaleString() : Math.round(x.value).toLocaleString();
+    return `${v} ${x.unit}`.trim();
+  };
+  const pick = (list: FlatSensor[], prefer: RegExp[] = []) => { for (const re of prefer) { const x = list.find((y) => re.test(y.name)); if (x) return x; } return list[0]; };
+  type Spec = { what: string; list: FlatSensor[]; prefer?: RegExp[]; driver?: boolean; why: string };
+  const build = (id: HwCheck['id'], specs: Spec[], stage: string, name?: string): HwCheck => {
+    const found: HwCheck['found'] = [], missing: HwCheck['missing'] = [];
+    for (const sp of specs) {
+      const x = pick(sp.list, sp.prefer);
+      if (x) found.push({ what: sp.what, value: fmt(x) });
+      else missing.push({ what: sp.what, why: stage || (sp.driver && driverWhy) || sp.why });
+    }
+    const status: HwCheck['status'] = stage && !found.length ? 'fail' : missing.length ? (stage ? 'fail' : 'warn') : 'ok';
+    const detail = !missing.length ? t("Tudo mapeado.") : !found.length ? t("Nenhum dado mapeado.") : t("{0} de {1} dados mapeados.", found.length, specs.length);
+    return { id, name, status, detail, found, missing };
+  };
+  const of = (kind: string, group: string, hwId?: string) => flat.filter((x) => x.kind === kind && x.group === group && (!hwId || x.hwId === hwId));
   const out: HwCheck[] = [];
-  const cpuT = of('cpu', 'temp'), cpuAll = of('cpu');
-  out.push(cpuT.length ? { id: 'cpu', status: 'ok', detail: t("{0} sensores com leitura, incluindo a temperatura.", cpuAll.length) }
-    : bad('cpu') ? { id: 'cpu', status: 'fail', detail: why(bad('cpu')) }
-    : { id: 'cpu', status: 'warn', detail: s.pawnio === false ? t("Sem o driver PawnIO, o processador não informa a temperatura.") : t("O processador não informou a temperatura.") });
-  const gpu = of('gpu');
-  out.push(gpu.length ? { id: 'gpu', status: 'ok', detail: n(gpu.length) } : bad('base') ? { id: 'gpu', status: 'fail', detail: why(bad('base')) } : { id: 'gpu', status: 'warn', detail: t("A placa de vídeo não informou nenhum sensor.") });
-  const ram = of('ram');
-  out.push(ram.length ? { id: 'ram', status: 'ok', detail: n(ram.length) } : bad('memory') ? { id: 'ram', status: 'fail', detail: why(bad('memory')) } : { id: 'ram', status: 'warn', detail: t("A memória não informou nenhum sensor.") });
-  const board = of('board').filter((x) => x.group === 'temp' || x.group === 'fan' || x.group === 'volt');
-  out.push(board.length ? { id: 'board', status: 'ok', detail: n(board.length) } : bad('motherboard') ? { id: 'board', status: 'fail', detail: why(bad('motherboard')) } : { id: 'board', status: 'warn', detail: t("A placa-mãe não tem um chip de sensores que o LibreHardwareMonitor reconheça.") });
-  const disk = of('disk', 'temp');
-  out.push(disk.length ? { id: 'disk', status: 'ok', detail: t("{0} discos com temperatura.", new Set(disk.map((x) => x.hwId)).size) } : { id: 'disk', status: 'warn', detail: t("Nenhum disco informou a temperatura.") });
-  const power = [...of('cpu', 'power'), ...of('battery'), ...of('psu')];
-  out.push(power.length ? { id: 'power', status: 'ok', detail: n(power.length) } : bad('cpu') ? { id: 'power', status: 'fail', detail: why(bad('cpu')) } : { id: 'power', status: 'warn', detail: t("Nenhuma peça informou o consumo de energia.") });
+
+  // processador
+  const cpuHw = hw.find((h) => h.type === 'Cpu');
+  out.push(build('cpu', [
+    { what: t("Temperatura"), list: of('cpu', 'temp'), prefer: [/package/i, /tctl|tdie/i, /core max/i, /core average/i], driver: true, why: t("O processador não informou a temperatura ao LibreHardwareMonitor.") },
+    { what: t("Consumo"), list: of('cpu', 'power'), prefer: [/package/i], driver: true, why: t("Este processador não informa o consumo ao LibreHardwareMonitor.") },
+    { what: t("Frequência dos núcleos"), list: of('cpu', 'clock'), prefer: [/^(p-)?core #?1$/i, /core/i], driver: true, why: t("O processador não informou a frequência de cada núcleo.") },
+    { what: t("Carga"), list: of('cpu', 'load'), prefer: [/total/i], why: t("O Windows não informou a carga do processador.") },
+    { what: t("Tensão"), list: of('cpu', 'volt'), prefer: [/core|vid/i], driver: true, why: t("Este processador não informa a tensão ao LibreHardwareMonitor. Em muitos modelos, a tensão só aparece pela placa-mãe.") },
+  ], stageWhy('cpu'), cpuHw?.name));
+
+  // placas de vídeo (uma linha para cada)
+  const gpus = hw.filter((h) => /^Gpu/.test(h.type));
+  if (!gpus.length) out.push({ id: 'gpu', status: stageWhy('base') ? 'fail' : 'warn', detail: t("Nenhum dado mapeado."), found: [], missing: [{ what: t("Placa de vídeo"), why: stageWhy('base') || t("O LibreHardwareMonitor não encontrou nenhuma placa de vídeo. O driver da placa pode estar desatualizado.") }] });
+  for (const h of gpus) {
+    const integrated = h.type === 'GpuIntel' && !/arc/i.test(h.name);
+    const gpuOf = (group: string) => of('gpu', group, h.id);
+    out.push(build('gpu', [
+      { what: t("Temperatura"), list: gpuOf('temp').filter((x) => x.value > 0), prefer: [/core|gpu temperature|^gpu$/i], why: integrated ? t("As placas de vídeo integradas da Intel não informam a temperatura. A temperatura delas aparece junto com a do processador.") : t("O driver da placa de vídeo não informou a temperatura.") },
+      { what: t("Carga"), list: gpuOf('load'), prefer: [/core|d3d 3d/i], why: t("O driver da placa de vídeo não informou a carga.") },
+      { what: t("Memória de vídeo"), list: [...gpuOf('data')].filter((x) => /memory|dedicated|shared/i.test(x.name)), prefer: [/used|dedicated/i], why: t("O driver da placa de vídeo não informou o uso da memória de vídeo.") },
+      { what: t("Consumo"), list: gpuOf('power'), prefer: [/package|total|board|gpu power/i], why: integrated ? t("As placas de vídeo integradas não informam o consumo separado. O consumo delas entra no do processador.") : t("O driver da placa de vídeo não informa o consumo.") },
+      ...(integrated ? [] : [{ what: t("Ventoinha"), list: of('gpu', 'fan', h.id), why: t("A placa de vídeo não informou a ventoinha. Muitas placas param a ventoinha com pouca carga, e algumas não informam a rotação.") }]),
+    ], '', h.name));
+  }
+
+  // memória
+  out.push(build('ram', [
+    { what: t("Uso"), list: [...of('ram', 'load'), ...of('ram', 'data')], prefer: [/^memory$/i, /used/i], why: t("O Windows não informou o uso da memória.") },
+    { what: t("Temperatura dos pentes"), list: of('ram', 'temp'), driver: true, why: t("Os pentes de memória não informaram a temperatura. Muitos pentes DDR4 e alguns DDR5 não têm esse sensor.") },
+  ], stageWhy('memory')));
+
+  // placa-mãe: os sensores ficam no chip de sensores (SuperIO) ou no controlador embutido (EC)
+  const board = hw.find((h) => h.type === 'Motherboard');
+  const chip = board?.sub?.find((x) => x.type === 'SuperIO' || x.type === 'EmbeddedController');
+  const noChip = t("A placa-mãe não tem um chip de sensores que o LibreHardwareMonitor reconheça, então ela não informa temperaturas, ventoinhas nem tensões.");
+  out.push(build('board', [
+    { what: t("Temperaturas"), list: of('board', 'temp'), driver: true, why: chip ? t("O chip de sensores {0} não informou temperaturas.", chip.name) : noChip },
+    { what: t("Ventoinhas"), list: of('board', 'fan').filter((x) => x.value > 0), driver: true, why: chip ? t("O chip de sensores {0} não informou ventoinhas girando. Elas podem estar ligadas num controlador separado, como um hub de RGB, ou paradas neste momento.", chip.name) : noChip },
+    { what: t("Tensões"), list: of('board', 'volt'), driver: true, why: chip ? t("O chip de sensores {0} não informou tensões.", chip.name) : noChip },
+  ], stageWhy('motherboard'), board?.name));
+
+  // discos: um item para cada disco
+  const disks = hw.filter((h) => h.type === 'Storage');
+  const diskFound: HwCheck['found'] = [], diskMissing: HwCheck['missing'] = [];
+  for (const d of disks) {
+    const x = pick(of('disk', 'temp', d.id).filter((y) => y.value > 0 && y.value < 125), [/^(composite temperature|temperature)$/i]);
+    if (x) diskFound.push({ what: d.name, value: fmt(x) });
+    else diskMissing.push({ what: d.name, why: t("O disco não informou a temperatura. Discos USB, cartões de memória e controladoras RAID costumam esconder esse dado.") });
+  }
+  if (!disks.length) diskMissing.push({ what: t("Discos"), why: stageWhy('base') || t("O LibreHardwareMonitor não encontrou nenhum disco.") });
+  out.push({ id: 'disk', status: !disks.length && stageWhy('base') ? 'fail' : diskMissing.length ? 'warn' : 'ok', detail: !diskMissing.length ? t("Tudo mapeado.") : t("{0} de {1} discos com temperatura.", diskFound.length, disks.length), found: diskFound, missing: diskMissing });
+
+  // energia: consumo do processador e da placa de vídeo; bateria e fonte quando existem
+  const dgpu = gpus.find((h) => h.type !== 'GpuIntel' || /arc/i.test(h.name));
+  const battery = hw.find((h) => h.type === 'Battery'), psu = hw.find((h) => h.type === 'Psu');
+  out.push(build('power', [
+    { what: t("Consumo do processador"), list: of('cpu', 'power'), prefer: [/package/i], driver: true, why: stageWhy('cpu') || t("Este processador não informa o consumo ao LibreHardwareMonitor.") },
+    ...(dgpu ? [{ what: t("Consumo da placa de vídeo"), list: of('gpu', 'power', dgpu.id), prefer: [/package|total|board|gpu power/i], why: t("O driver da placa de vídeo não informa o consumo.") }] : []),
+    ...(battery ? [{ what: t("Bateria"), list: [...of('battery', 'power'), ...of('battery', 'level')], prefer: [/rate|discharge|charge/i], why: t("A bateria não informou a carga nem o consumo.") }] : []),
+    ...(psu ? [{ what: t("Fonte"), list: of('psu', 'power'), why: t("A fonte não informou o consumo.") }] : []),
+  ], ''));
   return out;
 }
 
@@ -230,7 +307,11 @@ export async function report(checks?: HwCheck[]): Promise<string> {
     `- ${t("Etapas do helper")}: ${s?.groups ? Object.entries(s.groups).map(([k, v]) => `${k}=${v}`).join(', ') : '-'}`,
     '',
     '### ' + t("Validação das peças"),
-    ...list.map((c) => `- ${icon[c.status]} ${c.id}: ${c.detail}`),
+    ...list.flatMap((c) => [
+      `- ${icon[c.status]} **${c.id}**${c.name ? ` (${c.name})` : ''}: ${c.detail}`,
+      ...c.found.map((f) => `  - ${t("mapeado")}: ${f.what}${f.value ? ` = ${f.value}` : ''}`),
+      ...c.missing.map((m) => `  - ${t("não mapeado")}: ${m.what}. ${m.why}`),
+    ]),
     '',
     '### ' + t("Registro do helper (lhm.log)"),
     '```log',

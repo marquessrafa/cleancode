@@ -84,7 +84,7 @@ export function AdvancedSetupModal({ live }: { live: HardwareLive | null }) {
     driverPresent ? tr("O driver PawnIO já está instalado") : tr("Baixando o driver PawnIO e conferindo a assinatura digital"),
     tr("Instalando o programa dos sensores (o Windows pede a sua permissão)"),
     tr("Lendo os sensores pela primeira vez"),
-    tr("Validando cada peça"),
+    tr("Mapeando cada peça"),
   ];
   const CHECK_LABEL: Record<HwCheck['id'], [string, React.ReactNode]> = {
     cpu: [tr("Processador"), <Cpu size={14} />], gpu: [tr("Placa de vídeo"), <Gpu size={14} />], ram: [tr("Memória"), <MemoryStick size={14} />],
@@ -107,7 +107,7 @@ export function AdvancedSetupModal({ live }: { live: HardwareLive | null }) {
   // portal no body: a tela de hardware tem animação (transform), e um "fixed" dentro dela ficaria preso à tela
   return createPortal(
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/55 p-6 backdrop-blur-sm anim-fade" onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
-      <div className="relative flex max-h-[86vh] w-full max-w-[560px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl anim-pop">
+      <div className={cx('relative flex max-h-[86vh] w-full flex-col', phase === 'done' && checks.length ? 'max-w-[680px]' : 'max-w-[560px]', 'overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl anim-pop transition-[max-width] duration-300')}>
         <div className="pointer-events-none absolute inset-x-0 top-0 h-40" style={{ background: 'radial-gradient(70% 100% at 50% 0%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%)' }} />
         {!busy && <button className="absolute right-3 top-3 z-10 rounded-md p-1.5 text-muted hover:bg-[var(--hover)] hover:text-fg" onClick={close} title={tr("Fechar")}><X size={16} /></button>}
 
@@ -120,9 +120,9 @@ export function AdvancedSetupModal({ live }: { live: HardwareLive | null }) {
           </div>
           <div className="min-w-0">
             <div className="text-[11.5px] font-semibold uppercase tracking-wider text-accent">
-              {phase === 'done' ? (anyFail ? tr("Algumas leituras falharam") : allOk || !checks.length ? tr("Tudo pronto") : tr("Ativado")) : phase === 'work' ? tr("Ativando") : phase === 'error' ? tr("Não deu certo") : redo ? tr("Atualize os sensores") : tr("Sensores avançados")}
+              {phase === 'done' ? (anyFail ? tr("Algumas leituras falharam") : allOk || !checks.length ? tr("Tudo pronto") : tr("Ativado")) : phase === 'work' ? tr("Mapeando") : phase === 'error' ? tr("Não deu certo") : redo ? tr("Mapeie os sensores de novo") : tr("Antes de começar")}
             </div>
-            <div className="text-[21px] font-semibold tracking-tight text-fg">{tr("Monitoramento avançado")}</div>
+            <div className="text-[21px] font-semibold tracking-tight text-fg">{tr("Mapeamento dos sensores")}</div>
             <div className="text-[12.5px] text-muted">{tr("LibreHardwareMonitor com o driver assinado PawnIO")}</div>
           </div>
         </div>
@@ -133,15 +133,20 @@ export function AdvancedSetupModal({ live }: { live: HardwareLive | null }) {
             <div className="pb-2">
               <p className="text-[13px] leading-relaxed text-muted">
                 {redo
-                  ? tr("O programa que lê os sensores mudou nesta versão do CleanCode. Por isso, ele precisa ser instalado de novo para voltar a ler o processador, a placa-mãe e a energia.")
-                  : tr("O Windows só deixa ler alguns sensores com um driver. Quando você ativa, o CleanCode instala o driver assinado PawnIO e um programa que lê os sensores como administrador.")}
+                  ? tr("O programa que lê os sensores mudou nesta versão do CleanCode. Por isso, ele precisa mapear os sensores deste PC de novo para voltar a ler o processador, a placa-mãe e a energia.")
+                  : tr("Para ler os sensores deste PC, o CleanCode precisa mapear cada peça. No mapeamento, ele instala o driver assinado PawnIO e um programa que lê os sensores como administrador. Depois, ele confere o que cada peça informa.")}
               </p>
+              <p className="mt-2 text-[13px] leading-relaxed text-muted">{tr("Nada é instalado antes de você clicar em Iniciar mapeamento.")}</p>
               <ul className="mt-4 space-y-2.5">
                 {benefits.map((b, i) => <li key={i} className="flex items-center gap-3 text-[13px] text-fg"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">{b.icon}</span>{b.text}</li>)}
               </ul>
               <div className="mt-4 flex items-start gap-2.5 rounded-lg border border-line bg-[var(--surface-2)] px-3.5 py-3 text-[12.5px] text-muted">
                 <ShieldCheck size={15} className="mt-0.5 shrink-0 text-accent" />
                 <span>{tr("O Windows pede a sua permissão de administrador uma única vez. Depois disso, o CleanCode lê os sensores sem pedir de novo. Você pode desligar o monitoramento avançado quando quiser.")}</span>
+              </div>
+              <div className="mt-2.5 flex items-start gap-2.5 rounded-lg border border-[color-mix(in_srgb,var(--warn)_35%,transparent)] bg-warn-soft px-3.5 py-3 text-[12.5px] text-fg">
+                <AlertTriangle size={15} className="mt-0.5 shrink-0 text-warn" />
+                <span>{tr("Sem o mapeamento, o widget da barra de tarefas e o Monitor de hardware não funcionam direito. Eles ficam sem a temperatura e o consumo do processador, sem os sensores da placa-mãe e sem as ventoinhas.")}</span>
               </div>
             </div>
           )}
@@ -162,19 +167,39 @@ export function AdvancedSetupModal({ live }: { live: HardwareLive | null }) {
                 })}
               </ol>}
               {phase === 'done' && checks.length > 0 && (
-                <div className="mt-4 rounded-xl border border-line bg-[var(--surface-2)] p-3">
-                  <div className="mb-2 text-[12px] font-semibold text-muted">{tr("Validação das peças")}</div>
-                  <ul className="grid grid-cols-1 gap-1.5">
-                    {checks.map((c, i) => (
-                      <li key={c.id} className="flex items-start gap-2.5 text-[12.5px] upd-pop" style={{ animationDelay: `${i * 90}ms` }}>
-                        <span className={cx('mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full', c.status === 'ok' ? 'bg-accent text-accent-fg' : c.status === 'warn' ? 'bg-warn-soft text-warn' : 'bg-danger-soft text-danger')}>
+                <div className="space-y-2">
+                  <div className="chk-in text-[12px] font-semibold text-muted">{tr("Resultado do mapeamento")}</div>
+                  {checks.map((c, i) => (
+                    <div key={c.id + i} className="chk-in rounded-xl border border-line bg-[var(--surface-2)] px-3.5 py-3" style={{ animationDelay: `${120 + i * 110}ms` }}>
+                      <div className="flex items-center gap-2.5">
+                        <span className={cx('flex h-5 w-5 shrink-0 items-center justify-center rounded-full', c.status === 'ok' ? 'bg-accent text-accent-fg' : c.status === 'warn' ? 'bg-warn-soft text-warn' : 'bg-danger-soft text-danger')}>
                           {c.status === 'ok' ? <Check size={11} strokeWidth={3} /> : c.status === 'warn' ? <AlertTriangle size={11} /> : <X size={11} strokeWidth={3} />}
                         </span>
-                        <span className="flex w-32 shrink-0 items-center gap-1.5 font-medium text-fg">{CHECK_LABEL[c.id][1]}{CHECK_LABEL[c.id][0]}</span>
-                        <span className="min-w-0 text-muted">{c.detail}</span>
-                      </li>
-                    ))}
-                  </ul>
+                        <span className="flex shrink-0 items-center gap-1.5 text-[13px] font-semibold text-fg">{CHECK_LABEL[c.id][1]}{CHECK_LABEL[c.id][0]}</span>
+                        {c.name && <span className="min-w-0 truncate text-[12px] text-muted">{c.name}</span>}
+                        <span className="ml-auto shrink-0 text-[11.5px] text-muted">{c.detail}</span>
+                      </div>
+                      {c.found.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5 pl-[30px]">
+                          {c.found.map((f) => (
+                            <span key={f.what} className="inline-flex items-center gap-1 rounded-md bg-accent-soft px-2 py-0.5 text-[11.5px] text-fg">
+                              <Check size={10} strokeWidth={3} className="text-accent" />{f.what}{f.value && <span className="font-semibold tabular-nums">{f.value}</span>}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {c.missing.length > 0 && (
+                        <ul className="mt-2 space-y-1.5 pl-[30px]">
+                          {c.missing.map((m) => (
+                            <li key={m.what} className="text-[12px] leading-snug">
+                              <span className={cx('font-medium', c.status === 'fail' ? 'text-danger' : 'text-warn')}>{tr("Não mapeado:")} {m.what}.</span>{' '}
+                              <span className="text-muted">{m.why}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
               <div className="relative mt-5 h-1.5 overflow-hidden rounded-full bg-[var(--surface-2)]">
@@ -183,7 +208,7 @@ export function AdvancedSetupModal({ live }: { live: HardwareLive | null }) {
               <p className="mt-3 text-[12.5px] text-muted">
                 {phase === 'done'
                   ? (anyFail ? tr("Os sensores avançados estão ativos, mas a leitura de algumas peças falhou. Você pode enviar um relatório para o GitHub, para que o problema seja corrigido.")
-                    : !allOk ? tr("Os sensores avançados estão ativos. Algumas peças não informam todos os dados neste PC, e isso é normal em alguns modelos.")
+                    : !allOk ? tr("Os sensores avançados estão ativos. Os itens não mapeados mostram o motivo. Na maioria dos casos, a peça não informa aquele dado neste PC.")
                     : (result?.message || tr("Os sensores avançados estão ativos.")))
                   : shown === 2 ? tr("Se o Windows mostrar uma janela pedindo permissão, clique em Sim para continuar.") : tr("Você pode continuar usando o app enquanto o CleanCode termina.")}
               </p>
@@ -201,8 +226,8 @@ export function AdvancedSetupModal({ live }: { live: HardwareLive | null }) {
         {/* rodapé */}
         <div className="relative flex items-center justify-end gap-2 border-t border-line px-7 py-4">
           {phase === 'intro' && <>
-            <Button variant="ghost" onClick={close}>{tr("Agora não")}</Button>
-            <Button variant="primary" icon={<ShieldCheck size={14} />} onClick={start}>{redo ? tr("Ativar de novo") : tr("Ativar")}</Button>
+            <Button variant="ghost" onClick={close}>{tr("Mapear depois")}</Button>
+            <Button variant="primary" icon={<ShieldCheck size={14} />} onClick={start}>{tr("Iniciar mapeamento")}</Button>
           </>}
           {phase === 'work' && <span className="text-[12px] text-muted">{tr("Não feche o CleanCode")}</span>}
           {phase === 'done' && allOk && <span className="flex items-center gap-2 text-[12.5px] font-medium text-accent"><Check size={14} /> {tr("Fechando")}</span>}

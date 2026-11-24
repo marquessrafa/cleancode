@@ -5,7 +5,18 @@ export interface Row {
   hasChildren: boolean; prevSize?: number; prevFiles?: number; owner?: string; path?: string; dir?: string;
 }
 /** Resultado da validação de uma peça depois da ativação: ok, aviso (a peça não informa esse dado neste PC) ou falha. */
-export interface HwCheck { id: 'cpu' | 'gpu' | 'ram' | 'board' | 'disk' | 'power'; status: 'ok' | 'warn' | 'fail'; detail: string }
+export interface HwCheck {
+  id: 'cpu' | 'gpu' | 'ram' | 'board' | 'disk' | 'power';
+  /** nome da peça (por exemplo, o modelo da placa de vídeo ou do disco), quando ajuda a identificar */
+  name?: string;
+  status: 'ok' | 'warn' | 'fail';
+  /** resumo em uma frase */
+  detail: string;
+  /** dados que foram mapeados, com o valor lido */
+  found: { what: string; value?: string }[];
+  /** dados que não foram mapeados e o motivo */
+  missing: { what: string; why: string }[];
+}
 export interface Progress {
   scanId: number; scanning: boolean; files: number; dirs: number; size: number; alloc: number;
   current: string; errors: number; elapsed: number; pending: number;
