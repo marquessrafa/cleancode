@@ -5,6 +5,27 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.12', date: '2026-11-24', headline: 'App em três idiomas, menu lateral novo e PCs AMD e Intel em 3D',
+    groups: [
+      { title: 'Idiomas', icon: 'globe', items: [
+        'O CleanCode agora funciona em português, inglês e espanhol, de acordo com o idioma do computador.',
+        'Se o idioma do computador não for português nem espanhol, o app usa o inglês. Você também pode escolher o idioma em Configurações.',
+        'Os textos do app foram reescritos em frases completas e mais fáceis de entender.',
+      ] },
+      { title: 'Menu lateral', icon: 'panel', items: [
+        'A barra de rolagem do menu agora fica do lado de fora, à direita, e só aparece com o mouse sobre o menu.',
+        'Com o menu recolhido, ele abre por cima da tela enquanto o mouse estiver sobre ele e fecha quando o mouse sai.',
+        'O menu desliza ao abrir e ao fechar, e, no menu recolhido, cada grupo fica separado por uma linha.',
+      ] },
+      { title: 'Monitor de hardware', icon: 'chip', items: [
+        'Os processadores AMD aparecem em 3D no formato AM5, inclusive no soquete da placa-mãe.',
+        'Os desktops com AMD ganharam uma placa-mãe preta de linha gamer. Os desktops com Intel ganharam uma placa-mãe branca e um gabinete branco com vidro escuro e uma tela no canto.',
+        'Todos os LEDs dos modelos 3D seguem a cor de destaque.',
+        'No Windows, quando o processador não informa a temperatura, o app explica o motivo em vez de mostrar 0 °C. Além disso, uma peça que trava não derruba mais as outras leituras.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.11', date: '2026-11-24', headline: 'Popup de atualização com novidades e instalação acompanhada',
     groups: [
       { title: 'Atualizações', icon: 'download', items: [

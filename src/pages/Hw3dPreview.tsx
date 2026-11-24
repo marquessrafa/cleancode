@@ -11,6 +11,8 @@ const MODELS: { id: string; label: string; build: () => any }[] = [
   { id: 'cpu', label: 'Processador AMD', build: () => cpuModel({ name: 'AMD Ryzen 7 7700X 8-Core Processor', sub: 'x64', cores: 8 }) },
   { id: 'cpu-intel', label: 'Processador Intel', build: () => cpuModel({ name: 'Intel Core i7-14700K', sub: 'x64', cores: 20 }) },
   { id: 'ram', label: 'Memória', build: () => ramModel({ count: 2 }) },
+  { id: 'pc-rear', label: 'PC Intel visto pela traseira', build: () => { const m = pcModel({ sticks: 2, cpu: { name: 'Intel Core Ultra 9 285K' } }); m.group.rotation.y = Math.PI / 2; return m; } },
+  { id: 'pc-back', label: 'PC Intel visto por trás da placa', build: () => { const m = pcModel({ sticks: 2, cpu: { name: 'Intel Core Ultra 9 285K' } }); m.group.rotation.y = Math.PI; return m; } },
   { id: 'board-intel', label: 'Placa-mãe Intel', build: () => boardModel({ dimms: 4, sticks: 2, cpu: { name: 'Intel Core Ultra 9 285K', sub: 'x64', cores: 24 } }) },
   { id: 'board', label: 'Placa-mãe AMD', build: () => boardModel({ dimms: 4, sticks: 2, cpu: { name: 'AMD Ryzen 7 7700X 8-Core Processor', sub: 'x64', cores: 8 } }) },
   { id: 'pc-amd', label: 'PC com AMD', build: () => pcModel({ sticks: 2, cpu: { name: 'AMD Ryzen 7 7700X 8-Core Processor', sub: 'x64', cores: 8 } }) },

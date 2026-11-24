@@ -745,16 +745,53 @@ export function pcModel(opts: { sticks?: number; cpu?: { name?: string; sub?: st
   if (whiteCase) {
     const darkGlass = () => new THREE.MeshPhysicalMaterial({ color: 0x0b0c0f, metalness: 0.1, roughness: 0.05, transparent: true, opacity: 0.4, side: THREE.DoubleSide });
     const ch = 0.1; // canto chanfrado de vidro (frente à direita), onde fica a tela
+    // linhas recortadas em "L" aninhados: descem na vertical e viram na horizontal, deixando um canto liso (entrada de ar)
+    const cutLines = (cornerX: number, cornerY: number, flip = false) => canvasTex(1024, 1024, (c) => {
+      c.fillStyle = '#f1f2f4'; c.fillRect(0, 0, 1024, 1024);
+      c.strokeStyle = '#141518'; c.lineWidth = 7; c.lineCap = 'butt';
+      if (flip) { c.translate(1024, 0); c.scale(-1, 1); }
+      for (let i = 0; ; i++) {
+        const x = cornerX - i * 24, y = cornerY + i * 24;
+        if (x < 40 || y > 990) break;
+        c.beginPath(); c.moveTo(x, 40); c.lineTo(x, y); c.lineTo(990, y); c.stroke();
+      }
+    });
     const rim = (y: number, hh: number) => { const r = extrude([[-W / 2, -D / 2], [W / 2 - ch, -D / 2], [W / 2, -D / 2 + ch], [W / 2, D / 2], [-W / 2, D / 2]], hh, frameMat, 0.006); // girada para o plano do chão: y = -D/2 do desenho vira a frente (z = +D/2), onde fica o canto chanfrado
       r.rotation.x = -Math.PI / 2; r.position.set(0, y, 0); g.add(r); return r; };
     rim(0.0, 0.04); rim(H - 0.035, 0.035);
+    {
+      const pts: [number, number][] = [[-W / 2 + 0.012, -D / 2 + 0.012], [W / 2 - ch - 0.006, -D / 2 + 0.012], [W / 2 - 0.012, -D / 2 + ch + 0.006], [W / 2 - 0.012, D / 2 - 0.012], [-W / 2 + 0.012, D / 2 - 0.012]];
+      const geo = new THREE.ShapeGeometry(new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y))));
+      const pos = geo.attributes.position, uv = new Float32Array(pos.count * 2);
+      for (let i = 0; i < pos.count; i++) { uv[i * 2] = (pos.getX(i) + W / 2) / W; uv[i * 2 + 1] = (pos.getY(i) + D / 2) / D; }
+      geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+      const topLines = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: cutLines(640, 300, true), metalness: 0.15, roughness: 0.45 }));
+      topLines.rotation.x = -Math.PI / 2; topLines.position.y = H + 0.0075; g.add(topLines); // acima do chanfro de borda da moldura
+    }
     for (const [x, z] of [[-W / 2 + 0.07, D / 2 - 0.06], [W / 2 - 0.07, D / 2 - 0.06], [-W / 2 + 0.07, -D / 2 + 0.06], [W / 2 - 0.07, -D / 2 + 0.06]]) { const f = rbox(0.08, 0.02, 0.05, 0.006, mat.dark(0x0c0d0f, 0.5)); f.position.set(x, -0.008, z); g.add(f); }
     const back = box(W, H - 0.07, 0.01, innerMat); back.position.set(0, H / 2, -D / 2); g.add(back);
     // lateral esquerda: o fundo do gabinete (traseira com a ventoinha e as tampas dos slots)
     const rearWall = box(0.012, H - 0.07, D, frameMat); rearWall.position.set(-W / 2, H / 2, 0); g.add(rearWall);
-    for (let i = 0; i < 6; i++) { const slot = box(0.003, 0.012, 0.11, mat.dark(0x1c1e22, 0.4)); slot.position.set(-W / 2 + 0.008, 0.11 + i * 0.016, -D / 2 + 0.09); g.add(slot); }
+    const rearTex = canvasTex(1024, 1024, (c) => {
+      c.fillStyle = '#f1f2f4'; c.fillRect(0, 0, 1024, 1024);
+      // abertura (fica perto da bandeja da placa, à esquerda da textura)
+      c.fillStyle = '#121316'; c.fillRect(30, 70, 430, 860);
+      // conexões da placa-mãe (painel de I/O)
+      c.fillStyle = '#2a2c31'; c.fillRect(60, 110, 150, 330);
+      c.fillStyle = '#0a0a0c'; for (let r = 0; r < 9; r++) for (let k = 0; k < 2; k++) c.fillRect(78 + k * 64, 128 + r * 34, 44, 20);
+      c.fillStyle = '#c9a54a'; c.beginPath(); c.arc(100, 420, 9, 0, Math.PI * 2); c.arc(150, 420, 9, 0, Math.PI * 2); c.fill();
+      // grade da ventoinha traseira
+      c.fillStyle = '#26282d'; for (let y = 110; y < 440; y += 26) for (let x = 250; x < 440; x += 26) c.fillRect(x, y, 16, 16);
+      // tampas dos slots da placa de vídeo, com recortes diagonais
+      for (let i = 0; i < 7; i++) {
+        const y = 480 + i * 56; c.fillStyle = '#2a2c31'; c.fillRect(60, y, 370, 42);
+        c.fillStyle = '#121316'; for (let x = 90; x < 410; x += 26) { c.beginPath(); c.moveTo(x, y + 36); c.lineTo(x + 12, y + 36); c.lineTo(x + 24, y + 6); c.lineTo(x + 12, y + 6); c.closePath(); c.fill(); }
+      }
+    });
+    const rearPanel = new THREE.Mesh(new THREE.PlaneGeometry(D - 0.012, H - 0.075), new THREE.MeshStandardMaterial({ map: rearTex, metalness: 0.15, roughness: 0.5 }));
+    rearPanel.rotation.y = -Math.PI / 2; rearPanel.position.set(-W / 2 - 0.0065, H / 2, 0); g.add(rearPanel);
     // lateral direita branca com faixas pretas
-    const stripes = canvasTex(512, 512, (c) => { c.fillStyle = '#f1f2f4'; c.fillRect(0, 0, 512, 512); c.fillStyle = '#111215'; for (let i = 0; i < 28; i++) { const x = 40 + i * 13; c.fillRect(x, 120 + Math.max(0, i - 14) * 0, 5, 380); } for (let i = 0; i < 18; i++) { const y = 300 + i * 11; c.fillRect(260 + i * 6, y, 240 - i * 6, 4); } });
+    const stripes = cutLines(700, 360);
     // painel branco com faixas atrás da bandeja da placa-mãe
     const side = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.01, H - 0.08), new THREE.MeshStandardMaterial({ map: stripes, metalness: 0.1, roughness: 0.5 })); side.rotation.y = Math.PI; side.position.set(0, H / 2, -D / 2 - 0.0065); g.add(side);
     // vidro panorâmico escuro: frente, canto chanfrado (com a tela) e lateral direita (ventoinhas ao lado da placa)
