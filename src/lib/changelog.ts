@@ -5,6 +5,15 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.9', date: '2026-11-24', headline: 'Notebook Windows renovado no Monitor de hardware',
+    groups: [
+      { title: 'Monitor de hardware', icon: 'chip', items: [
+        'O notebook Windows ganhou corpo de alumínio grafite, tela de bordas finas com câmera, teclado iluminado na cor de destaque, leitor de digital, ventilação e portas de verdade.',
+        'A tela mostra um wallpaper novo de ondas de luz e uma barra de tarefas com relógio e ícones.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.8', date: '2026-11-24', headline: 'Processador certo na placa-mãe do desktop',
     groups: [
       { title: 'Monitor de hardware', icon: 'chip', items: [

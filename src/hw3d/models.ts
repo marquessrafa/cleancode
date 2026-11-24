@@ -493,23 +493,67 @@ function macScreen(accent: string) {
     });
   });
 }
+/** Tela do notebook Windows: wallpaper original (ondas de luz em camadas, no tom da cor de destaque) e uma barra de
+ *  tarefas genérica centralizada, com ícones e relógio. Sem logos de fabricante. */
 function winScreen(accent: string) {
-  return canvasTex(1600, 1000, (c) => {
-    const bg = c.createLinearGradient(0, 0, 1600, 1000); bg.addColorStop(0, '#04081a'); bg.addColorStop(1, '#0a1640'); c.fillStyle = bg; c.fillRect(0, 0, 1600, 1000);
-    c.translate(820, 470);
-    for (let i = 0; i < 9; i++) { c.rotate(Math.PI / 4.6); const gr = c.createLinearGradient(0, 0, 420, 0); gr.addColorStop(0, '#1d4dff'); gr.addColorStop(0.6, accent); gr.addColorStop(1, 'rgba(255,255,255,0.1)'); c.fillStyle = gr; c.globalAlpha = 0.55; c.beginPath(); c.ellipse(190, 0, 230, 70, 0.3, 0, Math.PI * 2); c.fill(); }
-    c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1;
-    c.fillStyle = 'rgba(20,24,34,0.88)'; c.fillRect(0, 950, 1600, 50);
-    for (let i = 0; i < 9; i++) { c.fillStyle = i === 0 ? '#3c8bff' : 'rgba(255,255,255,0.65)'; c.fillRect(600 + i * 46, 962, 26, 26); }
+  const W = 1600, H = 1000;
+  return canvasTex(W, H, (c) => {
+    const bg = c.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#05070d'); bg.addColorStop(1, '#0b1020'); c.fillStyle = bg; c.fillRect(0, 0, W, H);
+    // ondas sobrepostas, cada uma com degradê e borda iluminada
+    const wave = (y0: number, amp: number, freq: number, phase: number, c1: string, c2: string, alpha: number) => {
+      c.save(); c.globalAlpha = alpha;
+      c.beginPath(); c.moveTo(0, H);
+      for (let x = 0; x <= W; x += 8) c.lineTo(x, y0 + Math.sin(x * freq + phase) * amp + Math.sin(x * freq * 2.3 + phase * 1.7) * amp * 0.3);
+      c.lineTo(W, H); c.closePath();
+      const gr = c.createLinearGradient(0, y0 - amp, 0, H); gr.addColorStop(0, c1); gr.addColorStop(1, c2); c.fillStyle = gr; c.fill();
+      c.globalAlpha = alpha * 0.9; c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = 2; c.beginPath();
+      for (let x = 0; x <= W; x += 8) { const y = y0 + Math.sin(x * freq + phase) * amp + Math.sin(x * freq * 2.3 + phase * 1.7) * amp * 0.3; if (x) c.lineTo(x, y); else c.moveTo(x, y); }
+      c.stroke(); c.restore();
+    };
+    wave(430, 70, 0.004, 0.6, '#2340ff55', '#05070d00', 0.9);
+    wave(520, 60, 0.0052, 2.1, accent + '88', '#05070d00', 0.8);
+    wave(610, 50, 0.0037, 4.0, '#7a3cff66', '#05070d00', 0.75);
+    wave(700, 40, 0.006, 1.2, accent + '55', '#05070d00', 0.7);
+    const glow = c.createRadialGradient(W * 0.5, H * 0.45, 20, W * 0.5, H * 0.45, 650); glow.addColorStop(0, 'rgba(255,255,255,0.06)'); glow.addColorStop(1, 'transparent'); c.fillStyle = glow; c.fillRect(0, 0, W, H);
+
+    // barra de tarefas
+    c.fillStyle = 'rgba(22,24,30,0.86)'; c.fillRect(0, H - 56, W, 56);
+    c.fillStyle = 'rgba(255,255,255,0.06)'; c.fillRect(0, H - 56, W, 1);
+    const icons: [string, string, (x: number, y: number, s: number) => void][] = [
+      [accent, '#0b3b2a', (x, y, s) => { c.strokeStyle = '#fff'; c.lineWidth = s * 0.09; c.beginPath(); c.arc(x + s / 2, y + s / 2, s * 0.26, 0, Math.PI * 2); c.stroke(); c.fillStyle = '#fff'; c.beginPath(); c.arc(x + s / 2, y + s / 2, s * 0.08, 0, Math.PI * 2); c.fill(); }], // início (símbolo neutro)
+      ['#3a3d46', '#262830', (x, y, s) => { c.strokeStyle = '#d8dbe2'; c.lineWidth = s * 0.08; c.beginPath(); c.arc(x + s * 0.45, y + s * 0.45, s * 0.2, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.moveTo(x + s * 0.6, y + s * 0.6); c.lineTo(x + s * 0.76, y + s * 0.76); c.stroke(); }], // busca
+      ['#f2c14e', '#e09a1f', (x, y, s) => { c.fillStyle = '#fff6d8'; c.fillRect(x + s * 0.2, y + s * 0.32, s * 0.6, s * 0.4); c.fillStyle = '#f7d77a'; c.fillRect(x + s * 0.2, y + s * 0.3, s * 0.25, s * 0.08); }], // pastas
+      ['#35c3ff', '#0b83d9', (x, y, s) => { c.strokeStyle = '#fff'; c.lineWidth = s * 0.06; c.beginPath(); c.arc(x + s / 2, y + s / 2, s * 0.28, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.ellipse(x + s / 2, y + s / 2, s * 0.12, s * 0.28, 0, 0, Math.PI * 2); c.stroke(); }], // navegador
+      ['#5aa0ff', '#2b5fe6', (x, y, s) => { c.fillStyle = '#fff'; c.fillRect(x + s * 0.2, y + s * 0.3, s * 0.6, s * 0.4); c.strokeStyle = '#2b5fe6'; c.lineWidth = s * 0.05; c.beginPath(); c.moveTo(x + s * 0.2, y + s * 0.3); c.lineTo(x + s / 2, y + s * 0.52); c.lineTo(x + s * 0.8, y + s * 0.3); c.stroke(); }], // e-mail
+      ['#8b5cf6', '#5b2fd6', (x, y, s) => { c.fillStyle = '#fff'; c.beginPath(); c.moveTo(x + s * 0.35, y + s * 0.28); c.lineTo(x + s * 0.72, y + s * 0.5); c.lineTo(x + s * 0.35, y + s * 0.72); c.closePath(); c.fill(); }], // mídia
+      ['#2c2c30', '#111114', (x, y, s) => { c.fillStyle = '#5ef08a'; c.font = `700 ${s * 0.32}px Consolas, Menlo, monospace`; c.fillText('>_', x + s * 0.2, y + s * 0.58); }], // terminal
+      ['#9aa0a8', '#5f656d', (x, y, s) => { c.strokeStyle = '#fff'; c.lineWidth = s * 0.07; c.beginPath(); c.arc(x + s / 2, y + s / 2, s * 0.16, 0, Math.PI * 2); c.stroke(); }], // ajustes
+    ];
+    const S = 38, gap = 14, total = icons.length * (S + gap) - gap, x0 = (W - total) / 2, y0 = H - 47;
+    icons.forEach(([a, b, glyph], k) => {
+      const x = x0 + k * (S + gap); const g = c.createLinearGradient(x, y0, x, y0 + S); g.addColorStop(0, a); g.addColorStop(1, b);
+      c.save(); c.beginPath(); c.roundRect(x, y0, S, S, 9); c.clip(); c.fillStyle = g; c.fillRect(x, y0, S, S); glyph(x, y0, S); c.restore();
+      if (k === 0 || k === 3) { c.fillStyle = k === 0 ? accent : 'rgba(255,255,255,0.6)'; c.beginPath(); c.roundRect(x + S / 2 - 6, y0 + S + 4, 12, 3, 2); c.fill(); }
+    });
+    // área de notificação: Wi-Fi, volume, bateria e relógio
+    const now = new Date();
+    c.fillStyle = 'rgba(255,255,255,0.9)'; c.textAlign = 'right'; c.textBaseline = 'middle';
+    c.font = '500 17px "Segoe UI", -apple-system, sans-serif'; c.fillText(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`, W - 24, H - 38);
+    c.font = '400 15px "Segoe UI", -apple-system, sans-serif'; c.fillText(now.toLocaleDateString('pt-BR'), W - 24, H - 18);
+    c.textAlign = 'left';
+    let rx = W - 150; c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 2;
+    c.strokeRect(rx, H - 36, 24, 12); c.fillRect(rx + 25, H - 33, 2.5, 6); c.fillRect(rx + 2, H - 34, 16, 8); rx -= 34;      // bateria
+    c.beginPath(); c.moveTo(rx, H - 33); c.lineTo(rx + 6, H - 33); c.lineTo(rx + 12, H - 38); c.lineTo(rx + 12, H - 22); c.lineTo(rx + 6, H - 27); c.lineTo(rx, H - 27); c.closePath(); c.fill(); rx -= 34; // volume
+    for (const r of [12, 8, 4]) { c.beginPath(); c.arc(rx + 9, H - 22, r, Math.PI * 1.22, Math.PI * 1.78); c.stroke(); }  // Wi-Fi
   });
 }
 export function laptopModel(opts: { mac?: boolean } = {}): Model {
   const g = new THREE.Group(); const mac = !!opts.mac;
   // proporções de um notebook de 14" (x2): MacBook ~ 312 x 221 x 15,5 mm
-  const W = 0.62, D = 0.44, T = mac ? 0.019 : 0.022;
+  const W = 0.62, D = 0.44, T = mac ? 0.019 : 0.02;
   const body = mac
     ? new THREE.MeshPhysicalMaterial({ color: 0x1e1f22, metalness: 0.92, roughness: 0.34, clearcoat: 0.25, clearcoatRoughness: 0.4 })
-    : new THREE.MeshStandardMaterial({ color: 0x18191c, metalness: 0.25, roughness: 0.72 });
+    : new THREE.MeshStandardMaterial({ color: 0x2a2c31, metalness: 0.72, roughness: 0.42 }); // alumínio grafite fosco
   const base = slab(W, D, T - 0.004, 0.026, body, 0.002); base.rotation.x = -Math.PI / 2; base.position.y = T / 2; g.add(base);
   // pés de borracha
   for (const [x, z] of [[-W * 0.42, -D * 0.4], [W * 0.42, -D * 0.4], [-W * 0.42, D * 0.4], [W * 0.42, D * 0.4]]) { const f = cyl(0.012, 0.012, 0.003, mat.dark(0x0a0a0b, 0.9), 20); f.position.set(x, -0.001, z); g.add(f); }
@@ -524,17 +568,50 @@ export function laptopModel(opts: { mac?: boolean } = {}): Model {
     for (const sx of [-1, 1]) for (let r = 0; r < 30; r++) for (let c = 0; c < 6; c++) { m4.makeTranslation(sx * (W * 0.445) + (c - 2.5) * 0.0045, T + 0.0003, -D * 0.36 + r * 0.0065); holes.setMatrixAt(k++, m4); }
     g.add(holes);
   }
+  // Windows: teclado com luz de fundo na cor de destaque (vaza entre as teclas), botão liga/desliga com leitor de
+  // digital no canto e grade de ventilação entre o teclado e a dobradiça
+  const ledMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: new THREE.Color(0x3ddc97), emissiveIntensity: 2.2 });
+  const backlight = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: new THREE.Color(0x3ddc97), emissiveIntensity: 0.8, transparent: true, opacity: 0.6 });
+  if (!mac) {
+    const kbW = 15 * (0.0275 + 0.0055), kbD = 6 * (0.0275 + 0.0055);
+    const glow = new THREE.Mesh(new THREE.PlaneGeometry(kbW, kbD), backlight); glow.rotation.x = -Math.PI / 2; glow.position.set(0, T + 0.0019, -D * 0.4 + kbD / 2 - 0.0165); g.add(glow);
+    const fp = rbox(0.022, 0.002, 0.02, 0.003, mat.dark(0x0a0a0b, 0.4)); fp.position.set(kbW / 2 + 0.02, T + 0.0022, -D * 0.4); g.add(fp);
+    const fpRing = new THREE.Mesh(new THREE.TorusGeometry(0.0055, 0.0007, 8, 28), ledMat); fpRing.rotation.x = -Math.PI / 2; fpRing.position.set(kbW / 2 + 0.02, T + 0.0033, -D * 0.4); g.add(fpRing);
+    const slots = new THREE.InstancedMesh(new THREE.BoxGeometry(0.0028, 0.001, 0.011), mat.dark(0x040404, 0.7), 60);
+    const m4 = new THREE.Matrix4();
+    for (let i = 0; i < 60; i++) { m4.makeTranslation(-W * 0.3 + i * (W * 0.6 / 59), T + 0.0002, -D * 0.445); slots.setMatrixAt(i, m4); }
+    g.add(slots);
+  }
   // trackpad de vidro e entalhe frontal
-  const pad = slab(mac ? W * 0.44 : W * 0.3, D * 0.26, 0.001, 0.014, new THREE.MeshPhysicalMaterial({ color: mac ? 0x26272b : 0x1c1d20, roughness: 0.22, clearcoat: 0.8 }), 0); pad.rotation.x = -Math.PI / 2; pad.position.set(0, T + 0.0007, D * 0.27); g.add(pad);
+  const pad = slab(mac ? W * 0.44 : W * 0.36, D * 0.25, 0.001, 0.014, new THREE.MeshPhysicalMaterial({ color: mac ? 0x26272b : 0x1c1d20, roughness: 0.22, clearcoat: 0.8 }), 0); pad.rotation.x = -Math.PI / 2; pad.position.set(0, T + 0.0007, D * 0.27); g.add(pad);
   if (mac) { const notchFront = slab(0.07, 0.008, T * 0.6, 0.004, mat.dark(0x101012, 0.5), 0); notchFront.position.set(0, T * 0.55, D / 2 + 0.0005); g.add(notchFront); }
   // portas laterais
-  for (const [x, z, w] of mac ? [[-W / 2, -D * 0.25, 0.014], [-W / 2, -D * 0.18, 0.01], [-W / 2, -D * 0.12, 0.01], [W / 2, -D * 0.2, 0.01], [W / 2, -D * 0.1, 0.012]] : [[-W / 2, -D * 0.2, 0.012], [-W / 2, -D * 0.05, 0.01], [W / 2, -D * 0.15, 0.012], [W / 2, 0.0, 0.008]]) {
-    const port = rbox(0.002, 0.005, w, 0.0015, mat.dark(0x040404, 0.6)); port.position.set(x as number, T * 0.5, z as number); g.add(port);
+  if (mac) {
+    for (const [x, z, w] of [[-W / 2, -D * 0.25, 0.014], [-W / 2, -D * 0.18, 0.01], [-W / 2, -D * 0.12, 0.01], [W / 2, -D * 0.2, 0.01], [W / 2, -D * 0.1, 0.012]]) {
+      const port = rbox(0.002, 0.005, w, 0.0015, mat.dark(0x040404, 0.6)); port.position.set(x, T * 0.5, z); g.add(port);
+    }
+  } else {
+    // esquerda: energia (redonda), dois USB-C e HDMI; direita: dois USB-A, fone e leitor de cartão
+    const hole = mat.dark(0x030303, 0.6), metalIn = mat.metal(0x8d939b, 0.35);
+    const sidePort = (side: number, z: number, w: number, h: number, inner?: THREE.Material) => {
+      const p = rbox(0.0024, h, w, Math.min(h, w) * 0.4, hole); p.position.set(side * W / 2, T * 0.5, z); g.add(p);
+      if (inner) { const i = box(0.0026, h * 0.35, w * 0.7, inner); i.position.set(side * W / 2, T * 0.5, z); g.add(i); }
+    };
+    const pwr = cyl(0.003, 0.003, 0.0026, hole, 16); pwr.rotation.z = Math.PI / 2; pwr.position.set(-W / 2, T * 0.5, -D * 0.3); g.add(pwr);
+    sidePort(-1, -D * 0.22, 0.009, 0.0034); sidePort(-1, -D * 0.16, 0.009, 0.0034);
+    sidePort(-1, -D * 0.08, 0.015, 0.0055, metalIn);
+    sidePort(1, -D * 0.24, 0.013, 0.0055, metalIn); sidePort(1, -D * 0.16, 0.013, 0.0055, metalIn);
+    const jack = cyl(0.0018, 0.0018, 0.0026, hole, 14); jack.rotation.z = Math.PI / 2; jack.position.set(W / 2, T * 0.5, -D * 0.09); g.add(jack);
+    sidePort(1, -D * 0.02, 0.022, 0.002);
+    // saídas de ventilação nas laterais, perto da traseira
+    for (const side of [-1, 1]) for (let i = 0; i < 9; i++) { const v = box(0.0024, T * 0.42, 0.0035, hole); v.position.set(side * W / 2, T * 0.5, -D * 0.44 + i * 0.006); g.add(v); }
+    // LED de energia na frente
+    const led = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.0018, 0.001), ledMat); led.position.set(-W * 0.38, T * 0.55, D / 2 + 0.0003); g.add(led);
   }
   // tampa: dobradiça na traseira, aberta e fixa (~110°)
   const lid = new THREE.Group(); lid.position.set(0, T, -D / 2 + 0.004); lid.rotation.x = -0.34; g.add(lid);
   // marca neutra em baixo relevo nas costas da tampa (sem logo de fabricante)
-  if (mac) {
+  {
     const markMat = new THREE.MeshStandardMaterial({ color: 0x0d0e10, metalness: 0.5, roughness: 0.25 });
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.0045, 12, 48, Math.PI * 2 - 0.8), markMat); ring.rotation.set(0, Math.PI, 0.4); ring.position.set(0, D * 0.5, -(mac ? 0.0075 : 0.009) - 0.0004); lid.add(ring);
     const dotM = cyl(0.008, 0.008, 0.001, markMat, 24); dotM.rotation.x = Math.PI / 2; dotM.position.set(0, D * 0.5, -(mac ? 0.0075 : 0.009) - 0.0004); lid.add(dotM);
@@ -544,10 +621,16 @@ export function laptopModel(opts: { mac?: boolean } = {}): Model {
   const glass = slab(W * 0.992, D * 0.952, 0.0012, 0.022, new THREE.MeshPhysicalMaterial({ color: 0x030304, roughness: 0.08, clearcoat: 1 }), 0); glass.position.set(0, D * 0.48, 0.0007); lid.add(glass);
   const screenMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: new THREE.Color(0xffffff), emissiveIntensity: 1.0, roughness: 0.1 });
   screenMat.userData.matte = true; // a tela não entra na atenuação de brilho (precisa ser legível)
-  const sw = mac ? W * 0.965 : W * 0.93, sh = mac ? D * 0.9 : D * 0.84;
-  const scr = new THREE.Mesh(new THREE.PlaneGeometry(sw, sh), screenMat); scr.position.set(0, mac ? D * 0.475 : D * 0.49, 0.0016); lid.add(scr);
+  // bordas finas nos dois: a tela ocupa quase toda a tampa
+  const sw = mac ? W * 0.965 : W * 0.955, sh = mac ? D * 0.9 : D * 0.88, scrY = mac ? D * 0.475 : D * 0.483;
+  const scr = new THREE.Mesh(new THREE.PlaneGeometry(sw, sh), screenMat); scr.position.set(0, scrY, 0.0016); lid.add(scr);
   if (mac) { const notch = slab(0.064, 0.014, 0.0005, 0.006, mat.dark(0x000000, 0.5), 0); notch.position.set(0, D * 0.475 + sh / 2 - 0.006, 0.0019); lid.add(notch); }
-  else { const cam = cyl(0.0025, 0.0025, 0.001, mat.dark(0x000000), 16); cam.rotation.x = Math.PI / 2; cam.position.set(0, D * 0.935, 0.0018); lid.add(cam); }
+  else {
+    // câmera com sensores infravermelhos na borda de cima
+    const camY = scrY + sh / 2 + (D * 0.96 - scrY - sh / 2) / 2;
+    const cam = cyl(0.0022, 0.0022, 0.001, mat.dark(0x000000, 0.2), 16); cam.rotation.x = Math.PI / 2; cam.position.set(0, camY, 0.0018); lid.add(cam);
+    for (const dx of [-0.012, 0.012]) { const ir = cyl(0.0012, 0.0012, 0.001, mat.dark(0x120808, 0.3), 12); ir.rotation.x = Math.PI / 2; ir.position.set(dx, camY, 0.0018); lid.add(ir); }
+  }
   // dobradiça embutida
   const hinge = cyl(T * 0.42, T * 0.42, W * 0.82, body, 32); hinge.rotation.z = Math.PI / 2; hinge.position.set(0, T * 0.9, -D / 2 + 0.006); g.add(hinge);
   let lastAccent = '';
@@ -556,9 +639,9 @@ export function laptopModel(opts: { mac?: boolean } = {}): Model {
     // zooms grandes: pontos da tampa acompanham a abertura (função = posição no mundo na hora do zoom)
     pois: [
       { at: () => lid.localToWorld(new THREE.Vector3(0, mac ? D * 0.475 : D * 0.49, 0.002)), d: 0.42, az: 0, el: 0.16 },               // tela inteira, de frente
-      { at: () => lid.localToWorld(new THREE.Vector3(-sw * 0.3, (mac ? D * 0.475 : D * 0.49) + sh / 2 - 0.012, 0.002)), d: 0.16, az: -0.18, el: 0.14 }, // barra de menu
-      { at: () => lid.localToWorld(new THREE.Vector3(0, (mac ? D * 0.475 : D * 0.49) - sh / 2 + 0.03, 0.002)), d: 0.2, az: 0.12, el: 0.1 },            // Dock / barra de tarefas
-      { at: () => lid.localToWorld(new THREE.Vector3(0, (mac ? D * 0.475 : D * 0.49) + sh / 2 - 0.004, 0.002)), d: 0.11, az: 0, el: 0.12 },           // notch e câmera
+      { at: () => lid.localToWorld(new THREE.Vector3(-sw * 0.3, scrY + sh / 2 - 0.012, 0.002)), d: 0.16, az: -0.18, el: 0.14 }, // barra de menu
+      { at: () => lid.localToWorld(new THREE.Vector3(0, scrY - sh / 2 + 0.03, 0.002)), d: 0.2, az: 0.12, el: 0.1 },            // Dock / barra de tarefas
+      { at: () => lid.localToWorld(new THREE.Vector3(0, scrY + sh / 2 - 0.004, 0.002)), d: 0.11, az: 0, el: 0.12 },           // notch e câmera
       { at: [0, T, -D * 0.25], d: 0.3, az: 0.15, el: 0.78 },        // teclado de cima
       { at: [W * 0.18, T, -D * 0.3], d: 0.14, az: 0.45, el: 0.5 },   // teclas bem de perto
       { at: [-W * 0.2, T, -D * 0.22], d: 0.15, az: -0.5, el: 0.42 }, // teclas, lado esquerdo
@@ -570,6 +653,7 @@ export function laptopModel(opts: { mac?: boolean } = {}): Model {
       const hex = accentHex(live);
       if (hex !== lastAccent) { lastAccent = hex; screenMat.emissiveMap?.dispose(); screenMat.emissiveMap = mac ? macScreen(hex) : winScreen(hex); screenMat.needsUpdate = true; }
       screenMat.emissiveIntensity = 0.82;
+      if (!mac) { backlight.emissive.copy(live.accent); backlight.emissiveIntensity = 0.7 + Math.sin(t * 1.2) * 0.12; ledMat.emissive.copy(live.accent); }
       // tampa: abre e fecha devagar entre ~110° e ~62°, sem fechar (ciclo de ~16 s, parando suave nas pontas)
       const k = (1 - Math.cos(t * (Math.PI * 2 / 16))) / 2;
       lid.rotation.x = -0.34 + k * 0.82;

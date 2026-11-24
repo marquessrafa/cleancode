@@ -3,6 +3,7 @@
 import React from 'react';
 import Viewer3D from '../hw3d/Viewer';
 import { gpuModel, cpuModel, ramModel, boardModel, ssdModel, powerModel, pcModel, laptopModel } from '../hw3d/models';
+import { socModel, gpuChipModel, soDimmModel, solderedMemModel, laptopBoardModel } from '../hw3d/mobile';
 
 const MODELS: { id: string; label: string; build: () => any }[] = [
   { id: 'pc', label: 'PC (gabinete)', build: () => pcModel({ sticks: 2 }) },
@@ -15,6 +16,13 @@ const MODELS: { id: string; label: string; build: () => any }[] = [
   { id: 'laptop', label: 'Notebook (Windows)', build: () => laptopModel({}) },
   { id: 'mac', label: 'MacBook', build: () => laptopModel({ mac: true }) },
   { id: 'battery', label: 'Energia (notebook/Mac)', build: () => powerModel({ laptop: true }) },
+  { id: 'nb-cpu-intel', label: 'Notebook: processador Intel', build: () => socModel({ vendor: 'intel', cores: 14, highlight: 'cpu' }) },
+  { id: 'nb-cpu-amd', label: 'Notebook: processador AMD', build: () => socModel({ vendor: 'amd', cores: 8, highlight: 'cpu' }) },
+  { id: 'nb-igpu', label: 'Notebook: GPU integrada', build: () => socModel({ vendor: 'intel', cores: 14, highlight: 'gpu' }) },
+  { id: 'nb-dgpu', label: 'Notebook: GPU dedicada', build: () => gpuChipModel({ memChips: 4 }) },
+  { id: 'nb-sodimm', label: 'Notebook: memória SO-DIMM', build: () => soDimmModel({ count: 2 }) },
+  { id: 'nb-soldered', label: 'Notebook: memória soldada', build: () => solderedMemModel({ chips: 4, label: '8 GB' }) },
+  { id: 'nb-board', label: 'Notebook: placa', build: () => laptopBoardModel({ vendor: 'intel', cores: 14, dgpu: true, sodimm: 2 }) },
 ];
 const live = { load: 0.45, cores: [0.5, 0.3, 0.7, 0.2, 0.4, 0.6, 0.3, 0.5], gpu: 0.6, fanRpm: 1400, mem: 0.55, watts: 85, battery: 0.72, charging: true, disk: 0.4, temps: { cpu: 58, gpu: 62 } };
 
