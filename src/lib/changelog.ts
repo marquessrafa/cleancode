@@ -5,6 +5,16 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.13', date: '2026-11-24', headline: 'Atualização no Windows instala até o fim e reabre o app',
+    groups: [
+      { title: 'Atualizações', icon: 'download', items: [
+        'No Windows, o botão Atualizar agora instala a versão nova até o fim. Antes, o app fechava, mas a instalação parava no meio e o CleanCode não abria de novo.',
+        'A janela de instalação mostra as mesmas etapas do popup. Quando a instalação termina, ela abre o CleanCode na versão nova.',
+        'A instalação que acontece quando você fecha o app com uma atualização baixada também foi corrigida.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.12', date: '2026-11-24', headline: 'App em três idiomas, menu lateral novo e PCs AMD e Intel em 3D',
     groups: [
       { title: 'Idiomas', icon: 'globe', items: [

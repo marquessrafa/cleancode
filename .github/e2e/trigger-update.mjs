@@ -29,5 +29,5 @@ for (let i = 0; i < 60; i++) {
 if (!st || !['available', 'ready', 'downloading'].includes(st.status)) { console.log('nenhuma atualização encontrada'); process.exit(2); }
 console.log('clicando em Atualizar…');
 ev('window.cc.updateStart().then(() => "ok", (e) => "erro: " + e.message)').then((r) => console.log('updateStart:', r));
-for (let i = 0; i < 40; i++) { const s = await ev('window.cc.updateState()').catch(() => null); if (!s) { console.log('o app fechou'); break; } console.log('estado:', s.status, 'etapa', s.step ?? '-'); await sleep(1000); }
+for (let i = 0; i < 40; i++) { const s = await Promise.race([ev('window.cc.updateState()'), sleep(3000).then(() => null)]).catch(() => null); if (!s) { console.log('o app fechou'); break; } console.log('estado:', s.status, 'etapa', s.step ?? '-'); await sleep(1000); }
 process.exit(0);

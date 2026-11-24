@@ -72,6 +72,12 @@ jobs:
           Get-Content e2e-out\timeline.txt | Select-Object -Last 120
           Get-ChildItem $env:TEMP -Filter 'cleancode-update*' -ErrorAction SilentlyContinue | % { "--- $($_.Name)"; if ($_.Extension -eq '.log') { Get-Content $_.FullName } }
           Copy-Item (Join-Path $env:TEMP 'cleancode-update*.log') e2e-out -ErrorAction SilentlyContinue
+          # resultado: o instalador terminou bem e o app abriu de novo depois da instalação
+          $log = Get-Content (Join-Path $env:TEMP 'cleancode-update.log') -Raw -ErrorAction SilentlyContinue
+          $reopened = @(Get-CimInstance Win32_Process -Filter "Name='CleanCode.exe'" | Where-Object { $_.CommandLine -match '--updated' }).Count
+          if ($log -notmatch 'código 0' -or $reopened -eq 0) { throw "a atualização não terminou (código 0 no log: $($log -match 'código 0'), app reaberto: $reopened)" }
+          'OK: a atualização instalou e o app abriu de novo.'
+          exit 0
       - uses: actions/upload-artifact@v4
         if: always()
         with:
