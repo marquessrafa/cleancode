@@ -60,8 +60,94 @@ export function gpuModel(opts: { fans?: number } = {}): Model {
   };
 }
 
+// ======================= PROCESSADOR AMD (AM5) =======================
+/** Contorno da tampa metálica (IHS) dos Ryzen AM5: quadrado de cantos arredondados com dois recortes em cada lado,
+ *  onde aparecem os capacitores do substrato (o formato "polvo"). Coordenadas no plano XY, centradas. */
+function am5Outline(a: number, corner: number, offset: number, halfW: number, depth: number) {
+  const s = new THREE.Shape();
+  type V = [number, number];
+  const sides: { p: V; dir: V; n: V }[] = [
+    { p: [-a, -a], dir: [1, 0], n: [0, 1] }, { p: [a, -a], dir: [0, 1], n: [-1, 0] },
+    { p: [a, a], dir: [-1, 0], n: [0, -1] }, { p: [-a, a], dir: [0, -1], n: [1, 0] },
+  ];
+  const len = 2 * a, rr = Math.min(0.008, halfW * 0.5);
+  sides.forEach((sd, i) => {
+    const P = (t: number, k: number): V => [sd.p[0] + sd.dir[0] * t + sd.n[0] * k, sd.p[1] + sd.dir[1] * t + sd.n[1] * k];
+    const start = P(corner, 0);
+    if (i === 0) s.moveTo(...start); else s.lineTo(...start);
+    for (const c of [len / 2 - offset, len / 2 + offset]) {
+      s.lineTo(...P(c - halfW, 0)); s.lineTo(...P(c - halfW, depth - rr)); s.quadraticCurveTo(...P(c - halfW, depth), ...P(c - halfW + rr, depth));
+      s.lineTo(...P(c + halfW - rr, depth)); s.quadraticCurveTo(...P(c + halfW, depth), ...P(c + halfW, depth - rr)); s.lineTo(...P(c + halfW, 0));
+    }
+    s.lineTo(...P(len - corner, 0));
+    const end = P(len, 0), nx = sides[(i + 1) % 4];
+    s.quadraticCurveTo(end[0], end[1], nx.p[0] + nx.dir[0] * corner, nx.p[1] + nx.dir[1] * corner);
+  });
+  return s;
+}
+/** Texto gravado na tampa: nome da marca e da linha em letra comum (sem logotipo) e o modelo embaixo. */
+function am5LabelTexture(name: string) {
+  const model = name.replace(/\bAMD\b|\bRyzen\b|Processor|with Radeon Graphics|\d+-Core|\(R\)|\(TM\)|™|®/gi, ' ').replace(/\s+/g, ' ').trim();
+  const line = /threadripper/i.test(name) ? 'THREADRIPPER' : /athlon/i.test(name) ? 'ATHLON' : 'RYZEN';
+  return canvasTex(1024, 1024, (c) => {
+    c.clearRect(0, 0, 1024, 1024);
+    c.fillStyle = '#4a4e55'; c.textBaseline = 'alphabetic';
+    c.font = '800 250px "Segoe UI", "SF Pro Display", Helvetica, Arial, sans-serif'; c.fillText('AMD', 150, 470);
+    c.font = '600 150px "Segoe UI", "SF Pro Display", Helvetica, Arial, sans-serif';
+    let x = 160; for (const ch of line) { c.fillText(ch, x, 660); x += c.measureText(ch).width + 26; }
+    if (model) { c.globalAlpha = 0.85; c.font = '500 96px "Segoe UI", "SF Pro Display", Helvetica, Arial, sans-serif'; c.fillText(model.slice(0, 18), 164, 800); }
+  });
+}
+function amdCpuModel(opts: { name?: string; sub?: string; cores?: number }): Model {
+  const g = new THREE.Group();
+  const S = 0.42; // substrato quadrado (40 × 40 mm no real)
+  const subTex = canvasTex(512, 512, (c) => {
+    c.fillStyle = '#0f5c58'; c.fillRect(0, 0, 512, 512);
+    c.fillStyle = 'rgba(160,220,210,0.10)'; for (let y = 3; y < 512; y += 6) for (let x = 3; x < 512; x += 6) c.fillRect(x, y, 1.4, 1.4);
+  });
+  const sub = slab(S, S, 0.012, 0.006, new THREE.MeshStandardMaterial({ map: subTex, metalness: 0.25, roughness: 0.55 })); sub.rotation.x = -Math.PI / 2; sub.position.y = 0.006; g.add(sub);
+  const edge = slab(S + 0.002, S + 0.002, 0.002, 0.007, mat.gold()); edge.rotation.x = -Math.PI / 2; edge.position.y = 0.0005; g.add(edge);
+  const tri = new THREE.Mesh(new THREE.CircleGeometry(0.012, 3), mat.gold()); tri.rotation.set(-Math.PI / 2, 0, Math.PI / 4); tri.position.set(-S * 0.455, 0.0125, S * 0.455); g.add(tri);
+  // tampa metálica escovada no formato AM5
+  const a = S * 0.465, offset = S * 0.2, halfW = S * 0.07, depth = S * 0.11;
+  const metal = new THREE.MeshStandardMaterial({ color: 0xc9cdd2, metalness: 1, roughness: 0.3 });
+  const ihs = new THREE.Mesh(new THREE.ExtrudeGeometry(am5Outline(a, S * 0.06, offset, halfW, depth), { depth: 0.016, bevelEnabled: true, bevelThickness: 0.003, bevelSize: 0.003, bevelSegments: 3, curveSegments: 10 }), metal);
+  ihs.rotation.x = -Math.PI / 2; ihs.position.y = 0.012; ihs.castShadow = true; g.add(ihs);
+  const top = 0.012 + 0.016 + 0.003;
+  // capacitores dentro dos recortes (fileiras douradas e cinza), como no substrato real
+  const capA = mat.gold(), capB = mat.metal(0x7c8189, 0.35);
+  const caps = (cx: number, cz: number, alongX: boolean) => {
+    for (let r = 0; r < 2; r++) for (let k = 0; k < 4; k++) {
+      const w = alongX ? 0.011 : 0.007, d = alongX ? 0.007 : 0.011;
+      const b = box(w, 0.005, d, (r + k) % 2 ? capA : capB);
+      const u = (k - 1.5) * 0.016, v = (r - 0.5) * 0.016;
+      b.position.set(cx + (alongX ? u : v), 0.0145, cz + (alongX ? v : u)); g.add(b);
+    }
+  };
+  const inset = a - depth * 0.45;
+  for (const o of [-offset, offset]) { caps(o, inset, true); caps(-inset, o, false); caps(inset, o, false); }
+  // pequeno círculo de orientação na tampa (canto superior esquerdo)
+  const pip = new THREE.Mesh(new THREE.RingGeometry(0.0045, 0.0065, 24), mat.dark(0x8a8f96, 0.4)); pip.rotation.x = -Math.PI / 2; pip.position.set(-a * 0.82, top + 0.0006, -a * 0.82); g.add(pip);
+  // texto gravado
+  const label = new THREE.Mesh(new THREE.PlaneGeometry(S * 0.7, S * 0.7), new THREE.MeshStandardMaterial({ map: am5LabelTexture(opts.name || 'AMD Ryzen'), transparent: true, metalness: 0.7, roughness: 0.45 }));
+  label.rotation.x = -Math.PI / 2; label.position.set(0, top + 0.0008, 0.005); g.add(label);
+  // contorno luminoso sob a tampa (carga e temperatura), igual ao modelo genérico
+  const glowMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: new THREE.Color(0x3ddc97), emissiveIntensity: 1.2 });
+  const glow = new THREE.Mesh(new THREE.TorusGeometry(1, 0.004, 6, 4, Math.PI * 2), glowMat); glow.rotation.set(-Math.PI / 2, 0, Math.PI / 4); glow.scale.set(S * 0.66, S * 0.66, 1); glow.position.y = 0.013; g.add(glow);
+  return {
+    group: g, focus: { distance: 0.95, target: [0, 0.02, 0], height: 0.55 },
+    update(live, t) {
+      const ld = live.load ?? 0.2; const tc = live.temps?.cpu;
+      glowMat.emissive.copy(tc !== undefined ? tempColor(tc) : live.accent); glowMat.emissiveIntensity = 0.8 + ld * 3 + Math.sin(t * 3) * 0.2;
+    },
+  };
+}
+/** O nome do processador indica AMD? (Ryzen, Threadripper, Athlon ou "AMD") */
+export const isAmdCpu = (name?: string) => /\b(amd|ryzen|threadripper|athlon)\b/i.test(name || '');
+
 // ======================= PROCESSADOR =======================
 export function cpuModel(opts: { name?: string; sub?: string; cores?: number } = {}): Model {
+  if (isAmdCpu(opts.name)) return amdCpuModel(opts);
   const g = new THREE.Group();
   const W = 0.45, D = 0.375;
   // substrato (placa verde-azulada) com borda dourada

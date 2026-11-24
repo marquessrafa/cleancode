@@ -8,9 +8,11 @@ import { socModel, gpuChipModel, soDimmModel, solderedMemModel, laptopBoardModel
 const MODELS: { id: string; label: string; build: () => any }[] = [
   { id: 'pc', label: 'PC (gabinete)', build: () => pcModel({ sticks: 2 }) },
   { id: 'gpu', label: 'Placa de vídeo', build: () => gpuModel({ fans: 3 }) },
-  { id: 'cpu', label: 'Processador', build: () => cpuModel({ name: 'Ryzen 7 7800X3D', sub: 'x64', cores: 8 }) },
+  { id: 'cpu', label: 'Processador AMD', build: () => cpuModel({ name: 'AMD Ryzen 7 7700X 8-Core Processor', sub: 'x64', cores: 8 }) },
+  { id: 'cpu-intel', label: 'Processador Intel', build: () => cpuModel({ name: 'Intel Core i7-14700K', sub: 'x64', cores: 20 }) },
   { id: 'ram', label: 'Memória', build: () => ramModel({ count: 2 }) },
-  { id: 'board', label: 'Placa-mãe', build: () => boardModel({ dimms: 4, sticks: 2, cpu: { name: 'Ryzen 7 7800X3D', sub: 'x64', cores: 8 } }) },
+  { id: 'board', label: 'Placa-mãe', build: () => boardModel({ dimms: 4, sticks: 2, cpu: { name: 'AMD Ryzen 7 7700X 8-Core Processor', sub: 'x64', cores: 8 } }) },
+  { id: 'pc-amd', label: 'PC com AMD', build: () => pcModel({ sticks: 2, cpu: { name: 'AMD Ryzen 7 7700X 8-Core Processor', sub: 'x64', cores: 8 } }) },
   { id: 'psu', label: 'Fonte', build: () => powerModel({}) },
   { id: 'ssd', label: 'SSD NVMe', build: () => ssdModel({ kind: 'nvme', label: 'SSD NVMe' }) },
   { id: 'laptop', label: 'Notebook (Windows)', build: () => laptopModel({}) },
