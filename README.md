@@ -24,7 +24,7 @@
 </div>
 
 <p align="center">
-  <img src="docs/screenshots/hero.webp" alt="CleanCode: Monitor de hardware com o painel da barra de menus aberto" width="100%" />
+  <img src="docs/screenshots/hero.webp" alt="CleanCode: Monitor de hardware com o MacBook em 3D e a câmera passeando pelo modelo" width="100%" />
 </p>
 
 ---
@@ -63,7 +63,7 @@ Tudo foi feito para ser **seguro por padrão**:
 
 <table>
   <tr>
-    <td width="50%" valign="top"><img src="docs/screenshots/overview.webp" alt="Visão geral" width="100%" /><br /><strong>Visão geral</strong><br />Unidades, espaço usado e livre, saúde do SSD e insights de limpeza.</td>
+    <td width="50%" valign="top"><img src="docs/screenshots/overview.webp" alt="Visão geral" width="100%" /><br /><strong>Visão geral</strong><br />Unidades, espaço usado e livre e o mapa do armazenamento: quanto ocupam apps, documentos, downloads, caches e o sistema.</td>
     <td width="50%" valign="top"><img src="docs/screenshots/visual.webp" alt="Treemap" width="100%" /><br /><strong>Visualizações</strong><br />Treemap com relevo 3D, pizza e barras: as pastas que mais pesam num relance.</td>
   </tr>
   <tr>
@@ -93,7 +93,7 @@ Tudo foi feito para ser **seguro por padrão**:
 
 <table>
   <tr>
-    <td width="50%" valign="top"><img src="docs/screenshots/hardware.webp" alt="Visão geral do hardware" width="100%" /><br /><strong>Visão geral</strong><br />Placa-mãe em 3D com trilhas de dados animadas. Clique em cada componente para abrir os detalhes.</td>
+    <td width="50%" valign="top"><img src="docs/screenshots/hardware.webp" alt="Visão geral do hardware" width="100%" /><br /><strong>Visão geral</strong><br />O seu computador em 3D (MacBook, notebook ou PC), com câmera em movimento e circuitos animados ao fundo, ao lado dos números ao vivo.</td>
     <td width="50%" valign="top"><img src="docs/screenshots/hw-cpu.webp" alt="Processador" width="100%" /><br /><strong>Processador</strong><br />Cada núcleo acende conforme a própria carga; núcleos de desempenho e de eficiência, cache e temperatura.</td>
   </tr>
   <tr>
