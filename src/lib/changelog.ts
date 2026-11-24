@@ -5,6 +5,15 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.17', date: '2026-11-24', headline: 'Processador e memória de volta nos sensores do Windows',
+    groups: [
+      { title: 'Monitor de hardware', icon: 'chip', items: [
+        'No Windows, o processador e a memória voltaram a aparecer no Monitor de hardware. Na versão 1.4.15, duas cópias do programa dos sensores abriam ao mesmo tempo, e uma achava que a outra tinha caído.',
+        'Agora uma peça só fica de fora depois de cair duas vezes seguidas. Ao mapear os sensores de novo, o CleanCode também apaga os registros de quedas antigos.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.16', date: '2026-11-24', headline: 'Varreduras voltam a funcionar',
     groups: [
       { title: 'Correções', icon: 'wrench', items: [

@@ -204,7 +204,7 @@ export async function validate(): Promise<HwCheck[]> {
   const stageWhy = (grp: string) => {
     const st = g[grp] || '';
     if (st === 'timeout') return t("A abertura dessa peça passou de 20 segundos, então o programa dos sensores seguiu sem ela.");
-    if (st === 'skipped') return t("A leitura dessa peça caiu numa execução anterior, então ela fica de fora por um dia.");
+    if (st === 'skipped') return t("A leitura dessa peça caiu duas vezes seguidas, então ela fica de fora por um dia.");
     if (st.startsWith('error')) return t("A abertura dessa peça deu erro: {0}", st.replace(/^error:\s*/, ''));
     return '';
   };
