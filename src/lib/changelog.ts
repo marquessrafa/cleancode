@@ -5,6 +5,16 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.15', date: '2026-11-24', headline: 'Sensores do Windows voltam a funcionar em PCs Intel',
+    groups: [
+      { title: 'Monitor de hardware', icon: 'chip', items: [
+        'No Windows, os sensores do processador, da placa-mãe, da memória e da energia voltaram a aparecer em PCs Intel. Desde a versão 1.4.12, o programa que lê os sensores fechava antes da primeira leitura nesses PCs.',
+        'Agora o programa abre todas as peças antes de começar a ler. Se uma peça travar, só ela fica de fora, e as outras continuam com leitura.',
+        'Se os sensores avançados pararem de responder, o Monitor de hardware mostra um aviso e o botão Ativar de novo, em vez de deixar a tela vazia.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.14', date: '2026-11-24', headline: 'Cor de destaque branca',
     groups: [
       { title: 'Aparência', icon: 'sparkles', items: [
