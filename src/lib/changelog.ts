@@ -5,6 +5,16 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.11', date: '2026-11-24', headline: 'Popup de atualização com novidades e instalação acompanhada',
+    groups: [
+      { title: 'Atualizações', icon: 'download', items: [
+        'Quando sai uma versão nova, um popup no centro da tela mostra as novidades e o botão Atualizar agora.',
+        'Ao atualizar, você acompanha o download e cada etapa da instalação; o CleanCode só reinicia quando tudo terminou.',
+        'Se preferir atualizar depois, ele continua instalando sozinho ao fechar a janela.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.10', date: '2026-11-24', headline: 'Atualizações aparecem poucos minutos depois de saírem',
     groups: [
       { title: 'Atualizações', icon: 'download', items: [

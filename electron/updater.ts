@@ -6,7 +6,19 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
-export interface UpdateInfo { version: string; file: string; sha512: string; size: number; date?: string; source: string; base?: string }
+export interface UpdateNote { version: string; date: string; headline: string; groups: { title: string; icon: string; items: string[] }[] }
+export interface UpdateInfo { version: string; file: string; sha512: string; size: number; date?: string; source: string; base?: string; notes?: UpdateNote[] }
+
+/** Novidades embutidas no feed (base64 de JSON): só as versões mais novas que a instalada. */
+function parseNotes(yml: string): UpdateNote[] | undefined {
+  const b64 = /^notes:\s*([A-Za-z0-9+/=]+)/m.exec(yml)?.[1];
+  if (!b64) return undefined;
+  try {
+    const all = JSON.parse(Buffer.from(b64, 'base64').toString('utf8')) as UpdateNote[];
+    const list = all.filter((n) => n && n.version && newer(n.version, app.getVersion()));
+    return list.length ? list : undefined;
+  } catch { return undefined; }
+}
 
 const isUrl = (s: string) => /^https?:\/\//i.test(s);
 /** Cada SO tem o próprio feed (o electron-builder usa latest.yml no Windows e latest-mac.yml no macOS). */
@@ -72,7 +84,7 @@ function finish(text: string, source: string): UpdateInfo | null {
   const meta = parseLatest(text);
   if (!meta.version || !meta.file || !meta.sha512) throw new Error(`${FEED_FILE} inválido`);
   if (!newer(meta.version, app.getVersion())) return null;
-  return { version: meta.version, file: meta.file, sha512: meta.sha512, size: meta.size, date: meta.date, source, base: meta.base && isUrl(meta.base) ? meta.base : undefined };
+  return { version: meta.version, file: meta.file, sha512: meta.sha512, size: meta.size, date: meta.date, source, base: meta.base && isUrl(meta.base) ? meta.base : undefined, notes: parseNotes(text) };
 }
 
 export async function downloadUpdate(info: UpdateInfo, onProgress: (done: number, total: number) => void): Promise<string> {

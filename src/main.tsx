@@ -32,6 +32,7 @@ import { NeedsScan } from './pages/common';
 import FdaHelper from './pages/FdaHelper';
 import DossierPage from './pages/Dossier';
 import Hw3dPreview from './pages/Hw3dPreview';
+import { UpdateModal } from './components/UpdateModal';
 import { FdaAssistantHost } from './components/FdaAssistant';
 import Panel from './panel/Panel';
 import WhatsNew from './components/WhatsNew';
@@ -164,6 +165,7 @@ function App() {
       <ConfirmDialog />
       <ContextMenuHost />
       <WhatsNew />
+      <UpdateModal />
       <FdaAssistantHost />
     </div>
   );

@@ -31,6 +31,16 @@ const order = [main, ...Object.values(info).filter((x) => x !== main)];
 const lines = [`version: ${v}`, 'files:', ...order.flatMap((x) => [`  - url: ${x.file}`, `    sha512: ${x.sha512}`, `    size: ${x.size}`]), `path: ${main.file}`, `sha512: ${main.sha512}`];
 for (const [k, x] of Object.entries(info)) lines.push(`path${k}: ${x.file}`, `sha512${k}: ${x.sha512}`, `size${k}: ${x.size}`);
 if (process.env.CLEANCODE_RELEASE_BASE) lines.push(`base: ${process.env.CLEANCODE_RELEASE_BASE}`);
+// novidades das últimas versões (src/lib/changelog.ts) numa linha em base64: o popup de atualização mostra as da
+// versão nova (e das que a pessoa pulou). Versões antigas do app ignoram a chave.
+try {
+  const { transformSync } = require('esbuild');
+  const src = fs.readFileSync(path.join(root, 'src', 'lib', 'changelog.ts'), 'utf8');
+  const js = transformSync(src, { loader: 'ts', format: 'cjs' }).code;
+  const mod = { exports: {} }; new Function('module', 'exports', js)(mod, mod.exports);
+  const notes = (mod.exports.CHANGELOG || []).slice(0, 8);
+  if (notes.length) lines.push(`notes: ${Buffer.from(JSON.stringify(notes), 'utf8').toString('base64')}`);
+} catch (e) { console.warn('novidades fora do feed:', e.message); }
 lines.push(`releaseDate: '${new Date().toISOString()}'`, '');
 fs.writeFileSync(path.join(root, 'release', feed), lines.join('\n'));
 console.log(`${feed} →`, v, Object.keys(info).join(', '));

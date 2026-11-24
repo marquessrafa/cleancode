@@ -361,6 +361,13 @@ export interface SystemApi {
   metrics: MetricsApi;
   /** instala uma atualização já baixada e verificada e encerra o app */
   installUpdate(file: string, quit: () => void, relaunch: boolean): void;
+  /** etapas mostradas no popup durante a instalação */
+  updateSteps?: string[];
+  /** instala acompanhando as etapas (onStep = índice em updateSteps). 'relaunch': já instalou, falta reabrir;
+   *  'handoff': uma janelinha própria assume a instalação e reabre o app (o app precisa fechar agora) */
+  installUpdateLive?(file: string, onStep: (i: number) => void, ui: { accent: string; dark: boolean; version: string }): Promise<'relaunch' | 'handoff'>;
+  /** limpa sobras da atualização anterior (ex.: o .app antigo no macOS) */
+  cleanupUpdate?(): void;
 }
 
 // ---------- dossiê de um programa ----------

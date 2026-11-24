@@ -29,9 +29,12 @@ export interface Settings {
   runInBackground: boolean; startWithWindows: boolean; notifyEnabled: boolean; notifyDisk: boolean; notifyApps: boolean; notifyThresholdMB: number;
   updateSource: string; autoCheckUpdates: boolean; autoInstallUpdates: boolean;
 }
+export interface UpdateNote { version: string; date: string; headline: string; groups: { title: string; icon: string; items: string[] }[] }
 export interface UpdateState {
-  status: 'idle' | 'checking' | 'available' | 'none' | 'downloading' | 'ready' | 'installing' | 'error';
-  info?: { version: string; file: string; size: number; date?: string; source: string } | null; error?: string; done?: number; total?: number; checkedAt?: number;
+  status: 'idle' | 'checking' | 'available' | 'none' | 'downloading' | 'ready' | 'installing' | 'restarting' | 'error';
+  info?: { version: string; file: string; size: number; date?: string; source: string; notes?: UpdateNote[] } | null; error?: string; done?: number; total?: number; checkedAt?: number;
+  /** etapas da instalação (popup de atualização) e a atual */
+  steps?: string[]; step?: number;
   defaultSource?: string; source?: 'found' | 'searching' | 'missing';
 }
 
@@ -215,6 +218,7 @@ interface CC {
   updateCheck(): Promise<UpdateState>;
   updatePickSource(): Promise<string | null>;
   updateInstall(): Promise<boolean>;
+  updateStart(): Promise<boolean>;
   loginItemStatus(): Promise<{ packaged: boolean; openAtLogin: boolean }>;
   contextMenuStatus(): Promise<boolean>;
   contextMenu(enable: boolean): Promise<boolean>;

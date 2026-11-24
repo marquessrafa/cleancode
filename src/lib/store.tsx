@@ -326,16 +326,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return ok;
   }, [patchTask, toast]);
 
-  const installUpdate = useCallback(async () => {
-    if (!update.info) return;
-    const r = await confirm({
-      title: `Atualizar para a versão ${update.info.version}?`,
-      message: <>O CleanCode baixa a nova versão, confere a integridade e instala em segundo plano, sem abrir o instalador. O app fecha por alguns segundos e reabre sozinho já atualizado. Varreduras abertas serão perdidas.</>,
-      confirmLabel: 'Atualizar agora',
-    });
-    if (!r.ok) return;
-    try { await cc.updateInstall(); } catch (e: any) { toast('Falha ao atualizar: ' + (e?.message || e), 'error'); }
-  }, [update, confirm, toast]);
+  // o botão de atualizar do topo abre o popup central (novidades, download e instalação acompanhados)
+  const installUpdate = useCallback(async () => { window.dispatchEvent(new Event('cc:update-modal')); }, []);
 
   const value: Ctx = {
     update, installUpdate,

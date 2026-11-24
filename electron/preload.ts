@@ -103,6 +103,7 @@ contextBridge.exposeInMainWorld('cc', {
   updateCheck: () => inv('update:check'),
   updatePickSource: () => inv('update:pickSource'),
   updateInstall: () => inv('update:install'),
+  updateStart: () => inv('update:start'),
   monitorState: () => inv('monitor:state'),
   monitorCheckNow: () => inv('monitor:checkNow'),
   loginItemStatus: () => inv('app:loginItemStatus'),

@@ -491,8 +491,8 @@ async function openInstalledDossier(ref: { key: string; name: string }) {
   if (mainWin?.webContents.isLoading()) mainWin.webContents.once('did-finish-load', () => setTimeout(send, 600)); else setTimeout(send, 300);
 }
 // ---------- atualizações ----------
-type UpdStatus = 'idle' | 'checking' | 'available' | 'none' | 'downloading' | 'ready' | 'installing' | 'error';
-let updateState: { status: UpdStatus; info?: UpdateInfo | null; error?: string; done?: number; total?: number; checkedAt?: number; source?: 'found' | 'searching' | 'missing' } = { status: 'idle' };
+type UpdStatus = 'idle' | 'checking' | 'available' | 'none' | 'downloading' | 'ready' | 'installing' | 'restarting' | 'error';
+let updateState: { status: UpdStatus; info?: UpdateInfo | null; error?: string; done?: number; total?: number; checkedAt?: number; source?: 'found' | 'searching' | 'missing'; steps?: string[]; step?: number } = { status: 'idle' };
 
 /** Fonte de atualizações: usa o último local conhecido; se a pasta foi movida, encontra de novo pelo identificador. */
 let resolving: Promise<string> | null = null;
@@ -522,7 +522,7 @@ function pushUpdate(patch: Partial<typeof updateState>) {
   updateState = { ...updateState, ...patch };
   for (const w of windows) if (!w.isDestroyed()) w.webContents.send('update:state', updateState);
 }
-const busyUpdating = () => ['checking', 'downloading', 'installing'].includes(updateState.status);
+const busyUpdating = () => ['checking', 'downloading', 'installing', 'restarting'].includes(updateState.status);
 let availableNotified = '';   // versão já avisada no popup (as verificações automáticas não repetem o aviso)
 let lastUpdateCheck = 0;
 async function runUpdateCheck(silent: boolean) {
@@ -585,6 +585,55 @@ ipcMain.handle('update:pickSource', async (e) => {
   watchUpdateSource(); runUpdateCheck(false);
   return r.filePaths[0];
 });
+// demonstração do popup de atualização em desenvolvimento (CLEANCODE_DEMO_UPDATE=1): simula uma versão nova com as
+// novidades reais e um download/instalação de mentira. Nunca roda no app instalado.
+const DEMO_UPDATE = !app.isPackaged && !!process.env.CLEANCODE_DEMO_UPDATE;
+if (DEMO_UPDATE) app.whenReady().then(() => setTimeout(() => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { CHANGELOG } = require('../src/lib/changelog');
+  pushUpdate({ status: 'available', info: { version: '1.5.0', file: 'demo', sha512: '', size: 152 * 1048576, source: 'demo', date: new Date().toISOString(), notes: CHANGELOG.slice(0, 2).map((n: any, i: number) => (i ? n : { ...n, version: '1.5.0' })) } });
+}, 4000));
+async function demoInstall() {
+  const total = updateState.info!.size;
+  for (let d = 0; d <= total; d += total / 40) { pushUpdate({ status: 'downloading', done: Math.min(total, d), total }); await new Promise((r) => setTimeout(r, 110)); }
+  const steps = system.updateSteps || [];
+  pushUpdate({ status: 'installing', steps, step: 0 });
+  for (let i = 0; i < steps.length; i++) { pushUpdate({ step: i }); await new Promise((r) => setTimeout(r, 1300)); }
+  pushUpdate({ status: 'restarting', step: steps.length });
+  return true;
+}
+
+// atualizar pelo popup central: baixa (se ainda não baixou), instala acompanhando as etapas e só reinicia no fim
+ipcMain.handle('update:start', async () => {
+  const info = updateState.info;
+  if (!info) throw new Error('Nenhuma atualização disponível');
+  if (DEMO_UPDATE) return demoInstall();
+  if (!app.isPackaged) throw new Error('A instalação automática só funciona na versão instalada');
+  try {
+    // já baixando em segundo plano (instalação automática): espera terminar em vez de baixar de novo
+    if (updateState.status === 'downloading') await new Promise<void>((res) => { const iv = setInterval(() => { if (updateState.status !== 'downloading') { clearInterval(iv); res(); } }, 300); });
+    if (!readyFile) await downloadReady(info);
+    const live = system.installUpdateLive;
+    if (!live) { installReadyNow(); return true; }
+    const steps = system.updateSteps || [];
+    pushUpdate({ status: 'installing', steps, step: 0, error: undefined });
+    const dark = isDarkTheme();
+    const file = readyFile!;
+    readyFile = null; // o arquivo agora é da instalação em andamento (não instalar de novo ao sair)
+    const r = await live.call(system, file, (i) => pushUpdate({ step: i }), { accent: accentHex(dark), dark, version: info.version });
+    if (r === 'relaunch') {
+      pushUpdate({ status: 'restarting', step: steps.length });
+      setTimeout(() => {
+        app.relaunch({ args: [...process.argv.slice(1).filter((a) => a !== '--updated' && a !== '--hidden'), '--updated'] });
+        quitApp();
+      }, 1500);
+    } else setTimeout(quitApp, 900); // a janelinha do instalador assume e reabre o app no fim
+    return true;
+  } catch (err: any) {
+    pushUpdate({ status: 'error', error: String(err?.message || err) });
+    throw err;
+  }
+});
 ipcMain.handle('update:install', async () => {
   const info = updateState.info;
   if (!info) throw new Error('Nenhuma atualização disponível');
@@ -602,10 +651,10 @@ ipcMain.handle('update:install', async () => {
 // verificação: 15 s após abrir, a cada 3 min (o feed é um arquivo minúsculo) e também ao acordar o computador,
 // ao abrir a janela e ao abrir o painel da barra de menus (no máximo uma vez a cada 2 min). Uma versão nova
 // aparece no popup e no botão do topo poucos minutos depois de o Release sair.
-setTimeout(() => { if (settings.autoCheckUpdates) runUpdateCheck(true); }, 15000);
-setInterval(() => { if (settings.autoCheckUpdates) runUpdateCheck(true); }, 3 * 60000);
+setTimeout(() => { if (settings.autoCheckUpdates && !DEMO_UPDATE) runUpdateCheck(true); }, 15000);
+setInterval(() => { if (settings.autoCheckUpdates && !DEMO_UPDATE) runUpdateCheck(true); }, 3 * 60000);
 function checkUpdatesSoon(delay = 0) {
-  if (!settings.autoCheckUpdates || Date.now() - lastUpdateCheck < 2 * 60000) return;
+  if (!settings.autoCheckUpdates || DEMO_UPDATE || Date.now() - lastUpdateCheck < 2 * 60000) return;
   lastUpdateCheck = Date.now();
   setTimeout(() => runUpdateCheck(true), delay);
 }
@@ -727,6 +776,7 @@ app.whenReady().then(() => {
   applyLoginItem();
   applyMonitor();
 });
+app.whenReady().then(() => { try { system.cleanupUpdate?.(); } catch { /* */ } });
 app.on('before-quit', () => {
   isQuitting = true;
   // saindo com uma atualização já baixada: instala em silêncio (sem reabrir o app depois)

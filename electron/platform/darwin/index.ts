@@ -132,6 +132,42 @@ const darwin: SystemApi = {
    * Atualização: o .zip do .app (já conferido por SHA-512) é extraído com ditto, perde a quarentena
    * e substitui o pacote atual por um script sh destacado, que espera o app fechar e o reabre.
    */
+  updateSteps: ['Extraindo a nova versão', 'Conferindo a assinatura', 'Substituindo o app', 'Concluindo'],
+  // instala com o app aberto: extrai ao lado do app, confere, troca o pacote (com volta atrás se falhar) e só
+  // depois o app reabre. O processo em execução continua usando o pacote antigo até reiniciar.
+  async installUpdateLive(file, onStep) {
+    const bundle = bundlePath();
+    if (!bundle) throw new Error('A atualização automática só funciona no app instalado (CleanCode.app)');
+    if (bundle.includes('/AppTranslocation/')) throw new Error('Mova o CleanCode para a pasta Aplicativos antes de atualizar (hoje ele está rodando direto do download ou da imagem .dmg)');
+    try { fs.accessSync(path.dirname(bundle), fs.constants.W_OK); fs.accessSync(bundle, fs.constants.W_OK); }
+    catch { throw new Error(`Sem permissão para substituir ${bundle}. Baixe o .dmg novo e arraste o app para Aplicativos.`); }
+    const run = (cmd: string, args: string[]) => new Promise<void>((res, rej) => execFile(cmd, args, { timeout: 180000 }, (e) => (e ? rej(e) : res())));
+    onStep(0);
+    const tmp = fs.mkdtempSync(path.join(path.dirname(bundle), '.cleancode-update-'));
+    try {
+      await run('/usr/bin/ditto', ['-x', '-k', file, tmp]);
+      const name = fs.readdirSync(tmp).find((n) => n.endsWith('.app'));
+      if (!name) throw new Error('O pacote baixado não contém o app');
+      const fresh = path.join(tmp, name);
+      onStep(1);
+      // o SHA-512 já foi conferido no download; a assinatura é uma segunda checagem (não bloqueia)
+      await run('/usr/bin/codesign', ['--verify', '--deep', '--strict', fresh]).catch(() => {});
+      await run('/usr/bin/xattr', ['-cr', fresh]).catch(() => {});
+      onStep(2);
+      const old = bundle + '.old';
+      fs.rmSync(old, { recursive: true, force: true });
+      fs.renameSync(bundle, old);
+      try { fs.renameSync(fresh, bundle); } catch (e) { fs.renameSync(old, bundle); throw e; }
+      onStep(3);
+      fs.rmSync(file, { force: true });
+      await new Promise((r) => setTimeout(r, 600));
+      return 'relaunch' as const;
+    } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+  },
+  cleanupUpdate() {
+    const bundle = bundlePath();
+    if (bundle && fs.existsSync(bundle + '.old')) fs.rm(bundle + '.old', { recursive: true, force: true }, () => {});
+  },
   installUpdate(file, quit, relaunch) {
     const bundle = bundlePath();
     if (!bundle) throw new Error('A atualização automática só funciona no app instalado (CleanCode.app)');
