@@ -4,7 +4,7 @@
 name: Helper de sensores (verificação)
 on:
   push:
-    branches: [main]
+    branches: [main, 'test/sensores*']
     paths: ['native/windows/**', '.github/workflows/helper-check.yml']
   workflow_dispatch:
 permissions:
@@ -35,3 +35,21 @@ jobs:
             $h.sensors | Where-Object { $_.value -ne $null } | Select-Object -First 4 | ForEach-Object { "    $($_.type) $($_.name) = $($_.value)" }
           }
           if (-not $j.hardware) { throw 'nenhuma peça na leitura' }
+          '--- registro (lhm.log) da leitura única'
+          Get-Content (Join-Path $env:LOCALAPPDATA 'CleanCode\lhm\lhm.log')
+      - name: Testar o modo tarefa (grava a leitura num arquivo a cada segundo)
+        shell: pwsh
+        run: |
+          $out = Join-Path $env:RUNNER_TEMP 'cc\sensors.json'
+          $p = Start-Process -FilePath .\out\cc-lhm.exe -ArgumentList '--loop','--out',$out -PassThru -NoNewWindow
+          Start-Sleep -Seconds 12
+          $a = (Get-Item $out).LastWriteTimeUtc; Start-Sleep -Seconds 3; $b = (Get-Item $out).LastWriteTimeUtc
+          if ($p.HasExited) { throw "o helper fechou sozinho com o código $($p.ExitCode)" }
+          Stop-Process -Id $p.Id -Force
+          if ($b -le $a) { throw 'o arquivo de leitura parou de ser atualizado' }
+          $j = Get-Content $out -Raw | ConvertFrom-Json
+          "peças: $(@($j.hardware).Count)   etapas: $($j.groups | ConvertTo-Json -Compress)"
+          '--- registro (lhm.log) do modo tarefa'
+          Get-Content (Join-Path (Split-Path $out) 'lhm.log')
+          '--- marcadores que sobraram'
+          Get-ChildItem (Join-Path $env:LOCALAPPDATA 'CleanCode\lhm') -Filter 'opening-*' -ErrorAction SilentlyContinue | % Name

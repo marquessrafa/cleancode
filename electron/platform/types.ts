@@ -252,7 +252,7 @@ export interface HwLive {
   sensors?: { kind: 'cpu' | 'gpu' | 'disk' | 'battery' | 'board' | 'ram' | 'psu'; group?: string; hw?: string; name: string; value: number; min?: number; max?: number; unit?: string }[];
   /** monitoramento avançado (Windows: LibreHardwareMonitor + driver PawnIO; Mac: IOReport) */
   /** cpuBlocked: por que o processador está sem temperatura e consumo (Windows; ver lhm.ts) */
-  advanced?: { available: boolean; active: boolean; source?: string; cpuBlocked?: 'driver' | 'admin' | 'crash' };
+  advanced?: { available: boolean; active: boolean; source?: string; cpuBlocked?: 'driver' | 'admin' | 'crash' | 'nodata'; logPath?: string };
   /** o que só aparece com o app aberto como administrador */
   needsAdmin?: string;
 }

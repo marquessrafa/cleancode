@@ -79,9 +79,26 @@ export async function advancedActive(): Promise<boolean> {
 }
 /** Última leitura (tarefa elevada, se ativa; senão o helper comum). */
 export async function snapshot(): Promise<LhmSnapshot | null> {
-  if (await advancedActive()) { const s = await readTaskFile(); if (s) return s; }
-  startChild();
-  return last;
+  if (!askedAt) askedAt = Date.now();
+  let s: LhmSnapshot | null = null;
+  if (await advancedActive()) s = await readTaskFile();
+  if (!s) { startChild(); s = last; }
+  if (s?.hardware?.length) dataAt = Date.now();
+  return s;
+}
+// Quando foi pedida a primeira leitura e quando chegou a última leitura com peças.
+let askedAt = 0, dataAt = 0;
+/**
+ * O helper está mudo? Isso acontece quando ele cai ou trava antes de gravar qualquer leitura (foi o que aconteceu
+ * na 1.4.12 em PCs Intel). Sem este aviso, a tela ficava só com o que o Windows informa e não explicava nada.
+ * Conta 45 segundos desde o primeiro pedido ou desde a última leitura boa.
+ */
+export function helperSilent(): boolean {
+  return !!helperPath() && askedAt > 0 && Date.now() - Math.max(askedAt, dataAt) > 45000;
+}
+/** Onde o helper grava o registro de cada passo (lhm.log). */
+export function logPath(active: boolean): string {
+  return active ? path.join(path.dirname(DATA), 'lhm.log') : path.join(process.env.LOCALAPPDATA || os.tmpdir(), 'CleanCode', 'lhm', 'lhm.log');
 }
 
 // ---------- ativação ----------
@@ -143,9 +160,11 @@ export async function deactivate() {
  * Motivo de o processador ficar sem temperatura e sem consumo (issue #1):
  * - 'driver': o driver PawnIO não está instalado, então o Windows bloqueia a leitura;
  * - 'admin': o driver está instalado, mas o helper não roda como administrador (a tarefa do monitoramento avançado não está ativa);
- * - 'crash': a leitura do processador travou ou caiu neste PC, então o helper deixou o processador de fora por um dia.
+ * - 'crash': a leitura do processador travou ou caiu neste PC, então o helper deixou o processador de fora por um dia;
+ * - 'nodata': o helper não entrega nenhuma leitura (caiu ou travou antes da primeira leitura).
  */
-export function cpuBlocked(s: LhmSnapshot | null, flat: FlatSensor[]): 'driver' | 'admin' | 'crash' | undefined {
+export function cpuBlocked(s: LhmSnapshot | null, flat: FlatSensor[]): 'driver' | 'admin' | 'crash' | 'nodata' | undefined {
+  if (helperSilent()) return 'nodata';
   if (!s || !s.hardware) return undefined;
   if (flat.some((x) => x.kind === 'cpu' && (x.group === 'temp' || x.group === 'power'))) return undefined;
   const g = s.groups?.cpu || '';

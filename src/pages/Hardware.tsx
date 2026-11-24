@@ -152,8 +152,10 @@ function AdvancedBanner({ live }: { live: HardwareLive | null }) {
   const blocked = adv.cpuBlocked;
   if (adv.active && !blocked) return null;
   // texto do aviso de acordo com o motivo (issue #1: processador AMD com 0 °C ou sem sensores)
-  const title = blocked === 'crash' ? tr("A leitura do processador travou neste PC") : blocked === 'admin' ? tr("Atualize o monitoramento avançado") : tr("Ative o monitoramento avançado");
-  const text = blocked === 'crash'
+  const title = blocked === 'nodata' ? tr("Os sensores avançados não estão respondendo") : blocked === 'crash' ? tr("A leitura do processador travou neste PC") : blocked === 'admin' ? tr("Atualize o monitoramento avançado") : tr("Ative o monitoramento avançado");
+  const text = blocked === 'nodata'
+    ? tr("O programa que lê os sensores fechou sem entregar nenhuma leitura. Por isso, o CleanCode mostra só o que o Windows informa, como a temperatura da placa de vídeo e dos discos. Clique em Ativar de novo para reinstalar esse programa. Se o problema continuar, o registro de cada passo fica em {0}.", adv.logPath || 'lhm.log')
+    : blocked === 'crash'
     ? tr("Para não travar as outras leituras, o CleanCode deixou os sensores do processador de fora e vai tentar de novo amanhã. As outras peças continuam com leitura normal.")
     : blocked === 'admin'
       ? tr("O driver PawnIO já está instalado, mas a tarefa que lê os sensores como administrador não está ativa. Ative de novo para que o CleanCode volte a ler o processador.")
@@ -165,7 +167,7 @@ function AdvancedBanner({ live }: { live: HardwareLive | null }) {
       <ShieldCheck size={22} className="shrink-0 text-[var(--accent)]" />
       <div className="min-w-0 flex-1 text-[13px]"><div className="font-semibold">{title}</div><div className="text-muted">{text}</div></div>
       {blocked !== 'crash' && <button disabled={busy || !adv.available} onClick={async () => { setBusy(true); const r = await cc.hardwareAdvanced(true); toast(r.message, r.ok ? 'ok' : 'error'); setBusy(false); }}
-        className="flex shrink-0 items-center gap-2 rounded-lg bg-[var(--accent)] px-3.5 py-2 text-[13px] font-semibold text-[var(--on-accent)] disabled:opacity-60">{busy && <Loader2 size={14} className="animate-spin" />}{adv.available ? (blocked === 'admin' ? tr("Ativar de novo") : tr("Ativar")) : tr("Componente ausente")}</button>}
+        className="flex shrink-0 items-center gap-2 rounded-lg bg-[var(--accent)] px-3.5 py-2 text-[13px] font-semibold text-[var(--on-accent)] disabled:opacity-60">{busy && <Loader2 size={14} className="animate-spin" />}{adv.available ? (blocked === 'admin' || blocked === 'nodata' ? tr("Ativar de novo") : tr("Ativar")) : tr("Componente ausente")}</button>}
     </div>
   );
 }
@@ -396,7 +398,7 @@ function SensorsTab({ live, stats }: { live: HardwareLive | null; stats: Map<str
       <div className="relative overflow-hidden rounded-xl border border-[var(--line)] p-4" style={{ background: has ? `radial-gradient(120% 120% at 50% 100%, color-mix(in srgb, ${col} 35%, transparent), var(--surface) 70%)` : 'var(--surface)' }}>
         <div className="flex items-center gap-2 text-[12px] text-muted">{icon}{label}</div>
         <div className="mt-1 text-[26px] font-semibold tabular-nums" style={{ color: has ? col : undefined }}>{has ? `${Math.round(v!)} °C` : '—'}</div>
-        {!has && k === 'cpu' && live?.live?.advanced?.cpuBlocked && <div className="mt-1 text-[11.5px] leading-snug text-muted">{live.live.advanced.cpuBlocked === 'crash' ? tr("A leitura travou neste PC.") : tr("Precisa do monitoramento avançado.")}</div>}
+        {!has && k === 'cpu' && live?.live?.advanced?.cpuBlocked && <div className="mt-1 text-[11.5px] leading-snug text-muted">{live.live.advanced.cpuBlocked === 'crash' ? tr("A leitura travou neste PC.") : live.live.advanced.cpuBlocked === 'nodata' ? tr("Os sensores avançados não estão respondendo.") : tr("Precisa do monitoramento avançado.")}</div>}
       </div>
     );
   };
