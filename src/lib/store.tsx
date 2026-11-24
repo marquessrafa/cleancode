@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { cc, Progress, Settings, AppEntry, UpdateState, AppInfo, DossierTarget } from './api';
+import { t as tr } from './i18n';
 
 /** Tarefa em segundo plano que sobrevive à troca de tela. */
 export interface BgTask {
@@ -178,7 +179,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // progresso da desinstalação em lote
   useEffect(() => cc.on.uninstallProgress((d) => {
     setTasks((ts) => ts.map((t) => (t.kind === 'uninstall' && t.status === 'running' && t.itemStatus && d.id in t.itemStatus
-      ? { ...t, itemStatus: { ...t.itemStatus, [d.id]: { status: d.status, message: d.message } }, progress: { phase: 'Desinstalando', done: Object.values({ ...t.itemStatus, [d.id]: { status: d.status } }).filter((s: any) => s.status === 'ok' || s.status === 'fail').length, total: t.items!.length } }
+      ? { ...t, itemStatus: { ...t.itemStatus, [d.id]: { status: d.status, message: d.message } }, progress: { phase: tr("Desinstalando"), done: Object.values({ ...t.itemStatus, [d.id]: { status: d.status } }).filter((s: any) => s.status === 'ok' || s.status === 'fail').length, total: t.items!.length } }
       : t)));
   }), []);
 
@@ -294,14 +295,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!active) return;
     const scanId = active.id;
     const key = `${kind}:${scanId}:${nodeId}:${Date.now()}`;
-    const label = `${kind === 'owners' ? 'Proprietários' : 'Duplicados'} · ${active.selected === nodeId ? active.selectedPath : active.root}`;
+    const label = `${kind === 'owners' ? tr("Proprietários") : tr("Duplicados")} · ${active.selected === nodeId ? active.selectedPath : active.root}`;
     setTasks((ts) => [...ts.filter((t) => !(t.kind === kind && t.scanId === scanId)), { key, kind, label, page: kind, scanId, nodeId, status: 'running', startedAt: Date.now() }]);
     cc.scanQuery(scanId, kind, nodeId, ...args)
-      .then((result) => { patchTask(key, { status: 'done', result, finishedAt: Date.now() }); toast(`${kind === 'owners' ? 'Análise de proprietários' : 'Busca de duplicados'} concluída`); })
+      .then((result) => { patchTask(key, { status: 'done', result, finishedAt: Date.now() }); toast(tr("{0} concluída", kind === 'owners' ? tr("Análise de proprietários") : tr("Busca de duplicados"))); })
       .catch((e) => {
         const cancelled = String(e?.message || e).includes('Cancelado');
         patchTask(key, { status: cancelled ? 'cancelled' : 'error', error: String(e?.message || e), finishedAt: Date.now() });
-        if (!cancelled) toast('Falha: ' + (e?.message || e), 'error');
+        if (!cancelled) toast(tr("Falha: ") + (e?.message || e), 'error');
       });
   }, [active, patchTask, toast]);
 
@@ -315,14 +316,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const startUninstall = useCallback(async (items: AppEntry[], silent: boolean) => {
     const key = `uninstall:${Date.now()}`;
     setTasks((ts) => [...ts, {
-      key, kind: 'uninstall', page: 'uninstall', label: items.length === 1 ? `Desinstalando ${items[0].name}` : `Desinstalando ${items.length} programas`,
+      key, kind: 'uninstall', page: 'uninstall', label: items.length === 1 ? tr("Desinstalando {0}", items[0].name) : tr("Desinstalando {0} programas", items.length),
       status: 'running', startedAt: Date.now(), items, itemStatus: Object.fromEntries(items.map((a) => [a.id, { status: 'pending' }])),
-      progress: { phase: 'Desinstalando', done: 0, total: items.length },
+      progress: { phase: tr("Desinstalando"), done: 0, total: items.length },
     }]);
     const res = await cc.appsUninstall(items.map((a) => a.id), silent).catch(() => [] as { id: string; ok: boolean }[]);
     const ok = res.filter((x) => x.ok).map((x) => x.id);
-    patchTask(key, { status: 'done', finishedAt: Date.now(), result: ok, label: `${ok.length} de ${items.length} programa(s) removido(s)` });
-    toast(`${ok.length} de ${items.length} programa(s) removido(s)`, ok.length === items.length ? 'ok' : 'info');
+    patchTask(key, { status: 'done', finishedAt: Date.now(), result: ok, label: tr("{0} de {1} programa(s) removido(s)", ok.length, items.length) });
+    toast(tr("{0} de {1} programa(s) removido(s)", ok.length, items.length), ok.length === items.length ? 'ok' : 'info');
     return ok;
   }, [patchTask, toast]);
 

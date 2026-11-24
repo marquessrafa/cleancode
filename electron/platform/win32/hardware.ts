@@ -3,6 +3,7 @@
 import { runPowerShell } from './apps';
 import type { DriveHardware } from '../types';
 import { brandOf } from '../brands';
+import { t as tr } from '../../i18n';
 
 export type { DriveHardware };
 
@@ -80,8 +81,8 @@ function usbLabel(q: string): { usb: string; note?: string } {
   else if (speed === 0) usb = 'USB 1.0 (1,5 Mbps)';
   else usb = 'USB';
   let note: string | undefined;
-  if (speed === 2 && superCap) note = 'O dispositivo suporta USB 3.x, mas está numa porta ou cabo USB 2.0';
-  else if (speed === 2 && (proto & 4)) note = 'A porta suporta USB 3.x; o dispositivo é USB 2.0';
+  if (speed === 2 && superCap) note = tr("O dispositivo suporta USB 3.x, mas está numa porta ou cabo USB 2.0");
+  else if (speed === 2 && (proto & 4)) note = tr("A porta suporta USB 3.x, mas o dispositivo é USB 2.0.");
   return { usb, note };
 }
 
@@ -100,7 +101,7 @@ export async function driveHardware(force = false): Promise<DriveHardware[]> {
     if (media === 'Desconhecido' && bus === 'NVMe') media = 'SSD';
     if (media === 'Desconhecido' && Number(r.spindle) > 0 && Number(r.spindle) < 0xffffffff) media = 'HD';
     if (media === 'Desconhecido' && /ssd|nvme|flash|solid/i.test(r.model || '')) media = 'SSD';
-    const model = String(r.model || '').replace(/\s+/g, ' ').trim() || 'Dispositivo sem nome';
+    const model = String(r.model || '').replace(/\s+/g, ' ').trim() || tr("Dispositivo sem nome");
     const hw: DriveHardware = {
       letter: String(r.letter), media, bus, model,
       brand: brandOf(r.manufacturer, model, r.usb?.name, vendorFromPnp(r.pnp))

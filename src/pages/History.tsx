@@ -6,6 +6,7 @@ import { fmtSize, fmtNum, fmtDate } from '../lib/format';
 import { DataTable } from '../components/DataTable';
 import { Badge, Button, Card, Empty, PageHeader, Stat } from '../components/ui';
 import { PageBody } from './common';
+import { t } from '../lib/i18n';
 
 export default function HistoryPage() {
   const { active, settings, toast, confirm, bump, setComparing, go, select } = useApp();
@@ -28,10 +29,10 @@ export default function HistoryPage() {
     if (!active) return;
     await cc.historyCompare(active.id, id);
     setComparing(id); bump();
-    if (id) toast('A comparação está ativa. Por isso, o Explorador mostra as colunas “Anterior” e “Variação”.', 'info');
+    if (id) toast(t("A comparação está ativa. Por isso, o Explorador mostra as colunas “Anterior” e “Variação”."), 'info');
   };
   const del = async (h: any) => {
-    const r = await confirm({ title: 'Apagar este registro do histórico?', message: `Varredura de ${h.root} em ${fmtDate(h.date, true)}. Esta ação apaga apenas o registro que o CleanCode salvou. Nenhum arquivo seu é apagado.`, confirmLabel: 'Apagar', danger: true });
+    const r = await confirm({ title: t("Apagar este registro do histórico?"), message: t("Varredura de {0} em {1}. Esta ação apaga apenas o registro que o CleanCode salvou. Nenhum arquivo seu é apagado.", h.root, fmtDate(h.date, true)), confirmLabel: t("Apagar"), danger: true });
     if (!r.ok) return;
     if (comparingId === h.id) await compare(null);
     await cc.historyDelete(h.id); load();
@@ -39,48 +40,48 @@ export default function HistoryPage() {
 
   return (
     <PageBody>
-      <PageHeader title="Histórico e comparação" icon={<HistoryIcon size={18} />} description="O CleanCode salva cada análise concluída. Ele guarda apenas a estrutura das pastas, de forma compactada. Para ver o que cresceu, compare a análise atual com uma análise anterior."
+      <PageHeader title={t("Histórico e comparação")} icon={<HistoryIcon size={18} />} description={t("O CleanCode salva cada análise concluída. Ele guarda apenas a estrutura das pastas, de forma compactada. Para ver o que cresceu, compare a análise atual com uma análise anterior.")}
         actions={<>
-          <Button icon={<Upload size={14} />} onClick={async () => { const id = await cc.historyImport(); if (id) { toast('Varredura importada'); load(); } }}>Importar…</Button>
-          <Button variant="primary" icon={<Save size={14} />} disabled={!active?.done} onClick={async () => { await cc.historySave(active!.id); toast('Varredura salva no histórico'); load(); }}>Salvar varredura atual</Button>
+          <Button icon={<Upload size={14} />} onClick={async () => { const id = await cc.historyImport(); if (id) { toast(t("Varredura importada")); load(); } }}>{t("Importar…")}</Button>
+          <Button variant="primary" icon={<Save size={14} />} disabled={!active?.done} onClick={async () => { await cc.historySave(active!.id); toast(t("Varredura salva no histórico")); load(); }}>{t("Salvar varredura atual")}</Button>
         </>} />
 
       {comparingId && cmp && (
         <div className="mb-4 anim-fade">
           <div className="mb-3 flex items-center gap-2">
-            <Badge tone="accent"><GitCompare size={11} /> Comparando com {fmtDate(cmp.date, true)}</Badge>
-            <Button size="sm" variant="ghost" icon={<X size={12} />} onClick={() => compare(null)}>Encerrar comparação</Button>
+            <Badge tone="accent"><GitCompare size={11} /> {t("Comparando com")} {fmtDate(cmp.date, true)}</Badge>
+            <Button size="sm" variant="ghost" icon={<X size={12} />} onClick={() => compare(null)}>{t("Encerrar comparação")}</Button>
           </div>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Stat label="Antes" value={fmtSize(cmp.prevSize, units)} sub={`${fmtNum(cmp.prevFiles)} arquivos`} />
-            <Stat label="Agora" value={fmtSize(cmp.size, units)} sub={`${fmtNum(cmp.files)} arquivos`} />
-            <Stat label="Variação" value={`${cmp.size - cmp.prevSize >= 0 ? '+' : ''}${fmtSize(cmp.size - cmp.prevSize, units)}`} tone={cmp.size > cmp.prevSize ? 'danger' : 'accent'} icon={cmp.size > cmp.prevSize ? <TrendingUp size={16} /> : <TrendingDown size={16} />} />
-            <Stat label="Arquivos" value={`${cmp.files - cmp.prevFiles >= 0 ? '+' : ''}${fmtNum(cmp.files - cmp.prevFiles)}`} />
+            <Stat label={t("Antes")} value={fmtSize(cmp.prevSize, units)} sub={`${fmtNum(cmp.prevFiles)} arquivos`} />
+            <Stat label={t("Agora")} value={fmtSize(cmp.size, units)} sub={`${fmtNum(cmp.files)} arquivos`} />
+            <Stat label={t("Variação")} value={`${cmp.size - cmp.prevSize >= 0 ? '+' : ''}${fmtSize(cmp.size - cmp.prevSize, units)}`} tone={cmp.size > cmp.prevSize ? 'danger' : 'accent'} icon={cmp.size > cmp.prevSize ? <TrendingUp size={16} /> : <TrendingDown size={16} />} />
+            <Stat label={t("Arquivos")} value={`${cmp.files - cmp.prevFiles >= 0 ? '+' : ''}${fmtNum(cmp.files - cmp.prevFiles)}`} />
           </div>
-          <Card className="mt-3" title="Pastas que mais mudaram" pad={false}>
+          <Card className="mt-3" title={t("Pastas que mais mudaram")} pad={false}>
             <div className="h-[320px]">
               <DataTable className="h-full" rows={growth || []} rowKey={(r) => r.id} onRowDoubleClick={(r) => { select(r.id); go('explorer'); }} columns={[
-                { key: 'path', label: 'Pasta', width: 400, flex: true, render: (r) => <span className="flex items-center gap-2"><span className="truncate">{r.path}</span>{r.isNew && <Badge tone="info">nova</Badge>}</span>, title: (r) => r.path },
-                { key: 'prev', label: 'Antes', width: 110, align: 'right', render: (r) => fmtSize(r.prevSize, units) },
-                { key: 'size', label: 'Agora', width: 110, align: 'right', render: (r) => fmtSize(r.size, units) },
-                { key: 'delta', label: 'Variação', width: 120, align: 'right', render: (r) => <span className={r.delta > 0 ? 'text-danger' : 'text-accent'}>{r.delta > 0 ? '+' : ''}{fmtSize(r.delta, units)}</span> },
-              ]} empty="Nenhuma diferença" />
+                { key: 'path', label: t("Pasta"), width: 400, flex: true, render: (r) => <span className="flex items-center gap-2"><span className="truncate">{r.path}</span>{r.isNew && <Badge tone="info">{t("nova")}</Badge>}</span>, title: (r) => r.path },
+                { key: 'prev', label: t("Antes"), width: 110, align: 'right', render: (r) => fmtSize(r.prevSize, units) },
+                { key: 'size', label: t("Agora"), width: 110, align: 'right', render: (r) => fmtSize(r.size, units) },
+                { key: 'delta', label: t("Variação"), width: 120, align: 'right', render: (r) => <span className={r.delta > 0 ? 'text-danger' : 'text-accent'}>{r.delta > 0 ? '+' : ''}{fmtSize(r.delta, units)}</span> },
+              ]} empty={t("Nenhuma diferença")} />
             </div>
           </Card>
         </div>
       )}
 
-      <Card title={`Varreduras salvas (${list.length})`} pad={false}>
-        {list.length === 0 ? <Empty icon={<HistoryIcon size={20} />} title="Nenhuma varredura salva ainda" text="Quando você concluir uma análise, ela vai aparecer aqui." /> : (
+      <Card title={t("Varreduras salvas ({0})", list.length)} pad={false}>
+        {list.length === 0 ? <Empty icon={<HistoryIcon size={20} />} title={t("Nenhuma varredura salva ainda")} text={t("Quando você concluir uma análise, ela vai aparecer aqui.")} /> : (
           <div className="h-[420px]">
             <DataTable className="h-full" rows={list} rowKey={(r) => r.id} sort={sort} onSort={setSort} columns={[
-              { key: 'root', label: 'Pasta', width: 260, flex: true, sortable: true, sortValue: (r) => r.root, render: (r) => <span className="flex items-center gap-2">{r.root}{r.imported && <Badge>importada</Badge>}{comparingId === r.id && <Badge tone="accent">comparando</Badge>}</span> },
-              { key: 'date', label: 'Data', width: 150, sortable: true, sortValue: (r) => r.date, render: (r) => fmtDate(r.date, true) },
-              { key: 'size', label: 'Tamanho', width: 110, align: 'right', sortable: true, sortValue: (r) => r.size, render: (r) => fmtSize(r.size, units) },
-              { key: 'files', label: 'Arquivos', width: 110, align: 'right', sortable: true, sortValue: (r) => r.files, render: (r) => fmtNum(r.files) },
+              { key: 'root', label: t("Pasta"), width: 260, flex: true, sortable: true, sortValue: (r) => r.root, render: (r) => <span className="flex items-center gap-2">{r.root}{r.imported && <Badge>{t("importada")}</Badge>}{comparingId === r.id && <Badge tone="accent">{t("comparando")}</Badge>}</span> },
+              { key: 'date', label: t("Data"), width: 150, sortable: true, sortValue: (r) => r.date, render: (r) => fmtDate(r.date, true) },
+              { key: 'size', label: t("Tamanho"), width: 110, align: 'right', sortable: true, sortValue: (r) => r.size, render: (r) => fmtSize(r.size, units) },
+              { key: 'files', label: t("Arquivos"), width: 110, align: 'right', sortable: true, sortValue: (r) => r.files, render: (r) => fmtNum(r.files) },
               { key: 'act', label: '', width: 210, render: (r) => (
                 <span className="flex justify-end gap-1">
-                  <Button size="sm" variant="outline" icon={<GitCompare size={12} />} disabled={!sameRoot(r) || !active?.done} title={sameRoot(r) ? '' : 'Para comparar, analise a mesma pasta de novo.'} onClick={() => compare(r.id)}>Comparar</Button>
+                  <Button size="sm" variant="outline" icon={<GitCompare size={12} />} disabled={!sameRoot(r) || !active?.done} title={sameRoot(r) ? '' : t("Para comparar, analise a mesma pasta de novo.")} onClick={() => compare(r.id)}>{t("Comparar")}</Button>
                   <Button size="sm" variant="ghost" icon={<Trash2 size={12} />} onClick={() => del(r)} />
                 </span>
               ) },

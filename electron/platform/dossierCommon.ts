@@ -3,6 +3,7 @@
 import fs from 'fs';
 import path from 'path';
 import type { DossierFile } from './types';
+import { t as tr } from '../i18n';
 
 /** Lista nomes até `depth` níveis (no máximo `cap` entradas), sem seguir links. */
 export function walkNames(root: string, depth: number, cap = 4000): { rel: string; dir: boolean }[] {
@@ -39,8 +40,8 @@ const TECH: [RegExp, string][] = [
   [/(^|\/)(mono|MonoBleedingEdge)\//i, 'Mono'],
   [/(^|\/)(jre|jbr|jdk)[^/]*\/|(^|\/)java(w)?\.exe$|\.jar$/i, 'Java'],
   [/(^|\/)python3\d*\.(dll|dylib)$|(^|\/)Python\.framework$/i, 'Python'],
-  [/(^|\/)Sparkle\.framework$/i, 'Sparkle (atualizações)'],
-  [/(^|\/)Squirrel\.framework$|(^|\/)Update\.exe$/i, 'Squirrel (atualizações)'],
+  [/(^|\/)Sparkle\.framework$/i, tr("Sparkle (atualizações)")],
+  [/(^|\/)Squirrel\.framework$|(^|\/)Update\.exe$/i, tr("Squirrel (atualizações)")],
   [/(^|\/)steam_api(64)?\.(dll|dylib)$|(^|\/)libsteam_api\.dylib$/i, 'Steamworks'],
   [/(^|\/)EOSSDK-Win(32|64)-Shipping\.dll$|(^|\/)libEOSSDK/i, 'Epic Online Services'],
   [/(^|\/)(EasyAntiCheat|BattlEye)(\/|_|\.)/i, 'Anti-cheat'],
@@ -76,7 +77,7 @@ export function findLicenses(root: string): DossierFile[] {
     let size = 0; try { size = fs.statSync(p).size; } catch { continue; }
     // avisos de terceiros citam várias licenças: não dá para deduzir uma só pelo texto
     const notice = /third|credits|acknowledg|open|chromium|notice/i.test(base);
-    out.push({ path: p, size, kind: notice ? 'Avisos de terceiros' : licenseKind(p) || (/eula|terms/i.test(base) ? 'Contrato de uso (EULA)' : 'Licença') });
+    out.push({ path: p, size, kind: notice ? tr("Avisos de terceiros") : licenseKind(p) || (/eula|terms/i.test(base) ? 'Contrato de uso (EULA)' : tr("Licença")) });
     if (out.length >= 40) break;
   }
   // a licença principal primeiro; traduções (LICENSE-fra.rtf) e avisos de terceiros depois
@@ -96,8 +97,8 @@ export function licenseKind(file: string): string | undefined {
   if (/Apache License/i.test(t) && /Version 2\.0/i.test(t)) return 'Apache 2.0';
   if (/Permission is hereby granted, free of charge/i.test(t)) return 'MIT';
   if (/Redistribution and use in source and binary forms/i.test(t)) return 'BSD';
-  if (/This is free and unencumbered software released into the public domain/i.test(t)) return 'Domínio público (Unlicense)';
-  if (/END USER LICENSE AGREEMENT|LICENSE AGREEMENT|TERMS OF USE|CONTRATO DE LICEN/i.test(t)) return 'Contrato de uso (EULA)';
+  if (/This is free and unencumbered software released into the public domain/i.test(t)) return tr("Domínio público (Unlicense)");
+  if (/END USER LICENSE AGREEMENT|LICENSE AGREEMENT|TERMS OF USE|CONTRATO DE LICEN/i.test(t)) return tr("Contrato de uso (EULA)");
   return undefined;
 }
 

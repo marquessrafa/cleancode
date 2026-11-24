@@ -8,6 +8,7 @@ import { fmtSize, fmtNum, fmtRelative } from '../lib/format';
 import { Badge, Button, Checkbox, Toggle, cx } from '../components/ui';
 import { Float3D } from './maint';
 import { PageBody } from './common';
+import { t as tr } from '../lib/i18n';
 
 type Phase = 'intro' | 'scanning' | 'results' | 'cleaning' | 'done';
 
@@ -103,15 +104,15 @@ export default function Cleanup() {
     const chosen = cats.filter((c) => selCats.has(c.id) && results[c.id]?.size);
     const review = chosen.filter((c) => c.risk === 'review');
     const r = await confirm({
-      title: `Limpar ${fmtSize(selection.size, units)}?`,
-      message: <>{fmtNum(selection.count)} itens em {chosen.length} categorias.{review.length ? <> Inclui itens para revisar ({review.map((c) => c.name).join(', ')}).</> : null} A Lixeira é sempre esvaziada de vez.</>,
+      title: tr("Limpar {0}?", fmtSize(selection.size, units)),
+      message: <>{fmtNum(selection.count)} {tr("itens em")} {chosen.length} {tr("categorias.")}{review.length ? <> {tr("Inclui itens para revisar (")}{review.map((c) => c.name).join(', ')}).</> : null} {tr("A Lixeira é sempre esvaziada de vez.")}</>,
       items: chosen.map((c) => ({ label: c.name, detail: fmtSize(c.special ? results[c.id].size : results[c.id].items.filter((i) => !deselected.has(i.path)).reduce((s, i) => s + i.size, 0), units) })),
       options: [
-        { key: 'trash', label: 'Mover para a Lixeira', hint: 'Você consegue recuperar os itens até esvaziar a Lixeira. Por isso, o espaço só fica livre depois que a Lixeira é esvaziada.' },
-        { key: 'delete', label: 'Apagar definitivamente', hint: 'O espaço fica livre na hora, mas não dá para desfazer.' },
+        { key: 'trash', label: tr("Mover para a Lixeira"), hint: tr("Você consegue recuperar os itens até esvaziar a Lixeira. Por isso, o espaço só fica livre depois que a Lixeira é esvaziada.") },
+        { key: 'delete', label: tr("Apagar definitivamente"), hint: tr("O espaço fica livre na hora, mas não dá para desfazer.") },
       ],
-      defaultOption: 'trash', danger: true, confirmLabel: 'Limpar',
-      requireCheck: review.length ? 'Revisei os itens marcados para revisão.' : undefined,
+      defaultOption: 'trash', danger: true, confirmLabel: tr("Limpar"),
+      requireCheck: review.length ? tr("Revisei os itens marcados para revisão.") : undefined,
     });
     if (!r.ok) return;
     setPhase('cleaning');
@@ -135,35 +136,35 @@ export default function Cleanup() {
         <div className="flex min-h-[calc(100vh-140px)] flex-col items-center justify-center gap-10 py-6 lg:flex-row lg:gap-16">
           <div className="anim-pop"><Orb active={phase === 'scanning'} size={300} /></div>
           <div className="max-w-md anim-page">
-            <h1 className="text-[40px] font-semibold leading-tight tracking-tight text-fg">Limpeza</h1>
-            <p className="mt-2 text-[15px] text-muted">Encontra o que só ocupa espaço no {isMac ? 'Mac' : 'PC'}: caches, logs, lixeiras, sobras de desenvolvimento e downloads esquecidos. Você revisa tudo antes.</p>
+            <h1 className="text-[40px] font-semibold leading-tight tracking-tight text-fg">{tr("Limpeza")}</h1>
+            <p className="mt-2 text-[15px] text-muted">{tr("Encontra o que só ocupa espaço no")} {isMac ? tr("Mac") : 'PC'}{tr(": caches, registros de atividade (logs), lixeiras, sobras de ferramentas de desenvolvimento e downloads esquecidos. Você revisa tudo antes de apagar.")}</p>
             {phase === 'intro' ? (
               <>
                 <div className="mt-6 space-y-3">
                   {[
-                    { icon: <Layers size={16} />, t: `${cats.length} categorias analisadas` },
-                    { icon: <ShieldCheck size={16} />, t: 'Os itens sensíveis começam desmarcados.' },
-                    { icon: <Trash2 size={16} />, t: 'Por padrão, tudo vai para a Lixeira.' },
+                    { icon: <Layers size={16} />, t: tr("{0} categorias analisadas", cats.length) },
+                    { icon: <ShieldCheck size={16} />, t: tr("Os itens sensíveis começam desmarcados.") },
+                    { icon: <Trash2 size={16} />, t: tr("Por padrão, tudo vai para a Lixeira.") },
                   ].map((f, i) => (
                     <div key={i} className="flex items-center gap-3 text-[14px] font-medium text-fg anim-page" style={{ animationDelay: `${80 + i * 60}ms` }}>
                       <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-soft text-accent">{f.icon}</span>{f.t}
                     </div>
                   ))}
                 </div>
-                {last && <div className="mt-5 text-xs text-faint">Última limpeza {fmtRelative(last.at)} · {fmtSize(last.freed, units)} liberados</div>}
+                {last && <div className="mt-5 text-xs text-faint">{tr("Última limpeza")} {fmtRelative(last.at)} · {fmtSize(last.freed, units)} {tr("liberados")}</div>}
                 <button onClick={start} className="group relative mt-8 flex h-28 w-28 items-center justify-center rounded-full text-[17px] font-semibold text-accent-fg transition-transform hover:scale-105 active:scale-95"
                   style={{ background: 'radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent) 55%, #ffffff), var(--accent) 60%)', boxShadow: '0 10px 40px color-mix(in srgb, var(--accent) 45%, transparent)' }}>
                   <span className="absolute inset-0 rounded-full anim-ping-soft" style={{ boxShadow: '0 0 0 2px var(--accent)' }} />
-                  Analisar
+                  {tr("Analisar")}
                 </button>
                 {!isMac && <div className="mt-6 max-w-[340px] text-left">
-                  <Toggle checked={aggressive} onChange={toggleAggressive} label="Modo agressivo"
-                    hint="Inclui os arquivos temporários com mais de 1 hora, em vez de apenas os que têm mais de 1 dia. Os arquivos que estão em uso ficam de fora da limpeza." />
+                  <Toggle checked={aggressive} onChange={toggleAggressive} label={tr("Modo agressivo")}
+                    hint={tr("Inclui os arquivos temporários com mais de 1 hora, em vez de apenas os que têm mais de 1 dia. Os arquivos que estão em uso ficam de fora da limpeza.")} />
                 </div>}
               </>
             ) : (
               <div className="mt-6">
-                <div className="flex items-baseline gap-2"><span className="text-3xl font-semibold tabular-nums text-fg">{fmtSize(foundT, units)}</span><span className="text-sm text-muted">encontrados até agora</span></div>
+                <div className="flex items-baseline gap-2"><span className="text-3xl font-semibold tabular-nums text-fg">{fmtSize(foundT, units)}</span><span className="text-sm text-muted">{tr("encontrados até agora")}</span></div>
                 <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-2"><div className="h-full rounded-full bg-accent transition-[width] duration-500" style={{ width: `${cats.length ? (scanned / cats.length) * 100 : 0}%` }} /></div>
                 <div className="mt-4 space-y-1.5">
                   {cats.map((c) => {
@@ -177,7 +178,7 @@ export default function Cleanup() {
                     );
                   })}
                 </div>
-                <Button className="mt-5" variant="ghost" onClick={() => { cc.cleanupCancel(); setPhase('intro'); }}>Parar</Button>
+                <Button className="mt-5" variant="ghost" onClick={() => { cc.cleanupCancel(); setPhase('intro'); }}>{tr("Parar")}</Button>
               </div>
             )}
           </div>
@@ -193,8 +194,8 @@ export default function Cleanup() {
         <div className="flex min-h-[calc(100vh-140px)] flex-col items-center justify-center gap-10 py-6 lg:flex-row lg:gap-16">
           <div className="anim-pop"><Orb active={phase === 'cleaning'} size={260} /></div>
           <div className="w-full max-w-md anim-page">
-            <div className="text-sm font-medium text-muted">{phase === 'cleaning' ? 'Limpando…' : 'Limpeza concluída'}</div>
-            <div className="mt-1 flex items-baseline gap-2"><span className="text-[44px] font-semibold tabular-nums tracking-tight text-fg">{fmtSize(freedT, units)}</span><span className="text-sm text-muted">liberados</span></div>
+            <div className="text-sm font-medium text-muted">{phase === 'cleaning' ? tr("Limpando…") : tr("Limpeza concluída")}</div>
+            <div className="mt-1 flex items-baseline gap-2"><span className="text-[44px] font-semibold tabular-nums tracking-tight text-fg">{fmtSize(freedT, units)}</span><span className="text-sm text-muted">{tr("liberados")}</span></div>
             {phase === 'cleaning' ? (
               <>
                 <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-2"><div className="h-full rounded-full bg-accent transition-[width] duration-300" style={{ width: `${pct}%` }} /></div>
@@ -202,16 +203,16 @@ export default function Cleanup() {
               </>
             ) : summary && (
               <>
-                <div className="mt-2 text-sm text-muted">{fmtNum(summary.removed)} itens removidos{summary.failed.length ? ` · ${summary.failed.length} não puderam ser removidos, porque estavam em uso ou protegidos` : ''}.</div>
+                <div className="mt-2 text-sm text-muted">{fmtNum(summary.removed)} {tr("itens removidos")}{summary.failed.length ? tr(" · {0} não puderam ser removidos, porque estavam em uso ou protegidos", summary.failed.length) : ''}.</div>
                 {summary.failed.length > 0 && (
                   <details className="mt-3 rounded-lg border border-line bg-surface p-3 text-xs">
-                    <summary className="cursor-pointer text-muted"><AlertTriangle size={12} className="mr-1 inline text-warn" />Ver itens que ficaram</summary>
+                    <summary className="cursor-pointer text-muted"><AlertTriangle size={12} className="mr-1 inline text-warn" />{tr("Ver itens que ficaram")}</summary>
                     <div className="mt-2 max-h-48 space-y-1 overflow-y-auto">
                       {summary.failed.slice(0, 200).map((f) => <div key={f.path} className="flex gap-2"><span className="min-w-0 flex-1 truncate text-fg" title={f.path}>{f.path}</span><span className="shrink-0 text-faint">{f.error}</span></div>)}
                     </div>
                   </details>
                 )}
-                <Button className="mt-6" variant="primary" icon={<RotateCcw size={14} />} onClick={start}>Analisar de novo</Button>
+                <Button className="mt-6" variant="primary" icon={<RotateCcw size={14} />} onClick={start}>{tr("Analisar de novo")}</Button>
               </>
             )}
           </div>
@@ -228,17 +229,17 @@ export default function Cleanup() {
         <div className="mb-6 flex flex-wrap items-end gap-4 anim-page">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl text-white" style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 50%, #ffffff))' }}><Sparkles size={26} /></div>
           <div className="min-w-0 flex-1">
-            <div className="text-sm text-muted">Encontrados</div>
+            <div className="text-sm text-muted">{tr("Encontrados")}</div>
             <div className="text-[34px] font-semibold leading-none tracking-tight text-fg tabular-nums">{fmtSize(foundT, units)}</div>
           </div>
-          <Button variant="ghost" icon={<RotateCcw size={14} />} onClick={start}>Analisar de novo</Button>
+          <Button variant="ghost" icon={<RotateCcw size={14} />} onClick={start}>{tr("Analisar de novo")}</Button>
         </div>
         {groups.map((g) => {
           const list = visible.filter((c) => c.group === g);
           if (!list.length) return null;
           return (
             <div key={g} className="mb-5">
-              <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-faint">{g}</div>
+              <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-faint">{tr(g)}</div>
               <div className="overflow-hidden rounded-xl border border-line bg-surface">
                 {list.map((c, idx) => {
                   const r = results[c.id];
@@ -253,14 +254,14 @@ export default function Cleanup() {
                         <button disabled={empty || c.special} onClick={() => setOpen((o) => { const n = new Set(o); n.has(c.id) ? n.delete(c.id) : n.add(c.id); return n; })} className="flex min-w-0 flex-1 items-center gap-2 text-left">
                           {!c.special && <ChevronRight size={14} className={cx('shrink-0 text-faint transition-transform', expanded && 'rotate-90', empty && 'invisible')} />}
                           <div className="min-w-0">
-                            <div className="flex items-center gap-2 text-[14px] font-medium text-fg">{c.name}{c.risk === 'review' && <Badge tone="warn">revise</Badge>}{c.removal === 'delete' && <Badge>apaga de vez</Badge>}</div>
+                            <div className="flex items-center gap-2 text-[14px] font-medium text-fg">{c.name}{c.risk === 'review' && <Badge tone="warn">{tr("revise")}</Badge>}{c.removal === 'delete' && <Badge>{tr("apaga de vez")}</Badge>}</div>
                             <div className="truncate text-xs text-muted">{c.description}</div>
                           </div>
                         </button>
                         <div className="shrink-0 text-right">
                           <div className="text-[14px] font-semibold tabular-nums text-fg">{fmtSize(r.size, units)}</div>
-                          <div className="text-[11px] text-faint">{empty ? (r.denied ? 'sem acesso' : 'nada encontrado') : `${fmtNum(r.count)} itens`}</div>
-                          {r.denied && isMac && <button onClick={() => cc.openFullDiskAccess()} className="text-[11px] font-medium text-accent hover:underline">Dar acesso</button>}
+                          <div className="text-[11px] text-faint">{empty ? (r.denied ? tr("sem acesso") : tr("nada encontrado")) : tr("{0} itens", fmtNum(r.count))}</div>
+                          {r.denied && isMac && <button onClick={() => cc.openFullDiskAccess()} className="text-[11px] font-medium text-accent hover:underline">{tr("Dar acesso")}</button>}
                         </div>
                       </div>
                       {expanded && (
@@ -270,11 +271,11 @@ export default function Cleanup() {
                               <Checkbox checked={isOn(c.id, i.path)} onChange={(v) => toggleItem(c.id, i.path, v)} />
                               <span className="min-w-0 flex-1 truncate text-fg" title={i.path}>{i.name}</span>
                               {i.mtime > 0 && <span className="hidden shrink-0 text-[11px] text-faint sm:inline">{fmtRelative(i.mtime)}</span>}
-                              <button title={`Mostrar no ${FILE_MANAGER}`} onClick={() => cc.showInFolder(i.path)} className="shrink-0 rounded p-0.5 text-faint opacity-0 transition-opacity hover:text-fg group-hover:opacity-100"><FolderOpen size={13} /></button>
+                              <button title={tr("Mostrar no {0}", FILE_MANAGER)} onClick={() => cc.showInFolder(i.path)} className="shrink-0 rounded p-0.5 text-faint opacity-0 transition-opacity hover:text-fg group-hover:opacity-100"><FolderOpen size={13} /></button>
                               <span className="w-20 shrink-0 text-right tabular-nums text-muted">{fmtSize(i.size, units)}</span>
                             </div>
                           ))}
-                          {r.items.length > 300 && <div className="px-11 py-1.5 text-xs text-faint">e mais {fmtNum(r.items.length - 300)} itens menores (incluídos na seleção)</div>}
+                          {r.items.length > 300 && <div className="px-11 py-1.5 text-xs text-faint">{tr("e mais")} {fmtNum(r.items.length - 300)} {tr("itens menores (incluídos na seleção)")}</div>}
                         </div>
                       )}
                     </div>
@@ -289,9 +290,9 @@ export default function Cleanup() {
       <div className="flex shrink-0 items-center gap-4 border-t border-line bg-bg/90 px-6 py-3 backdrop-blur anim-page">
         <div className="min-w-0 flex-1 text-sm">
           <span className="font-semibold tabular-nums text-fg">{fmtSize(selection.size, units)}</span>
-          <span className="text-muted"> selecionados · {fmtNum(selection.count)} itens</span>
+          <span className="text-muted"> {tr("selecionados ·")} {fmtNum(selection.count)} {tr("itens")}</span>
         </div>
-        <Button variant="primary" icon={<Zap size={14} />} disabled={!selection.count} onClick={runClean}>Limpar</Button>
+        <Button variant="primary" icon={<Zap size={14} />} disabled={!selection.count} onClick={runClean}>{tr("Limpar")}</Button>
       </div>
     </div>
   );

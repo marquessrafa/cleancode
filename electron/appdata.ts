@@ -13,15 +13,16 @@ import os from 'os';
 import path from 'path';
 import type { AppEntry } from './platform';
 import type { AppDataEntry } from './appdataWorker';
+import { t as tr } from './i18n';
 
 const isMac = process.platform === 'darwin';
 const H = os.homedir();
 const ROOTS = isMac
-  ? [{ path: path.join(H, 'Library', 'Application Support'), label: 'Application Support' }, { path: path.join(H, 'Library', 'Caches'), label: 'Caches' }]
+  ? [{ path: path.join(H, 'Library', 'Application Support'), label: tr("Application Support") }, { path: path.join(H, 'Library', 'Caches'), label: tr("Caches") }]
   : [
-    { path: process.env.LOCALAPPDATA || path.join(H, 'AppData', 'Local'), label: 'Local' },
-    { path: process.env.APPDATA || path.join(H, 'AppData', 'Roaming'), label: 'Roaming' },
-    { path: path.join(H, 'AppData', 'LocalLow'), label: 'LocalLow' },
+    { path: process.env.LOCALAPPDATA || path.join(H, 'AppData', 'Local'), label: tr("Local") },
+    { path: process.env.APPDATA || path.join(H, 'AppData', 'Roaming'), label: tr("Roaming") },
+    { path: path.join(H, 'AppData', 'LocalLow'), label: tr("LocalLow") },
   ];
 const VENDORS = ['Google', 'Adobe', 'JetBrains', 'Mozilla', 'Autodesk', 'Corel', 'Unity', 'Unity Technologies', 'Riot Games', 'Ubisoft', 'Electronic Arts', 'Blizzard Entertainment', 'NVIDIA Corporation', 'NVIDIA', 'AMD', 'Intel', 'Logitech', 'Razer', 'Programs'];
 const SYSTEM_WIN = new Set(['microsoft', 'packages', 'temp', 'connecteddevicesplatform', 'd3dscache', 'peerdistrepub', 'publishers', 'virtualstore', 'comms', 'history', 'microsoft_corporation', 'crashdumps', 'elevateddiagnostics', 'iconcache', 'placeholdertilelogofolder', 'windows', 'nvidia', 'nvidia corporation', 'amd', 'intel', 'programs', 'cleancode']);
@@ -60,7 +61,7 @@ function matches(name: string, parent: string | undefined, a: AppEntry): boolean
  *  interno/executável em `aliases`), aceitando só sufixos como versão, "updater" ou "helper". */
 export function dataFoldersFor(a: AppEntry, sizeOf: (p: string) => number, aliases: string[] = []): { path: string; size: number; kind: string }[] {
   const roots = [...ROOTS];
-  if (!isMac && process.env.ProgramData) roots.push({ path: process.env.ProgramData, label: 'ProgramData' });
+  if (!isMac && process.env.ProgramData) roots.push({ path: process.env.ProgramData, label: tr("ProgramData") });
   const names = [...new Set([a.name, ...aliases].map(norm).filter((n) => n.length >= 3))];
   if (!names.length) return [];
   const REST = /^(\d+|x64|x86|updater|update|helper|launcher|crashpad|crashreports?|data|cache|logs?|desktop|app)$/;

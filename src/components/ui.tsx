@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, Loader2, X } from 'lucide-react';
+import { t as tr } from '../lib/i18n';
 
 export const cx = (...c: unknown[]) => c.filter((x) => typeof x === 'string' && x).join(' ');
 
@@ -281,7 +282,7 @@ export function Modal({ open, onClose, title, children, footer, width = 520 }: {
       <div className="flex max-h-full w-full flex-col rounded-xl border border-line bg-surface shadow-2xl anim-pop" style={{ maxWidth: width }}>
         <div className="flex items-center justify-between border-b border-line px-5 py-3">
           <div className="text-sm font-semibold text-fg">{title}</div>
-          <IconButton title="Fechar" onClick={onClose}><X size={16} /></IconButton>
+          <IconButton title={tr("Fechar")} onClick={onClose}><X size={16} /></IconButton>
         </div>
         <div className="min-h-0 overflow-auto px-5 py-4">{children}</div>
         {footer && <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3">{footer}</div>}

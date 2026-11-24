@@ -5,6 +5,7 @@ import path from 'path';
 import type { AppEntry, DossierLocal, GameInfo } from './platform/types';
 import { detectTech, findLicenses } from './platform/dossierCommon';
 import { dataFoldersFor } from './appdata';
+import { t } from './i18n';
 
 const isMac = process.platform === 'darwin';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -17,7 +18,7 @@ export async function appDossier(a: AppEntry): Promise<DossierLocal> {
     // pastas em ~/Library/Application Support e Caches com o nome do app ou do fabricante (Google/Chrome…)
     const more = dataFoldersFor(a, () => -1, d.aliases).filter((x) => !d.data.some((y) => x.path === y.path || x.path.startsWith(y.path + '/') || y.path.startsWith(x.path + '/')));
     if (more.length) {
-      d.data.push(...more.map((m) => ({ ...m, kind: m.kind === 'Caches' ? 'Cache' : 'Suporte do app' })));
+      d.data.push(...more.map((m) => ({ ...m, kind: m.kind === 'Caches' ? 'Cache' : t("Suporte do app") })));
     }
     return d;
   }
@@ -36,7 +37,7 @@ function findApp(dir: string, depth = 2): string | undefined {
   if (depth > 0) for (const e of ents) if (e.isDirectory() && !e.isSymbolicLink()) { const r = findApp(path.join(dir, e.name), depth - 1); if (r) return r; }
 }
 
-const STORE: Record<GameInfo['store'], string> = { steam: 'Steam', epic: 'Epic Games', gog: 'GOG Galaxy', app: 'Aplicativo', custom: 'Pasta escolhida por você' };
+const STORE: Record<GameInfo['store'], string> = { steam: 'Steam', epic: 'Epic Games', gog: 'GOG Galaxy', app: 'Aplicativo', custom: t("Pasta escolhida por você") };
 
 export async function gameDossier(g: GameInfo, apps: AppEntry[] | null): Promise<DossierLocal> {
   const steamId = g.store === 'steam' ? g.id.replace(/^steam:/, '') : undefined;
@@ -59,16 +60,16 @@ export async function gameDossier(g: GameInfo, apps: AppEntry[] | null): Promise
     if (!base.licenses.length) base.licenses = findLicenses(dir);
     base.folder = dir;
   }
-  const DROP = new Set(['Pasta', 'Origem', 'Tamanho', 'Tamanho do app', 'Instalado em']);
-  const facts = base.facts.filter((f) => !(f.group === 'install' && DROP.has(f.label)) && !(f.group === 'about' && f.label === 'Nome'));
+  const DROP = new Set([t("Pasta"), t("Origem"), t("Tamanho"), t("Tamanho do app"), t("Instalado em")]);
+  const facts = base.facts.filter((f) => !(f.group === 'install' && DROP.has(f.label)) && !(f.group === 'about' && f.label === t("Nome")));
   facts.unshift(
-    { group: 'about', label: 'Nome', value: g.name },
-    { group: 'install', label: 'Loja', value: STORE[g.store] || g.store },
-    ...(steamId ? [{ group: 'install' as const, label: 'ID na Steam', value: steamId, kind: 'mono' as const }] : []),
-    ...(dir ? [{ group: 'install' as const, label: 'Pasta', value: dir, kind: 'path' as const }] : []),
-    ...(g.size ? [{ group: 'install' as const, label: 'Tamanho', value: g.size, kind: 'size' as const }] : []),
-    { group: 'install', label: 'Como abre', value: g.launch, kind: 'mono' },
+    { group: 'about', label: t("Nome"), value: g.name },
+    { group: 'install', label: t("Loja"), value: STORE[g.store] || g.store },
+    ...(steamId ? [{ group: 'install' as const, label: t("ID na Steam"), value: steamId, kind: 'mono' as const }] : []),
+    ...(dir ? [{ group: 'install' as const, label: t("Pasta"), value: dir, kind: 'path' as const }] : []),
+    ...(g.size ? [{ group: 'install' as const, label: t("Tamanho"), value: g.size, kind: 'size' as const }] : []),
+    { group: 'install', label: t("Como abre"), value: g.launch, kind: 'mono' },
   );
-  if (dir) { try { const st = fs.statSync(dir); facts.push({ group: 'install', label: 'Instalado em', value: st.birthtimeMs || st.ctimeMs, kind: 'date' }); } catch { /* */ } }
+  if (dir) { try { const st = fs.statSync(dir); facts.push({ group: 'install', label: t("Instalado em"), value: st.birthtimeMs || st.ctimeMs, kind: 'date' }); } catch { /* */ } }
   return { ...base, facts, query: { name: g.name, steamId, kind: 'game' } };
 }

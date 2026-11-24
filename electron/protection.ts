@@ -5,6 +5,7 @@ import os from 'os';
 import path from 'path';
 import { system } from './platform';
 import type { SecurityCheck, SignatureInfo, StartupItem } from './platform';
+import { t as tr } from './i18n';
 
 export interface PersistenceFinding {
   id: string; name: string; kind: string; executable: string; detail: string;
@@ -24,12 +25,12 @@ const SCRIPT_HOST = /(^|[\\/])(bash|sh|zsh|python3?|perl|ruby|osascript|node|pow
 function assess(exe: string, sig: SignatureInfo, detail: string): { level: PersistenceFinding['level']; reasons: string[] } {
   const reasons: string[] = [];
   const suspicious = SUSPICIOUS.some((re) => re.test(exe)) || SUSPICIOUS.some((re) => re.test(detail));
-  if (sig.status === 'missing') reasons.push('O programa não existe mais (item quebrado)');
-  if (sig.status === 'unsigned') reasons.push('Programa sem assinatura digital');
-  if (sig.status === 'adhoc') reasons.push('Assinatura sem identificação do desenvolvedor');
-  if (sig.status === 'invalid') reasons.push('Assinatura inválida: o programa foi alterado depois de assinado');
-  if (suspicious) reasons.push('Roda de uma pasta incomum (temporária, oculta ou compartilhada)');
-  if (SCRIPT_HOST.test(exe)) reasons.push('Executa um script por um interpretador');
+  if (sig.status === 'missing') reasons.push(tr("O programa não existe mais (item quebrado)"));
+  if (sig.status === 'unsigned') reasons.push(tr("Programa sem assinatura digital"));
+  if (sig.status === 'adhoc') reasons.push(tr("Assinatura sem identificação do desenvolvedor"));
+  if (sig.status === 'invalid') reasons.push(tr("A assinatura não é válida, porque o programa foi alterado depois de assinado"));
+  if (suspicious) reasons.push(tr("Roda de uma pasta incomum (temporária, oculta ou compartilhada)"));
+  if (SCRIPT_HOST.test(exe)) reasons.push(tr("Executa um script por um interpretador"));
   const risk = sig.status === 'invalid' || (suspicious && ['unsigned', 'adhoc', 'missing', 'unknown'].includes(sig.status)) || (SCRIPT_HOST.test(exe) && suspicious);
   const level = risk ? 'risk' : reasons.length ? 'warn' : 'ok';
   return { level, reasons };

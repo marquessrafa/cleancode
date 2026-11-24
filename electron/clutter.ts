@@ -5,6 +5,7 @@ import { app, nativeImage, shell } from 'electron';
 import { Worker } from 'worker_threads';
 import fs from 'fs';
 import path from 'path';
+import { t as tr } from './i18n';
 
 interface CFile { path: string; name: string; size: number; mtime: number; atime: number }
 export interface SimilarGroup { files: (CFile & { thumb?: string; width?: number; height?: number })[] }
@@ -48,7 +49,7 @@ async function similarPhotos(images: CFile[], exclude: Set<string>, send: Send):
       const h = !t.isEmpty() ? dhash(t) : null;
       if (h) hashes.push({ f: list[i], h });
     } catch { /* formato não suportado */ }
-    if (Date.now() - last > 250) { last = Date.now(); send('clutter:progress', { phase: 'Comparando fotos', done: i + 1, total: list.length }); }
+    if (Date.now() - last > 250) { last = Date.now(); send('clutter:progress', { phase: tr("Comparando fotos"), done: i + 1, total: list.length }); }
   }
   // agrupamento por líder: uma foto só entra num grupo se for parecida com a primeira dele
   // (encadear "A parece B, B parece C" juntava imagens diferentes, como fundos escuros).
@@ -98,10 +99,10 @@ export function scan(send: Send): Promise<ClutterReport> {
       }
       const report: ClutterReport = { scanned: m.scanned, large: m.large, old: m.old, duplicates: m.duplicates, similar, downloads: allDl.sort((a, b) => b.size - a.size).slice(0, 1500), roots: r };
       for (const f of [...report.large, ...report.old, ...report.duplicates.flatMap((g) => g.files), ...report.similar.flatMap((g) => g.files), ...report.downloads]) allowed.set(f.path, f.size);
-      send('clutter:progress', { phase: 'Pronto' });
+      send('clutter:progress', { phase: tr("Pronto") });
       resolve(report);
     });
-    w.on('error', (e) => { running = null; send('clutter:progress', { phase: 'Erro', error: String(e) }); resolve({ scanned: 0, large: [], old: [], duplicates: [], similar: [], downloads: [], roots: r }); });
+    w.on('error', (e) => { running = null; send('clutter:progress', { phase: tr("Erro"), error: String(e) }); resolve({ scanned: 0, large: [], old: [], duplicates: [], similar: [], downloads: [], roots: r }); });
   });
 }
 
@@ -112,7 +113,7 @@ export async function trash(paths: string[]): Promise<{ freed: number; removed: 
   const res = { freed: 0, removed: 0, failed: [] as { path: string; error: string }[] };
   for (const p of [...new Set(paths)]) {
     const size = allowed.get(p);
-    if (size === undefined) { res.failed.push({ path: p, error: 'Fora da última análise' }); continue; }
+    if (size === undefined) { res.failed.push({ path: p, error: tr("Fora da última análise") }); continue; }
     try { await shell.trashItem(p); allowed.delete(p); res.freed += size; res.removed++; }
     catch (err: any) { res.failed.push({ path: p, error: String(err?.message || err).slice(0, 120) }); }
   }

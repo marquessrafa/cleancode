@@ -7,6 +7,7 @@ import { DataTable } from '../components/DataTable';
 import { Button, Card, cx, PageHeader, Segmented } from '../components/ui';
 import { BarList, Donut, PageBody, ScopeBar } from './common';
 import { FileResults } from './FileResults';
+import { t } from '../lib/i18n';
 
 interface Ext { ext: string; size: number; alloc: number; files: number }
 
@@ -39,14 +40,14 @@ export default function Types() {
 
   return (
     <PageBody>
-      <PageHeader title="Tipos de arquivo" icon={<FileType2 size={18} />} description="Mostra quanto espaço cada tipo de arquivo ocupa. Para ver os arquivos de um tipo, clique nele."
-        actions={<Segmented value={metric} onChange={setMetric} options={[{ value: 'size', label: 'Por tamanho' }, { value: 'files', label: 'Por quantidade' }]} />} />
+      <PageHeader title={t("Tipos de arquivo")} icon={<FileType2 size={18} />} description={t("Mostra quanto espaço cada tipo de arquivo ocupa. Para ver os arquivos de um tipo, clique nele.")}
+        actions={<Segmented value={metric} onChange={setMetric} options={[{ value: 'size', label: t("Por tamanho") }, { value: 'files', label: t("Por quantidade") }]} />} />
       <ScopeBar />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[360px_1fr]">
-        <Card title="Categorias">
+        <Card title={t("Categorias")}>
           <div className="flex justify-center pb-4">
             <Donut data={cats.map((c) => ({ label: c.label, value: c[metric], color: c.color }))} size={220} thickness={34}
-              center={<><div className="text-xs text-muted">Total</div><div className="text-base font-semibold">{metric === 'size' ? fmtSize(total, units) : fmtNum(total)}</div></>} />
+              center={<><div className="text-xs text-muted">{t("Total")}</div><div className="text-base font-semibold">{metric === 'size' ? fmtSize(total, units) : fmtNum(total)}</div></>} />
           </div>
           <div className="space-y-0.5">
             {cats.map((c) => (
@@ -60,27 +61,27 @@ export default function Types() {
           </div>
         </Card>
         <div className="space-y-4">
-          <Card title="Maiores extensões" actions={cat && <Button size="sm" variant="ghost" icon={<X size={12} />} onClick={() => setCat(null)}>{[...CATEGORIES, OTHER].find((c) => c.key === cat)?.label}</Button>}>
-            <BarList items={rows.slice().sort((a, b) => b[metric] - a[metric]).slice(0, 12).map((e) => ({ key: e.ext, label: e.ext ? `.${e.ext}` : '(sem extensão)', value: e[metric], color: categoryOf(e.ext).color, sub: metric === 'size' ? `${fmtNum(e.files)} arq.` : fmtSize(e.size, units) }))}
+          <Card title={t("Maiores extensões")} actions={cat && <Button size="sm" variant="ghost" icon={<X size={12} />} onClick={() => setCat(null)}>{[...CATEGORIES, OTHER].find((c) => c.key === cat)?.label}</Button>}>
+            <BarList items={rows.slice().sort((a, b) => b[metric] - a[metric]).slice(0, 12).map((e) => ({ key: e.ext, label: e.ext ? `.${e.ext}` : t("(sem extensão)"), value: e[metric], color: categoryOf(e.ext).color, sub: metric === 'size' ? `${fmtNum(e.files)} arq.` : fmtSize(e.size, units) }))}
               valueLabel={metric === 'files' ? (v) => fmtNum(v) : undefined} units={units} onClick={openExt} />
           </Card>
-          <Card title={`Todas as extensões (${rows.length})`} pad={false}>
+          <Card title={t("Todas as extensões ({0})", rows.length)} pad={false}>
             <div className="h-[420px]">
               <DataTable className="h-full" rows={rows} rowKey={(r) => r.ext || '(none)'} sort={sort} onSort={setSort} onRowDoubleClick={(r) => openExt(r.ext)}
                 columns={[
-                  { key: 'ext', label: 'Extensão', width: 160, sortable: true, sortValue: (r) => r.ext, render: (r) => <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ background: categoryOf(r.ext).color }} />{r.ext ? `.${r.ext}` : '(sem extensão)'}</span> },
-                  { key: 'cat', label: 'Categoria', width: 200, flex: true, sortable: true, sortValue: (r) => categoryOf(r.ext).label, render: (r) => <span className="text-muted">{categoryOf(r.ext).label}</span> },
-                  { key: 'size', label: 'Tamanho', width: 110, align: 'right', sortable: true, sortValue: (r) => r.size, render: (r) => fmtSize(r.size, units) },
-                  { key: 'alloc', label: 'Alocado', width: 110, align: 'right', sortable: true, sortValue: (r) => r.alloc, render: (r) => fmtSize(r.alloc, units) },
-                  { key: 'files', label: 'Arquivos', width: 100, align: 'right', sortable: true, sortValue: (r) => r.files, render: (r) => fmtNum(r.files) },
-                  { key: 'pct', label: '% do total', width: 90, align: 'right', sortable: true, sortValue: (r) => r.size, render: (r) => fmtPct(r.size / ((data || []).reduce((s, x) => s + x.size, 0) || 1)) },
+                  { key: 'ext', label: t("Extensão"), width: 160, sortable: true, sortValue: (r) => r.ext, render: (r) => <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ background: categoryOf(r.ext).color }} />{r.ext ? `.${r.ext}` : t("(sem extensão)")}</span> },
+                  { key: 'cat', label: t("Categoria"), width: 200, flex: true, sortable: true, sortValue: (r) => categoryOf(r.ext).label, render: (r) => <span className="text-muted">{categoryOf(r.ext).label}</span> },
+                  { key: 'size', label: t("Tamanho"), width: 110, align: 'right', sortable: true, sortValue: (r) => r.size, render: (r) => fmtSize(r.size, units) },
+                  { key: 'alloc', label: t("Alocado"), width: 110, align: 'right', sortable: true, sortValue: (r) => r.alloc, render: (r) => fmtSize(r.alloc, units) },
+                  { key: 'files', label: t("Arquivos"), width: 100, align: 'right', sortable: true, sortValue: (r) => r.files, render: (r) => fmtNum(r.files) },
+                  { key: 'pct', label: t("% do total"), width: 90, align: 'right', sortable: true, sortValue: (r) => r.size, render: (r) => fmtPct(r.size / ((data || []).reduce((s, x) => s + x.size, 0) || 1)) },
                 ]} />
             </div>
           </Card>
         </div>
       </div>
       {drill && (
-        <Card className="mt-4 anim-fade" title={`Arquivos ${drill.ext ? '.' + drill.ext : 'sem extensão'} (até 2.000 maiores)`} actions={<Button size="sm" variant="ghost" icon={<X size={12} />} onClick={() => setDrill(null)}>Fechar</Button>}>
+        <Card className="mt-4 anim-fade" title={t("Arquivos {0} (até 2.000 maiores)", drill.ext ? '.' + drill.ext : 'sem extensão')} actions={<Button size="sm" variant="ghost" icon={<X size={12} />} onClick={() => setDrill(null)}>{t("Fechar")}</Button>}>
           <FileResults rows={drill.rows} name={`arquivos .${drill.ext}`} onChanged={() => openExt(drill.ext)} height={400} />
         </Card>
       )}

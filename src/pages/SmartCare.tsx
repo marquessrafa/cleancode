@@ -8,14 +8,15 @@ import { fmtSize, fmtNum } from '../lib/format';
 import { Button, Checkbox, cx } from '../components/ui';
 import { Float3D } from './maint';
 import { PageBody } from './common';
+import { t as tr } from '../lib/i18n';
 
 type Phase = 'intro' | 'scanning' | 'results' | 'running' | 'done';
 type Mod = 'cleanup' | 'protection' | 'performance' | 'apps';
 const MODS: { id: Mod; name: string; icon: React.ReactNode; page: string }[] = [
-  { id: 'cleanup', name: 'Limpeza', icon: <Sparkles size={18} />, page: 'cleanup' },
-  { id: 'protection', name: 'Proteção', icon: <ShieldCheck size={18} />, page: 'protection' },
-  { id: 'performance', name: 'Desempenho', icon: <Gauge size={18} />, page: 'performance' },
-  { id: 'apps', name: 'Aplicativos', icon: <Radar size={18} />, page: 'discover' },
+  { id: 'cleanup', name: tr("Limpeza"), icon: <Sparkles size={18} />, page: 'cleanup' },
+  { id: 'protection', name: tr("Proteção"), icon: <ShieldCheck size={18} />, page: 'protection' },
+  { id: 'performance', name: tr("Desempenho"), icon: <Gauge size={18} />, page: 'performance' },
+  { id: 'apps', name: tr("Aplicativos"), icon: <Radar size={18} />, page: 'discover' },
 ];
 
 function useTween(target: number, ms = 800) {
@@ -97,7 +98,7 @@ export default function SmartCare() {
     }
     setResult({ freed, removed, failed, tasksOk, tasksTotal });
     setPhase('done');
-    toast(freed ? `${fmtSize(freed, units)} liberados` : 'Cuidados concluídos');
+    toast(freed ? `${fmtSize(freed, units)} liberados` : tr("Cuidados concluídos"));
   };
 
   const foundT = useTween(phase === 'intro' ? 0 : safe.size);
@@ -109,8 +110,8 @@ export default function SmartCare() {
         <div className="flex min-h-[calc(100vh-140px)] flex-col items-center justify-center gap-10 py-6 lg:flex-row lg:gap-16">
           <div className="anim-pop"><Pulse active={phase === 'scanning'} /></div>
           <div className="w-full max-w-md anim-page">
-            <h1 className="text-[40px] font-semibold leading-tight tracking-tight text-fg">Cuidados Inteligentes</h1>
-            <p className="mt-2 text-[15px] text-muted">Uma análise completa do {isMac ? 'Mac' : 'PC'} em um clique: lixo para limpar, proteção, desempenho e apps esquecidos. Só o que é seguro é feito automaticamente.</p>
+            <h1 className="text-[40px] font-semibold leading-tight tracking-tight text-fg">{tr("Cuidados Inteligentes")}</h1>
+            <p className="mt-2 text-[15px] text-muted">{tr("Uma análise completa do")} {isMac ? tr("Mac") : 'PC'} {tr("em um clique: lixo para limpar, proteção, desempenho e apps esquecidos. Só o que é seguro é feito automaticamente.")}</p>
             <div className="mt-6 space-y-2.5">
               {MODS.map((m, i) => (
                 <div key={m.id} className="flex items-center gap-3 text-[14px] font-medium text-fg anim-page" style={{ animationDelay: `${60 + i * 50}ms` }}>
@@ -124,7 +125,7 @@ export default function SmartCare() {
               <button onClick={scan} className="relative mt-8 flex h-28 w-28 items-center justify-center rounded-full text-[17px] font-semibold text-accent-fg transition-transform hover:scale-105 active:scale-95"
                 style={{ background: 'radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent) 55%, #ffffff), var(--accent) 60%)', boxShadow: '0 10px 40px color-mix(in srgb, var(--accent) 45%, transparent)' }}>
                 <span className="absolute inset-0 rounded-full anim-ping-soft" style={{ boxShadow: '0 0 0 2px var(--accent)' }} />
-                Analisar
+                {tr("Analisar")}
               </button>
             )}
           </div>
@@ -134,12 +135,12 @@ export default function SmartCare() {
   }
 
   const cards: { id: Mod; value: string; sub: string; tone: 'ok' | 'warn' | 'risk'; action?: React.ReactNode }[] = [
-    { id: 'cleanup', value: fmtSize(safe.size, units), sub: `${fmtNum(safe.count)} itens seguros para limpar${safe.review ? `, e mais ${fmtSize(safe.review, units)} para revisar` : ''}`, tone: safe.size ? 'warn' : 'ok',
-      action: <label className="flex items-center gap-2 text-xs text-muted"><Checkbox checked={incl.cleanup} onChange={(v) => setIncl((x) => ({ ...x, cleanup: v }))} />Limpar (vai para a Lixeira)</label> },
-    { id: 'protection', value: protIssues ? `${protIssues} ponto(s)` : 'Protegido', sub: prot ? `${prot.checks.filter((c) => c.ok).length} de ${prot.checks.length} defesas ligadas${protWarn ? `, e ${protWarn} item(ns) para revisar` : ''}` : 'Não verificado', tone: protIssues ? 'risk' : protWarn ? 'warn' : 'ok' },
-    { id: 'performance', value: `${recommended.length} tarefa(s)`, sub: recommended.map((t) => t.name.toLowerCase()).join(', ') || 'Nada recomendado', tone: 'ok',
-      action: <label className="flex items-center gap-2 text-xs text-muted"><Checkbox checked={incl.maintenance} onChange={(v) => setIncl((x) => ({ ...x, maintenance: v }))} />Executar{recommended.some((t) => t.admin) && <Lock size={11} />}</label> },
-    { id: 'apps', value: `${stale.length} sem uso`, sub: stale.length ? `há mais de ${settings?.staleMonths || 6} meses · ${fmtSize(staleSize, units)}` : 'Nenhum app esquecido', tone: stale.length ? 'warn' : 'ok' },
+    { id: 'cleanup', value: fmtSize(safe.size, units), sub: tr("{0} itens seguros para limpar{1}", fmtNum(safe.count), safe.review ? tr(", e mais {0} para revisar", fmtSize(safe.review, units)) : ''), tone: safe.size ? 'warn' : 'ok',
+      action: <label className="flex items-center gap-2 text-xs text-muted"><Checkbox checked={incl.cleanup} onChange={(v) => setIncl((x) => ({ ...x, cleanup: v }))} />{tr("Limpar (vai para a Lixeira)")}</label> },
+    { id: 'protection', value: protIssues ? tr("{0} ponto(s)", protIssues) : tr("Protegido"), sub: prot ? tr("{0} de {1} defesas ligadas{2}", prot.checks.filter((c) => c.ok).length, prot.checks.length, protWarn ? tr(", e {0} item(ns) para revisar", protWarn) : '') : tr("Não verificado"), tone: protIssues ? 'risk' : protWarn ? 'warn' : 'ok' },
+    { id: 'performance', value: tr("{0} tarefa(s)", recommended.length), sub: recommended.map((t) => t.name.toLowerCase()).join(', ') || tr("Nada recomendado"), tone: 'ok',
+      action: <label className="flex items-center gap-2 text-xs text-muted"><Checkbox checked={incl.maintenance} onChange={(v) => setIncl((x) => ({ ...x, maintenance: v }))} />{tr("Executar")}{recommended.some((t) => t.admin) && <Lock size={11} />}</label> },
+    { id: 'apps', value: tr("{0} sem uso", stale.length), sub: stale.length ? tr("há mais de {0} meses · {1}", settings?.staleMonths || 6, fmtSize(staleSize, units)) : tr("Nenhum app esquecido"), tone: stale.length ? 'warn' : 'ok' },
   ];
   const nothing = !(incl.cleanup && safe.size) && !(incl.maintenance && recommended.length);
 
@@ -148,19 +149,19 @@ export default function SmartCare() {
       <div className="mb-7 flex flex-wrap items-center gap-6 anim-page">
         <Pulse size={120} active={phase === 'running'} />
         <div className="min-w-0 flex-1">
-          <div className="text-sm text-muted">{phase === 'done' ? 'Cuidados concluídos' : phase === 'running' ? 'Executando…' : 'Pronto para cuidar do seu ' + (isMac ? 'Mac' : 'PC')}</div>
+          <div className="text-sm text-muted">{phase === 'done' ? tr("Cuidados concluídos") : phase === 'running' ? tr("Executando…") : tr("Pronto para cuidar do seu ") + (isMac ? tr("Mac") : 'PC')}</div>
           <div className="text-[38px] font-semibold leading-none tracking-tight text-fg tabular-nums">{phase === 'done' ? fmtSize(freedT, units) : fmtSize(foundT, units)}</div>
-          <div className="mt-1 text-sm text-muted">{phase === 'done' && result ? `liberados · ${fmtNum(result.removed)} itens${result.failed ? ` · ${result.failed} ficaram` : ''}${result.tasksTotal ? ` · ${result.tasksOk}/${result.tasksTotal} tarefas` : ''}` : 'de lixo seguro encontrado'}</div>
+          <div className="mt-1 text-sm text-muted">{phase === 'done' && result ? tr("liberados · {0} itens{1}{2}", fmtNum(result.removed), result.failed ? ` · ${result.failed} ficaram` : '', result.tasksTotal ? ` · ${result.tasksOk}/${result.tasksTotal} tarefas` : '') : tr("de lixo seguro encontrado")}</div>
         </div>
         {phase === 'results' && (
           <button disabled={nothing} onClick={run} className="relative flex h-24 w-24 items-center justify-center rounded-full text-[16px] font-semibold text-accent-fg transition-transform hover:scale-105 active:scale-95 disabled:opacity-40"
             style={{ background: 'radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent) 55%, #ffffff), var(--accent) 60%)', boxShadow: '0 10px 36px color-mix(in srgb, var(--accent) 45%, transparent)' }}>
             {!nothing && <span className="absolute inset-0 rounded-full anim-ping-soft" style={{ boxShadow: '0 0 0 2px var(--accent)' }} />}
-            Executar
+            {tr("Executar")}
           </button>
         )}
         {phase === 'running' && <Loader2 size={28} className="animate-spin text-accent" />}
-        {phase === 'done' && <Button variant="primary" icon={<RotateCcw size={14} />} onClick={scan}>Analisar de novo</Button>}
+        {phase === 'done' && <Button variant="primary" icon={<RotateCcw size={14} />} onClick={scan}>{tr("Analisar de novo")}</Button>}
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -174,7 +175,7 @@ export default function SmartCare() {
                   <div className="text-xs text-muted">{m.name}</div>
                   <div className="text-xl font-semibold tracking-tight text-fg tabular-nums">{c.value}</div>
                 </div>
-                <button onClick={() => go(m.page as any)} className="flex items-center gap-0.5 text-xs font-medium text-accent hover:underline">Revisar <ChevronRight size={13} /></button>
+                <button onClick={() => go(m.page as any)} className="flex items-center gap-0.5 text-xs font-medium text-accent hover:underline">{tr("Revisar")} <ChevronRight size={13} /></button>
               </div>
               <div className="mt-2 flex-1 text-xs text-muted">{c.sub}</div>
               {c.action && phase === 'results' && <div className="mt-3 border-t border-line pt-3">{c.action}</div>}
@@ -182,7 +183,7 @@ export default function SmartCare() {
           );
         })}
       </div>
-      {phase === 'results' && incl.maintenance && recommended.some((t) => t.admin) && <div className="mt-4 flex items-center gap-1.5 text-xs text-muted"><Lock size={12} />{isMac ? 'As tarefas pedem sua senha de administrador uma vez.' : 'As tarefas pedem permissão de administrador (UAC).'}</div>}
+      {phase === 'results' && incl.maintenance && recommended.some((t) => t.admin) && <div className="mt-4 flex items-center gap-1.5 text-xs text-muted"><Lock size={12} />{isMac ? tr("As tarefas pedem sua senha de administrador uma vez.") : tr("As tarefas pedem permissão de administrador (UAC).")}</div>}
     </PageBody>
   );
 }

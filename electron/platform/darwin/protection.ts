@@ -5,6 +5,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import type { ProtectionApi, SecurityCheck, SignatureInfo, StartupItem } from '../types';
+import { t as tr, LOCALE } from '../../i18n';
 
 function run(cmd: string, args: string[], timeout = 15000): Promise<{ out: string; err: string; ok: boolean }> {
   return new Promise((resolve) => execFile(cmd, args, { encoding: 'utf8', timeout }, (e, out, err) => resolve({ out: out || '', err: err || '', ok: !e })));
@@ -22,24 +23,24 @@ async function status(): Promise<SecurityCheck[]> {
   ]);
   const flag = (k: string) => { const m = new RegExp(`${k} = (\\d)`).exec(su.out); return m ? m[1] === '1' : true; }; // ausente = padrão (ligado)
   let xpDate = '';
-  try { xpDate = new Date(fs.statSync('/Library/Apple/System/Library/CoreServices/XProtect.bundle').mtimeMs).toLocaleDateString('pt-BR'); } catch { /* */ }
+  try { xpDate = new Date(fs.statSync('/Library/Apple/System/Library/CoreServices/XProtect.bundle').mtimeMs).toLocaleDateString(LOCALE); } catch { /* */ }
   const gkOk = /enabled/.test(gk.out + gk.err) ? true : /disabled/.test(gk.out + gk.err) ? false : null;
   const sipOk = /status: enabled/.test(sip.out) ? true : /status: disabled/.test(sip.out) ? false : null;
   const fvOk = /FileVault is On/.test(fv.out) ? true : /FileVault is Off/.test(fv.out) ? false : null;
   const fwOk = /enabled/.test(fw.out) ? true : /disabled/.test(fw.out) ? false : null;
   return [
-    { id: 'gatekeeper', name: 'Gatekeeper', critical: true, ok: gkOk, settingsUrl: PANE('General'),
-      detail: gkOk ? 'Só abre apps assinados ou que você liberou' : 'Apps de qualquer origem abrem sem verificação. Reative em Privacidade e Segurança (ou "sudo spctl --master-enable" no Terminal).' },
-    { id: 'sip', name: 'Proteção da Integridade do Sistema', critical: true, ok: sipOk,
-      detail: sipOk ? 'Arquivos do sistema protegidos contra alteração' : 'Desativada: só é religada pelo modo de recuperação (csrutil enable)' },
-    { id: 'xprotect', name: 'XProtect (antimalware da Apple)', critical: true, ok: xp.out.trim() ? flag('ConfigDataInstall') : null,
-      detail: xp.out.trim() ? `Versão ${xp.out.trim()}${xpDate ? `, atualizada em ${xpDate}` : ''}${flag('ConfigDataInstall') ? '' : ' · atualizações de segurança automáticas desligadas'}` : 'Não encontrado' },
-    { id: 'security-updates', name: 'Respostas de segurança automáticas', ok: flag('CriticalUpdateInstall'), settingsUrl: 'x-apple.systempreferences:com.apple.Software-Update-Settings.extension',
-      detail: flag('CriticalUpdateInstall') ? 'Correções urgentes são instaladas sozinhas' : 'Desligadas em Atualização de Software' },
-    { id: 'filevault', name: 'FileVault', ok: fvOk, settingsUrl: PANE('FDE'),
-      detail: fvOk ? 'Disco criptografado' : 'Disco sem criptografia: quem tiver o Mac pode ler seus arquivos' },
-    { id: 'firewall', name: 'Firewall', ok: fwOk, settingsUrl: 'x-apple.systempreferences:com.apple.Network-Settings.extension?Firewall',
-      detail: fwOk ? 'Bloqueia conexões de entrada não autorizadas' : 'Desligado (recomendado ligar em redes públicas)' },
+    { id: 'gatekeeper', name: tr("Gatekeeper"), critical: true, ok: gkOk, settingsUrl: PANE('General'),
+      detail: gkOk ? tr("Só abre apps assinados ou que você liberou") : tr("Apps de qualquer origem abrem sem verificação. Para ligar essa proteção de novo, vá em Privacidade e Segurança ou rode \"sudo spctl --master-enable\" no Terminal.") },
+    { id: 'sip', name: tr("Proteção da Integridade do Sistema"), critical: true, ok: sipOk,
+      detail: sipOk ? tr("Os arquivos do sistema estão protegidos contra mudanças") : tr("Desligada. Ela só pode ser ligada de novo pelo modo de recuperação (csrutil enable).") },
+    { id: 'xprotect', name: tr("XProtect (antimalware da Apple)"), critical: true, ok: xp.out.trim() ? flag('ConfigDataInstall') : null,
+      detail: xp.out.trim() ? tr("Versão {0}{1}{2}", xp.out.trim(), xpDate ? tr(", atualizada em {0}", xpDate) : '', flag('ConfigDataInstall') ? '' : tr(" · atualizações de segurança automáticas desligadas")) : tr("Não encontrado") },
+    { id: 'security-updates', name: tr("Respostas de segurança automáticas"), ok: flag('CriticalUpdateInstall'), settingsUrl: 'x-apple.systempreferences:com.apple.Software-Update-Settings.extension',
+      detail: flag('CriticalUpdateInstall') ? tr("Correções urgentes são instaladas sozinhas") : tr("Desligadas em Atualização de Software") },
+    { id: 'filevault', name: tr("FileVault"), ok: fvOk, settingsUrl: PANE('FDE'),
+      detail: fvOk ? tr("O disco está criptografado") : tr("O disco não está criptografado. Por isso, quem pegar o Mac consegue ler os seus arquivos") },
+    { id: 'firewall', name: tr("Firewall"), ok: fwOk, settingsUrl: 'x-apple.systempreferences:com.apple.Network-Settings.extension?Firewall',
+      detail: fwOk ? tr("Bloqueia conexões de entrada não autorizadas") : tr("Desligado (recomendado ligar em redes públicas)") },
   ];
 }
 

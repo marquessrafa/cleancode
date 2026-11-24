@@ -5,13 +5,15 @@ import { execFileSync } from 'child_process';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { t, LANG } from './i18n';
 
 export interface UpdateNote { version: string; date: string; headline: string; groups: { title: string; icon: string; items: string[] }[] }
 export interface UpdateInfo { version: string; file: string; sha512: string; size: number; date?: string; source: string; base?: string; notes?: UpdateNote[] }
 
 /** Novidades embutidas no feed (base64 de JSON): só as versões mais novas que a instalada. */
 function parseNotes(yml: string): UpdateNote[] | undefined {
-  const b64 = /^notes:\s*([A-Za-z0-9+/=]+)/m.exec(yml)?.[1];
+  // usa as novidades no idioma do app quando o feed traz essa versão (notes_en, notes_es); senão, as em português
+  const b64 = (LANG !== 'pt' ? new RegExp(`^notes_${LANG}:\\s*([A-Za-z0-9+/=]+)`, 'm').exec(yml)?.[1] : undefined) || /^notes:\s*([A-Za-z0-9+/=]+)/m.exec(yml)?.[1];
   if (!b64) return undefined;
   try {
     const all = JSON.parse(Buffer.from(b64, 'base64').toString('utf8')) as UpdateNote[];
@@ -57,14 +59,14 @@ function parseLatest(yml: string) {
 async function readText(source: string, name: string): Promise<string> {
   if (isUrl(source)) {
     const r = await net.fetch(source.replace(/\/+$/, '') + '/' + name, { cache: 'no-store' } as any);
-    if (!r.ok) throw new Error(`HTTP ${r.status} ao ler ${name}`);
+    if (!r.ok) throw new Error(t("HTTP {0} ao ler {1}", r.status, name));
     return r.text();
   }
   return fs.promises.readFile(path.join(source, name), 'utf8');
 }
 
 export async function checkForUpdate(source: string): Promise<UpdateInfo | null> {
-  if (!source) throw new Error('Nenhuma fonte de atualizações configurada');
+  if (!source) throw new Error(t("Nenhuma fonte de atualizações configurada"));
   // feed no repositório (raw.githubusercontent, com cache de até 5 min) + o mesmo arquivo nos anexos
   // do Release mais recente: lê os dois e fica com a versão mais nova
   const m = /^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\//.exec(source);
@@ -82,7 +84,7 @@ export async function checkForUpdate(source: string): Promise<UpdateInfo | null>
 }
 function finish(text: string, source: string): UpdateInfo | null {
   const meta = parseLatest(text);
-  if (!meta.version || !meta.file || !meta.sha512) throw new Error(`${FEED_FILE} inválido`);
+  if (!meta.version || !meta.file || !meta.sha512) throw new Error(t("{0} não é válido", FEED_FILE));
   if (!newer(meta.version, app.getVersion())) return null;
   return { version: meta.version, file: meta.file, sha512: meta.sha512, size: meta.size, date: meta.date, source, base: meta.base && isUrl(meta.base) ? meta.base : undefined, notes: parseNotes(text) };
 }
@@ -98,7 +100,7 @@ export async function downloadUpdate(info: UpdateInfo, onProgress: (done: number
   try {
     if (isUrl(info.source) || info.base) {
       const r = await net.fetch((info.base || info.source).replace(/\/+$/, '') + '/' + encodeURIComponent(info.file).replace(/%2F/g, '/'), { cache: 'no-store' } as any);
-      if (!r.ok || !r.body) throw new Error(`HTTP ${r.status} ao baixar o instalador`);
+      if (!r.ok || !r.body) throw new Error(t("HTTP {0} ao baixar o instalador", r.status));
       const reader = (r.body as any).getReader();
       for (;;) { const { value, done: end } = await reader.read(); if (end) break; await write(Buffer.from(value)); }
     } else {
@@ -108,6 +110,6 @@ export async function downloadUpdate(info: UpdateInfo, onProgress: (done: number
   } finally {
     await new Promise<void>((r) => out.end(() => r()));
   }
-  if (hash.digest('base64') !== info.sha512) { fs.unlink(dest, () => {}); throw new Error('Falha na verificação de integridade (SHA-512) do instalador'); }
+  if (hash.digest('base64') !== info.sha512) { fs.unlink(dest, () => {}); throw new Error(t("O instalador não passou na verificação de integridade (SHA-512)")); }
   return dest;
 }

@@ -7,6 +7,7 @@ import path from 'path';
 import type { AppEntry, DossierFact, DossierLocal } from '../types';
 import { binaryInfo, detectTech, findLicenses } from '../dossierCommon';
 import { findLeftovers } from './apps';
+import { t as tr, LOCALE } from '../../i18n';
 
 function sh(cmd: string, args: string[], input?: string, timeout = 15000): Promise<{ out: string; err: string }> {
   return new Promise((resolve) => {
@@ -25,18 +26,18 @@ async function plistText(xml: string): Promise<any> {
 }
 
 const CATEGORY: Record<string, string> = {
-  business: 'Negócios', 'developer-tools': 'Ferramentas de desenvolvimento', education: 'Educação', entertainment: 'Entretenimento',
-  finance: 'Finanças', games: 'Jogos', 'graphics-design': 'Design gráfico', 'healthcare-fitness': 'Saúde e fitness', lifestyle: 'Estilo de vida',
-  medical: 'Medicina', music: 'Música', news: 'Notícias', photography: 'Fotografia', productivity: 'Produtividade', reference: 'Referência',
-  'social-networking': 'Redes sociais', sports: 'Esportes', travel: 'Viagem', utilities: 'Utilitários', video: 'Vídeo', weather: 'Clima',
+  business: tr("Negócios"), 'developer-tools': tr("Ferramentas de desenvolvimento"), education: tr("Educação"), entertainment: tr("Entretenimento"),
+  finance: tr("Finanças"), games: tr("Jogos"), 'graphics-design': tr("Design gráfico"), 'healthcare-fitness': tr("Saúde e fitness"), lifestyle: tr("Estilo de vida"),
+  medical: tr("Medicina"), music: tr("Música"), news: tr("Notícias"), photography: tr("Fotografia"), productivity: tr("Produtividade"), reference: tr("Referência"),
+  'social-networking': tr("Redes sociais"), sports: tr("Esportes"), travel: tr("Viagem"), utilities: tr("Utilitários"), video: tr("Vídeo"), weather: tr("Clima"),
 };
 const ENT: [string, string][] = [
-  ['com.apple.security.device.camera', 'Câmera'], ['com.apple.security.device.audio-input', 'Microfone'], ['com.apple.security.device.microphone', 'Microfone'],
-  ['com.apple.security.personal-information.location', 'Localização'], ['com.apple.security.personal-information.addressbook', 'Contatos'],
-  ['com.apple.security.personal-information.calendars', 'Calendários'], ['com.apple.security.personal-information.photos-library', 'Fotos'],
-  ['com.apple.security.network.client', 'Internet (conexões de saída)'], ['com.apple.security.network.server', 'Aceita conexões de rede'],
-  ['com.apple.security.device.usb', 'USB'], ['com.apple.security.device.bluetooth', 'Bluetooth'], ['com.apple.security.print', 'Impressão'],
-  ['com.apple.security.files.user-selected.read-write', 'Arquivos que você escolher'], ['com.apple.security.files.downloads.read-write', 'Pasta Downloads'],
+  ['com.apple.security.device.camera', tr("Câmera")], ['com.apple.security.device.audio-input', tr("Microfone")], ['com.apple.security.device.microphone', tr("Microfone")],
+  ['com.apple.security.personal-information.location', tr("Localização")], ['com.apple.security.personal-information.addressbook', tr("Contatos")],
+  ['com.apple.security.personal-information.calendars', tr("Calendários")], ['com.apple.security.personal-information.photos-library', tr("Fotos")],
+  ['com.apple.security.network.client', tr("Internet (conexões de saída)")], ['com.apple.security.network.server', tr("Aceita conexões de rede")],
+  ['com.apple.security.device.usb', 'USB'], ['com.apple.security.device.bluetooth', 'Bluetooth'], ['com.apple.security.print', tr("Impressão")],
+  ['com.apple.security.files.user-selected.read-write', tr("Arquivos que você escolher")], ['com.apple.security.files.downloads.read-write', 'Pasta Downloads'],
   ['com.apple.security.automation.apple-events', 'Controlar outros apps (Apple Events)'],
 ];
 
@@ -77,74 +78,74 @@ export async function macDossier(a: AppEntry): Promise<DossierLocal> {
   const mas = !!a.source && a.source === 'store' || fs.existsSync(path.join(contents, '_MASReceipt'));
 
   // sobre
-  f('about', 'Nome', a.name);
+  f('about', tr("Nome"), a.name);
   const inner = info.CFBundleDisplayName || info.CFBundleName;
-  if (inner && inner !== a.name) f('about', 'Nome interno', inner);
-  f('about', 'Fabricante', a.publisher);
-  f('about', 'Direitos autorais', info.NSHumanReadableCopyright);
+  if (inner && inner !== a.name) f('about', tr("Nome interno"), inner);
+  f('about', tr("Fabricante"), a.publisher);
+  f('about', tr("Direitos autorais"), info.NSHumanReadableCopyright);
   const cat = String(info.LSApplicationCategoryType || mdv.kMDItemAppStoreCategory || '').replace('public.app-category.', '');
-  f('about', 'Categoria', CATEGORY[cat] || (cat && !cat.includes('.') ? cat : undefined));
-  if (wrapped) f('about', 'Tipo', 'App de iPhone/iPad (roda no Mac com Apple Silicon)');
-  else if (info.LSUIElement === true || info.LSUIElement === '1') f('about', 'Tipo', 'App da barra de menus (sem ícone no Dock)');
+  f('about', tr("Categoria"), CATEGORY[cat] || (cat && !cat.includes('.') ? cat : undefined));
+  if (wrapped) f('about', tr("Tipo"), tr("App de iPhone/iPad (roda no Mac com Apple Silicon)"));
+  else if (info.LSUIElement === true || info.LSUIElement === '1') f('about', tr("Tipo"), tr("App da barra de menus (sem ícone no Dock)"));
 
   // instalação
-  f('install', 'Instalado em', a.installDate, 'date');
-  f('install', 'Pasta', p, 'path');
-  f('install', 'Tamanho do app', a.size, 'size');
-  f('install', 'Origem', mas ? 'Mac App Store' : a.origin);
+  f('install', tr("Instalado em"), a.installDate, 'date');
+  f('install', tr("Pasta"), p, 'path');
+  f('install', tr("Tamanho do app"), a.size, 'size');
+  f('install', tr("Origem"), mas ? 'Mac App Store' : a.origin);
   const from = (mdv.kMDItemWhereFroms || []).filter((u: string) => /^https?:/i.test(u));
-  if (from[0]) f('install', 'Baixado de', from[0], 'url', { hint: from[1] ? `Página: ${from[1]}` : undefined });
+  if (from[0]) f('install', tr("Baixado de"), from[0], 'url', { hint: from[1] ? tr("Página: {0}", from[1]) : undefined });
   if (qt.out.trim()) {
     const [, hex, agent] = qt.out.trim().split(';');
     const t = parseInt(hex, 16) * 1000;
-    f('install', 'Baixado por', agent || undefined, 'text', { hint: t > 0 ? `Marcado como baixado da internet em ${new Date(t).toLocaleString('pt-BR')}` : undefined });
+    f('install', tr("Baixado por"), agent || undefined, 'text', { hint: t > 0 ? tr("Marcado como baixado da internet em {0}", new Date(t).toLocaleString(LOCALE)) : undefined });
   }
-  const updater = mas ? 'App Store' : info.KSProductID ? 'Google Software Update (Keystone)' : /^com\.microsoft\./.test(info.CFBundleIdentifier || '') && !fs.existsSync(path.join(contents, 'Frameworks', 'Squirrel.framework')) ? 'Microsoft AutoUpdate' : info.SUFeedURL ? `Sparkle (${String(info.SUFeedURL).replace(/^https?:\/\//, '').split('/')[0]})` : fs.existsSync(path.join(contents, 'Frameworks', 'Squirrel.framework')) ? 'Squirrel (próprio do app)' : fs.existsSync(path.join(contents, 'Frameworks', 'Sparkle.framework')) ? 'Sparkle' : undefined;
-  f('install', 'Atualizações por', updater || 'Não identificado (manual ou pelo próprio app)');
+  const updater = mas ? 'App Store' : info.KSProductID ? 'Google Software Update (Keystone)' : /^com\.microsoft\./.test(info.CFBundleIdentifier || '') && !fs.existsSync(path.join(contents, 'Frameworks', 'Squirrel.framework')) ? 'Microsoft AutoUpdate' : info.SUFeedURL ? `Sparkle (${String(info.SUFeedURL).replace(/^https?:\/\//, '').split('/')[0]})` : fs.existsSync(path.join(contents, 'Frameworks', 'Squirrel.framework')) ? tr("Squirrel (próprio do app)") : fs.existsSync(path.join(contents, 'Frameworks', 'Sparkle.framework')) ? 'Sparkle' : undefined;
+  f('install', tr("Atualizações por"), updater || tr("Não identificado (manual ou pelo próprio app)"));
 
   // uso
-  f('usage', 'Último uso', a.lastUsed, 'date');
-  f('usage', 'Aberto', a.runCount ? `${a.runCount} vezes` : undefined, 'text', { hint: 'Contagem do Spotlight' });
+  f('usage', tr("Último uso"), a.lastUsed, 'date');
+  f('usage', tr("Aberto"), a.runCount ? `${a.runCount} vezes` : undefined, 'text', { hint: tr("Contagem do Spotlight") });
   const prefix = p.replace(/\/+$/, '') + '/Contents/';
   const running = ps.out.split('\n').some((l) => l.trim().startsWith(prefix));
-  f('usage', 'Agora', running ? 'Em execução' : 'Fechado', 'text', { tone: running ? 'ok' : undefined });
+  f('usage', tr("Agora"), running ? tr("Em execução") : tr("Fechado"), 'text', { tone: running ? 'ok' : undefined });
   const loginItems = (() => { try { return fs.readdirSync(path.join(contents, 'Library', 'LoginItems')).filter((n) => n.endsWith('.app')); } catch { return []; } })();
-  if (loginItems.length) f('usage', 'Item de abertura embutido', loginItems.map((n) => n.replace(/\.app$/, '')).join(', '), 'text', { hint: 'Pode abrir sozinho com o Mac (Ajustes > Geral > Itens de Início)' });
+  if (loginItems.length) f('usage', tr("Item de abertura embutido"), loginItems.map((n) => n.replace(/\.app$/, '')).join(', '), 'text', { hint: tr("Pode abrir sozinho com o Mac (Ajustes > Geral > Itens de Início)") });
 
   // técnico
-  f('tech', 'Identificador', info.CFBundleIdentifier || a.bundleId, 'mono');
-  f('tech', 'Versão', info.CFBundleShortVersionString);
+  f('tech', tr("Identificador"), info.CFBundleIdentifier || a.bundleId, 'mono');
+  f('tech', tr("Versão"), info.CFBundleShortVersionString);
   if (info.CFBundleVersion && info.CFBundleVersion !== info.CFBundleShortVersionString) f('tech', 'Build', info.CFBundleVersion, 'mono');
-  f('tech', 'macOS mínimo', info.LSMinimumSystemVersion);
+  f('tech', tr("macOS mínimo"), info.LSMinimumSystemVersion);
   const bin = exe ? binaryInfo(exe) : { archs: [] as string[] };
   const archs = [...new Set(bin.archs)];
-  if (archs.length) f('tech', 'Arquitetura', archs.length > 1 ? `Universal (${archs.join(' + ')})` : archs[0]);
-  if (archs.length === 1 && archs[0].startsWith('Intel')) badges.push({ label: 'Só Intel', tone: 'warn', hint: 'Roda no Apple Silicon pelo Rosetta 2, que a Apple vai descontinuar' });
-  f('tech', 'Compilado com', [info.DTSDKName && `SDK ${String(info.DTSDKName).replace(/^macosx/, 'macOS ')}`, info.DTXcode && `Xcode ${String(info.DTXcode).replace(/^(\d+)(\d)(\d)$/, '$1.$2.$3').replace(/^0/, '')}`].filter(Boolean).join(' · '));
-  f('tech', 'Executável', exe, 'path');
-  try { const st = fs.statSync(exe); f('tech', 'Data do executável', st.mtimeMs, 'date', { hint: 'Normalmente a data em que esta versão foi gerada' }); } catch { /* */ }
+  if (archs.length) f('tech', tr("Arquitetura"), archs.length > 1 ? `Universal (${archs.join(' + ')})` : archs[0]);
+  if (archs.length === 1 && archs[0].startsWith('Intel')) badges.push({ label: tr("Só Intel"), tone: 'warn', hint: tr("Roda no Apple Silicon pelo Rosetta 2, que a Apple vai descontinuar") });
+  f('tech', tr("Compilado com"), [info.DTSDKName && `SDK ${String(info.DTSDKName).replace(/^macosx/, 'macOS ')}`, info.DTXcode && `Xcode ${String(info.DTXcode).replace(/^(\d+)(\d)(\d)$/, '$1.$2.$3').replace(/^0/, '')}`].filter(Boolean).join(' · '));
+  f('tech', tr("Executável"), exe, 'path');
+  try { const st = fs.statSync(exe); f('tech', tr("Data do executável"), st.mtimeMs, 'date', { hint: tr("Normalmente a data em que esta versão foi gerada") }); } catch { /* */ }
   const plugins = (() => { try { return fs.readdirSync(path.join(contents, 'PlugIns')).filter((n) => /\.(appex|plugin|bundle)$/.test(n)); } catch { return []; } })();
-  if (plugins.length) f('tech', 'Extensões', plugins.map((n) => n.replace(/\.(appex|plugin|bundle)$/, '')).slice(0, 8).join(', ') + (plugins.length > 8 ? ` +${plugins.length - 8}` : ''));
+  if (plugins.length) f('tech', tr("Extensões"), plugins.map((n) => n.replace(/\.(appex|plugin|bundle)$/, '')).slice(0, 8).join(', ') + (plugins.length > 8 ? ` +${plugins.length - 8}` : ''));
   const docs = (info.CFBundleDocumentTypes || []).flatMap((d: any) => d.CFBundleTypeExtensions || []).filter((x: string) => x && x !== '*');
-  if (docs.length) f('tech', 'Abre arquivos', [...new Set(docs)].slice(0, 14).map((x) => '.' + x).join(' ') + (docs.length > 14 ? ' …' : ''));
+  if (docs.length) f('tech', tr("Abre arquivos"), [...new Set(docs)].slice(0, 14).map((x) => '.' + x).join(' ') + (docs.length > 14 ? ' …' : ''));
   const schemes = (info.CFBundleURLTypes || []).flatMap((u: any) => u.CFBundleURLSchemes || []);
-  if (schemes.length) f('tech', 'Links que abre', [...new Set(schemes)].slice(0, 8).map((x) => `${x}://`).join(' '), 'mono');
+  if (schemes.length) f('tech', tr("Links que abre"), [...new Set(schemes)].slice(0, 8).map((x) => `${x}://`).join(' '), 'mono');
 
   // segurança
-  if (unsigned) { f('security', 'Assinatura', 'Sem assinatura', 'text', { tone: 'danger' }); badges.push({ label: 'Sem assinatura', tone: 'danger' }); }
-  else if (adhoc) { f('security', 'Assinatura', 'Ad hoc (sem certificado de desenvolvedor)', 'text', { tone: 'warn' }); badges.push({ label: 'Assinatura ad hoc', tone: 'warn' }); }
-  else if (authorities[0]) f('security', 'Assinado por', authorities[0].replace(/^(Developer ID Application|Apple Mac OS Application Signing|Apple Development|Mac Developer): /, ''), 'text', { tone: 'ok', hint: authorities.join(' → ') });
+  if (unsigned) { f('security', tr("Assinatura"), tr("Sem assinatura"), 'text', { tone: 'danger' }); badges.push({ label: tr("Sem assinatura"), tone: 'danger' }); }
+  else if (adhoc) { f('security', tr("Assinatura"), tr("Ad hoc (sem certificado de desenvolvedor)"), 'text', { tone: 'warn' }); badges.push({ label: tr("Assinatura ad hoc"), tone: 'warn' }); }
+  else if (authorities[0]) f('security', tr("Assinado por"), authorities[0].replace(/^(Developer ID Application|Apple Mac OS Application Signing|Apple Development|Mac Developer): /, ''), 'text', { tone: 'ok', hint: authorities.join(' → ') });
   f('security', 'Equipe (Team ID)', team && team !== 'not set' ? team : undefined, 'mono');
-  f('security', 'Assinado em', dateOf(signedAt), 'date');
-  if (/Notarization Ticket=stapled/.test(csTxt)) { f('security', 'Notarização', 'Ticket da Apple anexado ao app', 'text', { tone: 'ok' }); }
-  f('security', 'Runtime reforçado', runtime ? 'Sim' : unsigned ? undefined : 'Não', 'text', { tone: runtime ? 'ok' : undefined });
+  f('security', tr("Assinado em"), dateOf(signedAt), 'date');
+  if (/Notarization Ticket=stapled/.test(csTxt)) { f('security', tr("Notarização"), tr("Ticket da Apple anexado ao app"), 'text', { tone: 'ok' }); }
+  f('security', tr("Runtime reforçado"), runtime ? tr("Sim") : unsigned ? undefined : tr("Não"), 'text', { tone: runtime ? 'ok' : undefined });
   const sandbox = entv['com.apple.security.app-sandbox'] === true;
-  f('security', 'Sandbox', sandbox ? 'Sim (isolado do resto do sistema)' : 'Não', 'text', { tone: sandbox ? 'ok' : undefined });
-  if (sandbox) badges.push({ label: 'Sandbox', tone: 'ok' });
+  f('security', 'Sandbox', sandbox ? tr("Sim (isolado do resto do sistema)") : tr("Não"), 'text', { tone: sandbox ? 'ok' : undefined });
+  if (sandbox) badges.push({ label: tr("Sandbox"), tone: 'ok' });
   const perms = [...new Set(ENT.filter(([k]) => entv[k] === true).map(([, v]) => v))];
-  if (perms.length) f('security', 'Pode pedir acesso a', perms.join(', '));
+  if (perms.length) f('security', tr("Pode pedir acesso a"), perms.join(', '));
   const risky = ['com.apple.security.cs.disable-library-validation', 'com.apple.security.cs.allow-unsigned-executable-memory', 'com.apple.security.cs.allow-dyld-environment-variables'].filter((k) => entv[k] === true);
-  if (risky.length) f('security', 'Exceções do runtime', risky.map((k) => k.split('.').pop()).join(', '), 'mono', { hint: 'Comum em apps com plug-ins ou JavaScript (Electron)' });
+  if (risky.length) f('security', tr("Exceções do runtime"), risky.map((k) => k.split('.').pop()).join(', '), 'mono', { hint: tr("Comum em apps com plug-ins ou JavaScript (Electron)") });
 
   // tecnologias e versão do Electron
   const tech = detectTech(contents);
@@ -175,8 +176,8 @@ export async function gatekeeper(p: string): Promise<{ fact: DossierFact; badge:
   if (!out.trim() || /not signed|no usable signature/i.test(out)) return null;
   const source = /source=(.*)/.exec(out)?.[1]?.trim() || '';
   if (/: accepted/.test(out)) {
-    const lbl = /Notarized/i.test(source) ? 'Notarizado pela Apple' : /App Store/i.test(source) ? 'Mac App Store' : /Apple System/i.test(source) ? 'Sistema da Apple' : source || 'Aceito';
-    return { fact: { group: 'security', label: 'Gatekeeper', value: lbl, tone: 'ok' }, badge: { label: lbl, tone: 'ok' } };
+    const lbl = /Notarized/i.test(source) ? tr("Notarizado pela Apple") : /App Store/i.test(source) ? 'Mac App Store' : /Apple System/i.test(source) ? tr("Sistema da Apple") : source || tr("Aceito");
+    return { fact: { group: 'security', label: tr("Gatekeeper"), value: lbl, tone: 'ok' }, badge: { label: lbl, tone: 'ok' } };
   }
-  return { fact: { group: 'security', label: 'Gatekeeper', value: 'Recusado (o macOS avisa ao abrir)', tone: 'warn', hint: out.trim().split('\n').slice(-1)[0] }, badge: { label: 'Não notarizado', tone: 'warn' } };
+  return { fact: { group: 'security', label: tr("Gatekeeper"), value: tr("Recusado. O macOS mostra um aviso ao abrir."), tone: 'warn', hint: out.trim().split('\n').slice(-1)[0] }, badge: { label: tr("Não notarizado"), tone: 'warn' } };
 }

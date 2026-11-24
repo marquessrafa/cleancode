@@ -1,6 +1,7 @@
 // Bindings Win32 via koffi (FFI, sem compilador nativo). Só é carregado no Windows (ver ../fs.ts).
 import koffi from 'koffi';
 import { ATTR, RawEntry, DriveInfo } from '../types';
+import { t as tr } from '../../i18n';
 
 export { ATTR };
 export type { RawEntry, DriveInfo };
@@ -150,7 +151,7 @@ export function rootOf(p: string): string {
   return m ? (m[0].endsWith('\\') ? m[0] : m[0] + '\\') : p;
 }
 
-const DRIVE_TYPES = ['Desconhecido', 'Sem raiz', 'Removível', 'Local', 'Rede', 'CD/DVD', 'RAM disk'];
+const DRIVE_TYPES = ['Desconhecido', tr("Sem raiz"), 'Removível', 'Local', 'Rede', 'CD/DVD', 'RAM disk'];
 
 export function drives(): DriveInfo[] {
   const mask = GetLogicalDrives();
@@ -187,8 +188,8 @@ export function ownerOf(path: string): string {
   if (!GetFileSecurityW(lp, 1 /* OWNER */, sdBuf, sdBuf.length, needed)) {
     if (needed[0] > sdBuf.length) {
       sdBuf = Buffer.alloc(needed[0] + 64);
-      if (!GetFileSecurityW(lp, 1, sdBuf, sdBuf.length, needed)) return '(sem acesso)';
-    } else return '(sem acesso)';
+      if (!GetFileSecurityW(lp, 1, sdBuf, sdBuf.length, needed)) return tr("(sem acesso)");
+    } else return tr("(sem acesso)");
   }
   const pOwner = [null], def = [0];
   if (!GetSecurityDescriptorOwner(sdBuf, pOwner, def) || !pOwner[0]) return '(desconhecido)';

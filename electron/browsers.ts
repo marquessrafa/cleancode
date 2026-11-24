@@ -8,6 +8,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { system } from './platform';
+import { t as tr } from './i18n';
 
 const mac = process.platform === 'darwin';
 const H = os.homedir();
@@ -20,13 +21,13 @@ const sqlite: any = (() => { try { return require('node:sqlite'); } catch { retu
 
 export type ItemId = 'cache' | 'gpu' | 'history' | 'downloads' | 'cookies' | 'sessions' | 'autofill';
 export const ITEM_INFO: Record<ItemId, { label: string; detail: string; safe: boolean }> = {
-  cache: { label: 'Cache e imagens', detail: 'Páginas, imagens e scripts guardados para abrir sites mais rápido. O navegador baixa de novo quando precisar.', safe: true },
-  gpu: { label: 'Cache de GPU e shaders', detail: 'Gráficos pré-compilados. São refeitos sozinhos.', safe: true },
-  history: { label: 'Histórico de navegação', detail: 'Sites visitados e sugestões da barra de endereço. Os favoritos ficam.', safe: false },
-  downloads: { label: 'Histórico de downloads', detail: 'A lista de downloads do navegador. Os arquivos baixados continuam no disco.', safe: false },
-  cookies: { label: 'Cookies e dados de sites', detail: 'Logins em sites, preferências e dados guardados pelos sites. Você vai precisar entrar de novo nos sites.', safe: false },
-  sessions: { label: 'Sessões e abas', detail: 'Abas abertas e janelas da última sessão (o "restaurar abas").', safe: false },
-  autofill: { label: 'Preenchimento automático', detail: 'Textos digitados em formulários. Senhas e cartões salvos não são apagados.', safe: false },
+  cache: { label: tr("Cache e imagens"), detail: tr("São páginas, imagens e scripts guardados para abrir os sites mais rápido. O navegador baixa tudo de novo quando precisar."), safe: true },
+  gpu: { label: tr("Cache de GPU e shaders"), detail: tr("São gráficos pré-compilados, que o sistema refaz sozinho."), safe: true },
+  history: { label: tr("Histórico de navegação"), detail: tr("São os sites visitados e as sugestões da barra de endereço. Os favoritos continuam."), safe: false },
+  downloads: { label: tr("Histórico de downloads"), detail: tr("É a lista de downloads do navegador. Os arquivos baixados continuam no disco."), safe: false },
+  cookies: { label: tr("Cookies e dados de sites"), detail: tr("São os logins nos sites, as preferências e os dados que os sites guardam. Depois da limpeza, você vai precisar entrar de novo nos sites."), safe: false },
+  sessions: { label: tr("Sessões e abas"), detail: tr("São as abas abertas e as janelas da última sessão, que o navegador usa para restaurar as abas."), safe: false },
+  autofill: { label: tr("Preenchimento automático"), detail: tr("São os textos digitados em formulários. As senhas e os cartões salvos não são apagados."), safe: false },
 };
 
 interface Spec { dirs: string[]; files: string[]; sql?: { db: string; statements: string[]; count?: string }[] }
@@ -36,25 +37,25 @@ interface Def { id: string; name: string; app: string; exe: string; kind: 'chrom
 
 function defs(): Def[] {
   if (mac) return [
-    { id: 'chrome', name: 'Google Chrome', app: 'Google Chrome', exe: 'chrome', kind: 'chromium', base: path.join(AS, 'Google/Chrome'), cache: path.join(CACHES, 'Google/Chrome') },
-    { id: 'edge', name: 'Microsoft Edge', app: 'Microsoft Edge', exe: 'msedge', kind: 'chromium', base: path.join(AS, 'Microsoft Edge'), cache: path.join(CACHES, 'Microsoft Edge') },
-    { id: 'brave', name: 'Brave', app: 'Brave Browser', exe: 'brave', kind: 'chromium', base: path.join(AS, 'BraveSoftware/Brave-Browser'), cache: path.join(CACHES, 'BraveSoftware/Brave-Browser') },
-    { id: 'vivaldi', name: 'Vivaldi', app: 'Vivaldi', exe: 'vivaldi', kind: 'chromium', base: path.join(AS, 'Vivaldi'), cache: path.join(CACHES, 'Vivaldi') },
-    { id: 'chromium', name: 'Chromium', app: 'Chromium', exe: 'chromium', kind: 'chromium', base: path.join(AS, 'Chromium'), cache: path.join(CACHES, 'Chromium') },
-    { id: 'opera', name: 'Opera', app: 'Opera', exe: 'opera', kind: 'chromium', base: path.join(AS, 'com.operasoftware.Opera'), cache: path.join(CACHES, 'com.operasoftware.Opera'), single: true },
-    { id: 'operagx', name: 'Opera GX', app: 'Opera GX', exe: 'opera', kind: 'chromium', base: path.join(AS, 'com.operasoftware.OperaGX'), cache: path.join(CACHES, 'com.operasoftware.OperaGX'), single: true },
-    { id: 'firefox', name: 'Firefox', app: 'Firefox', exe: 'firefox', kind: 'firefox', base: path.join(AS, 'Firefox/Profiles'), cache: path.join(CACHES, 'Firefox/Profiles') },
-    { id: 'safari', name: 'Safari', app: 'Safari', exe: 'safari', kind: 'safari', base: path.join(H, 'Library/Safari'), single: true },
+    { id: 'chrome', name: tr("Google Chrome"), app: 'Google Chrome', exe: 'chrome', kind: 'chromium', base: path.join(AS, 'Google/Chrome'), cache: path.join(CACHES, 'Google/Chrome') },
+    { id: 'edge', name: tr("Microsoft Edge"), app: 'Microsoft Edge', exe: 'msedge', kind: 'chromium', base: path.join(AS, 'Microsoft Edge'), cache: path.join(CACHES, 'Microsoft Edge') },
+    { id: 'brave', name: tr("Brave"), app: 'Brave Browser', exe: 'brave', kind: 'chromium', base: path.join(AS, 'BraveSoftware/Brave-Browser'), cache: path.join(CACHES, 'BraveSoftware/Brave-Browser') },
+    { id: 'vivaldi', name: tr("Vivaldi"), app: 'Vivaldi', exe: 'vivaldi', kind: 'chromium', base: path.join(AS, 'Vivaldi'), cache: path.join(CACHES, 'Vivaldi') },
+    { id: 'chromium', name: tr("Chromium"), app: 'Chromium', exe: 'chromium', kind: 'chromium', base: path.join(AS, 'Chromium'), cache: path.join(CACHES, 'Chromium') },
+    { id: 'opera', name: tr("Opera"), app: 'Opera', exe: 'opera', kind: 'chromium', base: path.join(AS, 'com.operasoftware.Opera'), cache: path.join(CACHES, 'com.operasoftware.Opera'), single: true },
+    { id: 'operagx', name: tr("Opera GX"), app: 'Opera GX', exe: 'opera', kind: 'chromium', base: path.join(AS, 'com.operasoftware.OperaGX'), cache: path.join(CACHES, 'com.operasoftware.OperaGX'), single: true },
+    { id: 'firefox', name: tr("Firefox"), app: 'Firefox', exe: 'firefox', kind: 'firefox', base: path.join(AS, 'Firefox/Profiles'), cache: path.join(CACHES, 'Firefox/Profiles') },
+    { id: 'safari', name: tr("Safari"), app: 'Safari', exe: 'safari', kind: 'safari', base: path.join(H, 'Library/Safari'), single: true },
   ];
   return [
-    { id: 'chrome', name: 'Google Chrome', app: 'Google Chrome', exe: 'chrome', kind: 'chromium', base: path.join(LOCAL, 'Google/Chrome/User Data') },
-    { id: 'edge', name: 'Microsoft Edge', app: 'Microsoft Edge', exe: 'msedge', kind: 'chromium', base: path.join(LOCAL, 'Microsoft/Edge/User Data') },
-    { id: 'brave', name: 'Brave', app: 'Brave', exe: 'brave', kind: 'chromium', base: path.join(LOCAL, 'BraveSoftware/Brave-Browser/User Data') },
-    { id: 'vivaldi', name: 'Vivaldi', app: 'Vivaldi', exe: 'vivaldi', kind: 'chromium', base: path.join(LOCAL, 'Vivaldi/User Data') },
-    { id: 'chromium', name: 'Chromium', app: 'Chromium', exe: 'chromium', kind: 'chromium', base: path.join(LOCAL, 'Chromium/User Data') },
-    { id: 'opera', name: 'Opera', app: 'Opera', exe: 'opera', kind: 'chromium', base: path.join(ROAMING, 'Opera Software/Opera Stable'), cache: path.join(LOCAL, 'Opera Software/Opera Stable'), single: true },
-    { id: 'operagx', name: 'Opera GX', app: 'Opera GX', exe: 'opera', kind: 'chromium', base: path.join(ROAMING, 'Opera Software/Opera GX Stable'), cache: path.join(LOCAL, 'Opera Software/Opera GX Stable'), single: true },
-    { id: 'firefox', name: 'Firefox', app: 'Firefox', exe: 'firefox', kind: 'firefox', base: path.join(ROAMING, 'Mozilla/Firefox/Profiles'), cache: path.join(LOCAL, 'Mozilla/Firefox/Profiles') },
+    { id: 'chrome', name: tr("Google Chrome"), app: 'Google Chrome', exe: 'chrome', kind: 'chromium', base: path.join(LOCAL, 'Google/Chrome/User Data') },
+    { id: 'edge', name: tr("Microsoft Edge"), app: 'Microsoft Edge', exe: 'msedge', kind: 'chromium', base: path.join(LOCAL, 'Microsoft/Edge/User Data') },
+    { id: 'brave', name: tr("Brave"), app: 'Brave', exe: 'brave', kind: 'chromium', base: path.join(LOCAL, 'BraveSoftware/Brave-Browser/User Data') },
+    { id: 'vivaldi', name: tr("Vivaldi"), app: 'Vivaldi', exe: 'vivaldi', kind: 'chromium', base: path.join(LOCAL, 'Vivaldi/User Data') },
+    { id: 'chromium', name: tr("Chromium"), app: 'Chromium', exe: 'chromium', kind: 'chromium', base: path.join(LOCAL, 'Chromium/User Data') },
+    { id: 'opera', name: tr("Opera"), app: 'Opera', exe: 'opera', kind: 'chromium', base: path.join(ROAMING, 'Opera Software/Opera Stable'), cache: path.join(LOCAL, 'Opera Software/Opera Stable'), single: true },
+    { id: 'operagx', name: tr("Opera GX"), app: 'Opera GX', exe: 'opera', kind: 'chromium', base: path.join(ROAMING, 'Opera Software/Opera GX Stable'), cache: path.join(LOCAL, 'Opera Software/Opera GX Stable'), single: true },
+    { id: 'firefox', name: tr("Firefox"), app: 'Firefox', exe: 'firefox', kind: 'firefox', base: path.join(ROAMING, 'Mozilla/Firefox/Profiles'), cache: path.join(LOCAL, 'Mozilla/Firefox/Profiles') },
   ];
 }
 
@@ -111,14 +112,14 @@ interface Found { def: Def; id: string; name: string; P: string; C: string; root
 let lastFound = new Map<string, Found>();
 
 function profilesOf(d: Def): Found[] {
-  if (d.single) return exists(d.base) ? [{ def: d, id: `${d.id}:default`, name: 'Padrão', P: d.base, C: d.cache || d.base, root: d.base }] : [];
+  if (d.single) return exists(d.base) ? [{ def: d, id: `${d.id}:default`, name: tr("Padrão"), P: d.base, C: d.cache || d.base, root: d.base }] : [];
   if (d.kind === 'firefox') {
     return (ls(d.base) || []).filter((n) => exists(J(d.base, n, 'prefs.js'))).map((n) => ({ def: d, id: `${d.id}:${n}`, name: n.replace(/^[^.]+\./, ''), P: J(d.base, n), C: d.cache ? J(d.cache, n) : J(d.base, n), root: J(d.base, n) }));
   }
   let names: Record<string, string> = {};
   try { names = Object.fromEntries(Object.entries(JSON.parse(fs.readFileSync(J(d.base, 'Local State'), 'utf8'))?.profile?.info_cache || {}).map(([k, v]: any) => [k, v?.name || k])); } catch { /* */ }
   return (ls(d.base) || []).filter((n) => (n === 'Default' || /^Profile \d+$/.test(n)) && exists(J(d.base, n, 'Preferences')))
-    .map((n) => ({ def: d, id: `${d.id}:${n}`, name: names[n] || (n === 'Default' ? 'Padrão' : n), P: J(d.base, n), C: d.cache ? J(d.cache, n) : J(d.base, n), root: d.base }));
+    .map((n) => ({ def: d, id: `${d.id}:${n}`, name: names[n] || (n === 'Default' ? tr("Padrão") : n), P: J(d.base, n), C: d.cache ? J(d.cache, n) : J(d.base, n), root: d.base }));
 }
 
 /** Tamanho das pastas e arquivos num worker (bibliotecas de cache podem ter centenas de milhares de arquivos). */
@@ -202,7 +203,7 @@ function rmFile(f: string): number {
 }
 const dbSize = (db: string) => ['', '-wal', '-journal'].reduce((s, suf) => { try { return s + fs.statSync(db + suf).size; } catch { return s; } }, 0);
 function sqlRun(db: string, statements: string[], vacuum: boolean): number {
-  if (!sqlite) throw new Error('SQLite indisponível');
+  if (!sqlite) throw new Error(tr("SQLite indisponível"));
   if (!exists(db)) return 0;
   const before = dbSize(db);
   const c = new sqlite.DatabaseSync(db);
@@ -219,9 +220,9 @@ export async function clean(sel: { profileId: string; items: ItemId[] }[]) {
   const out: { profileId: string; ok: boolean; freed: number; message: string }[] = [];
   for (const s of sel) {
     const f = lastFound.get(s.profileId);
-    if (!f) { out.push({ profileId: s.profileId, ok: false, freed: 0, message: 'Perfil fora da última análise' }); continue; }
+    if (!f) { out.push({ profileId: s.profileId, ok: false, freed: 0, message: tr("Perfil fora da última análise") }); continue; }
     const needsClosed = s.items.some((i) => i !== 'cache' && i !== 'gpu');
-    if (needsClosed && isRunning(f.def, run)) { out.push({ profileId: s.profileId, ok: false, freed: 0, message: `Feche o ${f.def.name} antes de limpar histórico, cookies e sessões` }); continue; }
+    if (needsClosed && isRunning(f.def, run)) { out.push({ profileId: s.profileId, ok: false, freed: 0, message: tr("Feche o {0} antes de limpar histórico, cookies e sessões", f.def.name) }); continue; }
     const sp = specs(f.def, f.P, f.C, f.root);
     let freed = 0; const errs: string[] = [];
     for (const item of s.items) {
@@ -230,7 +231,7 @@ export async function clean(sel: { profileId: string; items: ItemId[] }[]) {
       for (const file of spec.files) freed += rmFile(file);
       for (const q of spec.sql || []) { try { freed += sqlRun(q.db, q.statements, true); } catch (e: any) { errs.push(String(e?.message || e).slice(0, 80)); } }
     }
-    out.push({ profileId: s.profileId, ok: !errs.length, freed, message: errs.length ? `Parte não foi limpa: ${errs[0]}` : 'Limpo' });
+    out.push({ profileId: s.profileId, ok: !errs.length, freed, message: errs.length ? tr("Parte não foi limpa: {0}", errs[0]) : tr("Limpo") });
   }
   return out;
 }
@@ -240,11 +241,11 @@ export async function optimize(profileIds: string[]) {
   const out: { profileId: string; ok: boolean; freed: number; message: string }[] = [];
   for (const id of profileIds) {
     const f = lastFound.get(id);
-    if (!f) { out.push({ profileId: id, ok: false, freed: 0, message: 'Perfil fora da última análise' }); continue; }
-    if (isRunning(f.def, run)) { out.push({ profileId: id, ok: false, freed: 0, message: `Feche o ${f.def.name} para otimizar` }); continue; }
+    if (!f) { out.push({ profileId: id, ok: false, freed: 0, message: tr("Perfil fora da última análise") }); continue; }
+    if (isRunning(f.def, run)) { out.push({ profileId: id, ok: false, freed: 0, message: tr("Feche o {0} para otimizar", f.def.name) }); continue; }
     let freed = 0, n = 0;
     for (const rel of VACUUM[f.def.kind]) { try { const db = J(f.P, rel); if (exists(db)) { freed += sqlRun(db, [], true); n++; } } catch { /* travado */ } }
-    out.push({ profileId: id, ok: true, freed, message: `${n} banco(s) compactado(s)` });
+    out.push({ profileId: id, ok: true, freed, message: tr("{0} banco(s) de dados compactado(s)", n) });
   }
   return out;
 }

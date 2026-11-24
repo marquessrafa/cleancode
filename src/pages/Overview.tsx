@@ -11,6 +11,7 @@ import { Badge, Button, Card, cx, PageHeader, ProgressBar } from '../components/
 import { BarList, Donut, DriveBadges, FullDiskAccessBanner, Legend, PageBody, useDriveHardware } from './common';
 import { StorageMapCard } from '../components/StorageMap';
 import { AppIcon, cancelPrefetch, openUninstaller, prefetchDossier, RecentInstalls, useApps } from './appsShared';
+import { t } from '../lib/i18n';
 
 const DAY = 86400000;
 
@@ -37,13 +38,13 @@ export default function Overview() {
   return (
     <PageBody>
       <PageHeader
-        title="Visão geral"
-        description="Mostra como está o armazenamento, o que ocupa espaço e o que você pode limpar."
+        title={t("Visão geral")}
+        description={t("Mostra como está o armazenamento, o que ocupa espaço e o que você pode limpar.")}
         actions={<>
           {info?.canElevate && (info.isAdmin
-            ? <Badge tone="accent"><ShieldCheck size={11} /> Administrador</Badge>
-            : <Button variant="outline" icon={<ShieldAlert size={14} />} onClick={() => cc.restartAdmin()} title="Com essa permissão, o CleanCode lê as pastas protegidas e o Prefetch.">Reiniciar como admin</Button>)}
-          <Button variant="primary" icon={<FolderOpen size={14} />} onClick={pick}>Analisar pasta…</Button>
+            ? <Badge tone="accent"><ShieldCheck size={11} /> {t("Administrador")}</Badge>
+            : <Button variant="outline" icon={<ShieldAlert size={14} />} onClick={() => cc.restartAdmin()} title={t("Com essa permissão, o CleanCode lê as pastas protegidas e o Prefetch.")}>{t("Reiniciar como admin")}</Button>)}
+          <Button variant="primary" icon={<FolderOpen size={14} />} onClick={pick}>{t("Analisar pasta…")}</Button>
         </>}
       />
 
@@ -51,8 +52,8 @@ export default function Overview() {
       {/* Discos: escolha o que analisar */}
       <div className="mb-5">
         <div className="mb-2.5 flex items-baseline justify-between">
-          <h2 className="flex items-center gap-2 text-[15px] font-semibold"><HardDrive size={16} className="text-accent" />Escolha um disco para analisar</h2>
-          <span className="text-[12px] text-muted">A análise mostra o que ocupa espaço. Depois dela, as telas de Análise de disco ficam disponíveis.</span>
+          <h2 className="flex items-center gap-2 text-[15px] font-semibold"><HardDrive size={16} className="text-accent" />{t("Escolha um disco para analisar")}</h2>
+          <span className="text-[12px] text-muted">{t("A análise mostra o que ocupa espaço. Depois dela, as telas de Análise de disco ficam disponíveis.")}</span>
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {drives === null && [0, 1].map((i) => <div key={i} className="skeleton h-[148px] rounded-xl" />)}
@@ -67,22 +68,22 @@ export default function Overview() {
                 <div className="flex items-start gap-3">
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-md" style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000))' }}><Icon size={20} /></div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-[14px] font-semibold text-fg">{d.label || 'Disco local'}</div>
+                    <div className="truncate text-[14px] font-semibold text-fg">{d.label || t("Disco local")}</div>
                     <div className="truncate text-[12px] text-muted">{driveTag(d.root)} · {d.fs}</div>
                   </div>
-                  <div className="text-right"><div className="text-[18px] font-semibold tnum leading-none" style={{ color: tone }}>{fmtPct(pct, 0)}</div><div className="text-[11px] text-muted">usado</div></div>
+                  <div className="text-right"><div className="text-[18px] font-semibold tnum leading-none" style={{ color: tone }}>{fmtPct(pct, 0)}</div><div className="text-[11px] text-muted">{t("usado")}</div></div>
                 </div>
                 <div className="mt-2"><DriveBadges hw={h} loading={hw.loading} /></div>
                 <ProgressBar value={pct} tone={tone} className="mt-2 h-2" />
                 <div className="mt-1.5 flex items-center justify-between">
-                  <span className="text-[12px] text-muted tnum"><b className="font-medium text-fg">{fmtSize(d.free, units)}</b> livres de {fmtSize(d.total, units)}</span>
-                  <Button size="sm" variant={scanning ? 'default' : 'primary'} onClick={() => (scanning ? go('explorer') : startScan(d.root))}>{scanning ? 'Abrir análise' : 'Analisar'} <ArrowRight size={12} /></Button>
+                  <span className="text-[12px] text-muted tnum"><b className="font-medium text-fg">{fmtSize(d.free, units)}</b> {t("livres de")} {fmtSize(d.total, units)}</span>
+                  <Button size="sm" variant={scanning ? 'default' : 'primary'} onClick={() => (scanning ? go('explorer') : startScan(d.root))}>{scanning ? t("Abrir análise") : t("Analisar")} <ArrowRight size={12} /></Button>
                 </div>
               </div>
             );
           })}
           <button onClick={pick} className="flex min-h-[148px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line text-[13px] text-muted transition-colors hover:border-accent hover:text-fg">
-            <FolderOpen size={22} />Analisar uma pasta…
+            <FolderOpen size={22} />{t("Analisar uma pasta…")}
           </button>
         </div>
       </div>
@@ -90,10 +91,10 @@ export default function Overview() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <Kpi icon={<Database size={16} />} label="Armazenamento total" value={drives ? fmtSize(total, units) : null} sub={`${real.length} unidade(s)`} />
-        <Kpi icon={<Gauge size={16} />} label="Espaço usado" value={drives ? fmtSize(used, units) : null} sub={drives ? `${fmtPct(total ? used / total : 0, 0)} da capacidade` : ''} bar={total ? used / total : 0} />
-        <Kpi icon={<PieChart size={16} />} label="Espaço livre" value={drives ? fmtSize(free, units) : null} sub="somando todas as unidades" tone={total && free / total < 0.15 ? 'danger' : undefined} />
-        <Kpi icon={<Radar size={16} />} label="Apps sem uso" value={apps ? fmtNum(stale.length) : null} sub={apps ? `${fmtSize(staleSize, units)} recuperáveis · ${settings?.staleMonths}+ meses` : 'lendo programas…'} tone="warn" onClick={() => go('discover')} />
+        <Kpi icon={<Database size={16} />} label={t("Armazenamento total")} value={drives ? fmtSize(total, units) : null} sub={t("{0} unidade(s)", real.length)} />
+        <Kpi icon={<Gauge size={16} />} label={t("Espaço usado")} value={drives ? fmtSize(used, units) : null} sub={drives ? t("{0} da capacidade", fmtPct(total ? used / total : 0, 0)) : ''} bar={total ? used / total : 0} />
+        <Kpi icon={<PieChart size={16} />} label={t("Espaço livre")} value={drives ? fmtSize(free, units) : null} sub={t("somando todas as unidades")} tone={total && free / total < 0.15 ? 'danger' : undefined} />
+        <Kpi icon={<Radar size={16} />} label={t("Apps sem uso")} value={apps ? fmtNum(stale.length) : null} sub={apps ? t("{0} recuperáveis · {1}+ meses", fmtSize(staleSize, units), settings?.staleMonths) : t("lendo programas…")} tone="warn" onClick={() => go('discover')} />
       </div>
 
       {/* Mapa do armazenamento: o que ocupa o disco do sistema, por tipo de conteúdo */}
@@ -107,34 +108,34 @@ export default function Overview() {
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent"><Sparkles size={18} /></div>
             <div>
-              <div className="text-[13px] font-medium text-fg">Analise um disco para ver as sugestões</div>
-              <div className="text-xs text-muted">Depois da análise, esta área mostra os tipos de arquivo, as maiores pastas, os arquivos antigos e o que você pode limpar.</div>
+              <div className="text-[13px] font-medium text-fg">{t("Analise um disco para ver as sugestões")}</div>
+              <div className="text-xs text-muted">{t("Depois da análise, esta área mostra os tipos de arquivo, as maiores pastas, os arquivos antigos e o que você pode limpar.")}</div>
             </div>
           </div>
-          {real[0] && <Button variant="primary" onClick={() => startScan(real[0].root)}>Analisar {isMac ? real[0].label || real[0].root : driveTag(real[0].root)} agora</Button>}
+          {real[0] && <Button variant="primary" onClick={() => startScan(real[0].root)}>{t("Analisar")} {isMac ? real[0].label || real[0].root : driveTag(real[0].root)} {t("agora")}</Button>}
         </div>
       )}
 
       {/* Tendência + apps + recentes */}
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-4">
         <Trend history={history} root={active?.root || settings?.recent[0]} units={units} onOpen={() => go('history')} />
-        <Card title={<span className="flex items-center gap-2"><PackageX size={14} /> Maiores programas</span>} actions={<Button size="sm" variant="ghost" onClick={() => openUninstaller(go, 'size:false')}>Ver todos <ArrowRight size={12} /></Button>}>
+        <Card title={<span className="flex items-center gap-2"><PackageX size={14} /> {t("Maiores programas")}</span>} actions={<Button size="sm" variant="ghost" onClick={() => openUninstaller(go, 'size:false')}>{t("Ver todos")} <ArrowRight size={12} /></Button>}>
           {!apps ? <div className="space-y-2">{[0, 1, 2, 3].map((i) => <div key={i} className="skeleton h-9 rounded-md" />)}</div> : (
             <div className="-mx-1 space-y-0.5">
               {bigApps.map((a) => (
-                <button key={a.id} onClick={() => openDossier({ kind: 'app', app: a })} onMouseEnter={() => prefetchDossier(a)} onMouseLeave={cancelPrefetch} title="Ver o dossiê" className="flex w-full items-center gap-2.5 rounded-md px-1 py-1.5 text-left transition-colors hover:bg-hover">
+                <button key={a.id} onClick={() => openDossier({ kind: 'app', app: a })} onMouseEnter={() => prefetchDossier(a)} onMouseLeave={cancelPrefetch} title={t("Ver o dossiê")} className="flex w-full items-center gap-2.5 rounded-md px-1 py-1.5 text-left transition-colors hover:bg-hover">
                   <AppIcon app={a} size={34} />
-                  <span className="min-w-0 flex-1"><span className="block truncate text-[13px] text-fg">{a.name}</span><span className="block truncate text-[11px] text-faint">Último uso: {fmtRelative(a.lastUsed)}</span></span>
+                  <span className="min-w-0 flex-1"><span className="block truncate text-[13px] text-fg">{a.name}</span><span className="block truncate text-[11px] text-faint">{t("Último uso:")} {fmtRelative(a.lastUsed)}</span></span>
                   <span className="text-xs font-medium text-fg tnum">{fmtSize(a.size, units)}</span>
                 </button>
               ))}
             </div>
           )}
         </Card>
-        <Card title={<span className="flex items-center gap-2"><Sparkles size={14} /> Instalados recentemente</span>} actions={<Button size="sm" variant="ghost" onClick={() => openUninstaller(go, 'installDate:false')}>Ver todos <ArrowRight size={12} /></Button>}>
+        <Card title={<span className="flex items-center gap-2"><Sparkles size={14} /> {t("Instalados recentemente")}</span>} actions={<Button size="sm" variant="ghost" onClick={() => openUninstaller(go, 'installDate:false')}>{t("Ver todos")} <ArrowRight size={12} /></Button>}>
           <RecentInstalls apps={apps} n={5} compact />
         </Card>
-        <Card title={<span className="flex items-center gap-2"><Clock size={14} /> Varreduras recentes</span>}>
+        <Card title={<span className="flex items-center gap-2"><Clock size={14} /> {t("Varreduras recentes")}</span>}>
           {settings?.recent.length ? (
             <div className="-mx-2 space-y-0.5">
               {settings.recent.slice(0, 7).map((r) => (
@@ -144,7 +145,7 @@ export default function Overview() {
                 </button>
               ))}
             </div>
-          ) : <div className="text-xs text-muted">Nenhuma ainda.</div>}
+          ) : <div className="text-xs text-muted">{t("Nenhuma ainda.")}</div>}
         </Card>
       </div>
     </PageBody>
@@ -209,36 +210,36 @@ function ScanInsights() {
   return (
     <div className="mt-6">
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <h2 className="text-sm font-semibold text-fg">Insights de {active!.root}</h2>
-        {!active!.done ? <Badge tone="accent"><Loader2 size={11} className="animate-spin" /> varrendo · {fmtNum(active!.progress?.files)} arquivos</Badge>
-          : <Badge>{fmtNum(d?.summary?.files)} arquivos · {fmtNum(d?.summary?.dirs)} pastas · {fmtSize(d?.summary?.size, units)}</Badge>}
+        <h2 className="text-sm font-semibold text-fg">{t("Insights de")} {active!.root}</h2>
+        {!active!.done ? <Badge tone="accent"><Loader2 size={11} className="animate-spin" /> {t("varrendo ·")} {fmtNum(active!.progress?.files)} {t("arquivos")}</Badge>
+          : <Badge>{fmtNum(d?.summary?.files)} {t("arquivos ·")} {fmtNum(d?.summary?.dirs)} {t("pastas ·")} {fmtSize(d?.summary?.size, units)}</Badge>}
         <div className="flex-1" />
-        <Button size="sm" variant="ghost" icon={<LayoutGrid size={13} />} onClick={() => { select(0); go('visual'); }}>Treemap</Button>
-        <Button size="sm" variant="ghost" onClick={() => { select(0); go('explorer'); }}>Explorador <ArrowRight size={12} /></Button>
+        <Button size="sm" variant="ghost" icon={<LayoutGrid size={13} />} onClick={() => { select(0); go('visual'); }}>{t("Treemap")}</Button>
+        <Button size="sm" variant="ghost" onClick={() => { select(0); go('explorer'); }}>{t("Explorador")} <ArrowRight size={12} /></Button>
       </div>
 
       {/* Oportunidades de limpeza */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        <Opportunity icon={<Trash2 size={16} />} label="Lixeira" value={d ? (d.recycle?.err ? '—' : fmtSize(d.recycle?.size || 0, units)) : null} sub={d?.recycle ? (d.recycle.err ? 'sem acesso de leitura' : `${fmtNum(d.recycle.files)} itens`) : 'não encontrada'} action="Abrir" onClick={() => { if (d?.recycle) { select(d.recycle.id); go('explorer'); } }} />
-        <Opportunity icon={<FileX2 size={16} />} label="Temporários e logs" value={d ? fmtSize(d.clean.tempSize, units) : null} sub={d ? `${fmtNum(d.clean.tempCount)} arquivos` : ''} action="Revisar" onClick={() => go('search')} />
-        <Opportunity icon={<Archive size={16} />} label="Grandes, sem mudança há 1 ano" value={d ? fmtSize(d.clean.oldSize, units) : null} sub={d ? `${fmtNum(d.clean.oldCount)} arquivos > 100 MB` : ''} action="Ver" onClick={() => go('age')} />
-        <Opportunity icon={<FolderX size={16} />} label="Pastas vazias" value={d ? fmtNum(d.clean.empty) : null} sub="sem nenhum arquivo dentro" action="Listar" onClick={() => go('search')} />
-        <Opportunity icon={<Copy size={16} />} label="Duplicados" value="Procurar" sub="comparação por SHA-1" action="Abrir" onClick={() => go('duplicates')} />
+        <Opportunity icon={<Trash2 size={16} />} label={t("Lixeira")} value={d ? (d.recycle?.err ? '—' : fmtSize(d.recycle?.size || 0, units)) : null} sub={d?.recycle ? (d.recycle.err ? t("sem acesso de leitura") : `${fmtNum(d.recycle.files)} itens`) : t("não encontrada")} action="Abrir" onClick={() => { if (d?.recycle) { select(d.recycle.id); go('explorer'); } }} />
+        <Opportunity icon={<FileX2 size={16} />} label={t("Temporários e logs")} value={d ? fmtSize(d.clean.tempSize, units) : null} sub={d ? `${fmtNum(d.clean.tempCount)} arquivos` : ''} action="Revisar" onClick={() => go('search')} />
+        <Opportunity icon={<Archive size={16} />} label={t("Grandes e sem mudança há 1 ano")} value={d ? fmtSize(d.clean.oldSize, units) : null} sub={d ? t("{0} arquivos com mais de 100 MB", fmtNum(d.clean.oldCount)) : ''} action="Ver" onClick={() => go('age')} />
+        <Opportunity icon={<FolderX size={16} />} label={t("Pastas vazias")} value={d ? fmtNum(d.clean.empty) : null} sub={t("sem nenhum arquivo dentro")} action="Listar" onClick={() => go('search')} />
+        <Opportunity icon={<Copy size={16} />} label={t("Duplicados")} value="Procurar" sub={t("comparação por SHA-1")} action="Abrir" onClick={() => go('duplicates')} />
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-4">
-        <Card title={<span className="flex items-center gap-2"><PieChart size={14} /> Por categoria</span>} actions={<Button size="sm" variant="ghost" onClick={() => go('types')}>Detalhes</Button>}>
+        <Card title={<span className="flex items-center gap-2"><PieChart size={14} /> {t("Por categoria")}</span>} actions={<Button size="sm" variant="ghost" onClick={() => go('types')}>{t("Detalhes")}</Button>}>
           {d ? (
             <div className="flex flex-col items-center gap-3">
-              <Donut size={160} thickness={26} data={cats.slice(0, 8)} center={<><div className="text-[11px] text-muted">Total</div><div className="text-sm font-semibold">{fmtSize(d.summary.size, units)}</div></>} />
+              <Donut size={160} thickness={26} data={cats.slice(0, 8)} center={<><div className="text-[11px] text-muted">{t("Total")}</div><div className="text-sm font-semibold">{fmtSize(d.summary.size, units)}</div></>} />
               <div className="w-full"><Legend items={cats.slice(0, 6).map((c) => ({ label: c.label, color: c.color, value: fmtSize(c.value, units) }))} /></div>
             </div>
           ) : <Skel />}
         </Card>
-        <Card title={<span className="flex items-center gap-2"><Folder size={14} /> Maiores pastas</span>} actions={<Button size="sm" variant="ghost" onClick={() => go('explorer')}>Explorar</Button>}>
+        <Card title={<span className="flex items-center gap-2"><Folder size={14} /> {t("Maiores pastas")}</span>} actions={<Button size="sm" variant="ghost" onClick={() => go('explorer')}>{t("Explorar")}</Button>}>
           {d ? <BarList units={units} items={(d.kids as Row[]).filter((r) => r.kind === 'dir').slice(0, 7).map((r, i) => ({ key: r.id, label: r.name, value: r.size, sub: fmtPct(r.pct, 0), color: PALETTE[i % PALETTE.length] }))} onClick={(rid) => { select(rid); go('explorer'); }} /> : <Skel />}
         </Card>
-        <Card title={<span className="flex items-center gap-2"><ArrowDownWideNarrow size={14} /> Maiores arquivos</span>} actions={<Button size="sm" variant="ghost" onClick={() => go('top')}>Top 100</Button>}>
+        <Card title={<span className="flex items-center gap-2"><ArrowDownWideNarrow size={14} /> {t("Maiores arquivos")}</span>} actions={<Button size="sm" variant="ghost" onClick={() => go('top')}>{t("Top 100")}</Button>}>
           {d ? (
             <div className="-mx-1 space-y-0.5">
               {(d.top as Row[]).map((f) => (
@@ -251,12 +252,12 @@ function ScanInsights() {
             </div>
           ) : <Skel />}
         </Card>
-        <Card title={<span className="flex items-center gap-2"><CalendarClock size={14} /> Idade dos dados</span>} actions={<Button size="sm" variant="ghost" onClick={() => go('age')}>Detalhes</Button>}>
+        <Card title={<span className="flex items-center gap-2"><CalendarClock size={14} /> {t("Idade dos dados")}</span>} actions={<Button size="sm" variant="ghost" onClick={() => go('age')}>{t("Detalhes")}</Button>}>
           {d ? (<>
             <div className="mb-3 flex h-3 overflow-hidden rounded-full">
               {d.age.buckets.map((b: any, i: number) => <div key={b.key} title={`${b.label}: ${fmtPct(b.size / ageTotal)}`} style={{ width: `${(b.size / ageTotal) * 100}%`, background: AGE_COLORS[i] }} className="transition-[width] duration-700" />)}
             </div>
-            <div className="mb-3 text-xs text-muted"><b className="text-fg">{fmtPct(oldShare, 0)}</b> do espaço está em arquivos que ninguém muda há mais de 6 meses.</div>
+            <div className="mb-3 text-xs text-muted"><b className="text-fg">{fmtPct(oldShare, 0)}</b> {t("do espaço está em arquivos que ninguém muda há mais de 6 meses.")}</div>
             <div className="space-y-1">
               {d.age.buckets.map((b: any, i: number) => (
                 <div key={b.key} className="flex items-center gap-2 text-xs">
@@ -297,16 +298,16 @@ function Trend({ history, root, units, onOpen }: { history: any[]; root?: string
   const line = xy.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
   const delta = pts.length > 1 ? pts[pts.length - 1].size - pts[0].size : 0;
   return (
-    <Card title={<span className="flex items-center gap-2"><History size={14} /> Tendência {root ? `· ${root}` : ''}</span>} actions={<Button size="sm" variant="ghost" onClick={onOpen}>Histórico</Button>}>
+    <Card title={<span className="flex items-center gap-2"><History size={14} /> {t("Tendência")} {root ? `· ${root}` : ''}</span>} actions={<Button size="sm" variant="ghost" onClick={onOpen}>{t("Histórico")}</Button>}>
       {pts.length < 2 ? (
         <div className="flex h-[170px] flex-col items-center justify-center text-center text-xs text-muted">
           <TrendingUp size={20} className="mb-2 text-faint" />
-          {pts.length === 1 ? 'Existe apenas uma análise salva desta pasta. Para ver a evolução, analise a pasta de novo mais tarde.' : 'Para acompanhar como o uso cresce com o tempo, salve as análises no histórico.'}
+          {pts.length === 1 ? t("Existe apenas uma análise salva desta pasta. Para ver a evolução, analise a pasta de novo mais tarde.") : t("Para acompanhar como o uso cresce com o tempo, salve as análises no histórico.")}
         </div>
       ) : (<>
         <div className="mb-1 flex items-baseline gap-2">
           <span className="text-xl font-semibold text-fg tnum">{fmtSize(pts[pts.length - 1].size, units)}</span>
-          <span className={cx('flex items-center gap-1 text-xs tnum', delta > 0 ? 'text-danger' : 'text-accent')}>{delta > 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}{delta > 0 ? '+' : ''}{fmtSize(delta, units)} desde {fmtDate(pts[0].date)}</span>
+          <span className={cx('flex items-center gap-1 text-xs tnum', delta > 0 ? 'text-danger' : 'text-accent')}>{delta > 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}{delta > 0 ? '+' : ''}{fmtSize(delta, units)} {t("desde")} {fmtDate(pts[0].date)}</span>
         </div>
         <svg viewBox={`0 0 ${W} ${H}`} className="h-[140px] w-full overflow-visible">
           <defs><linearGradient id="trendFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="var(--accent)" stopOpacity=".35" /><stop offset="100%" stopColor="var(--accent)" stopOpacity="0" /></linearGradient></defs>

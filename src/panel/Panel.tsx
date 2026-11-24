@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { cc, MetricsSnapshot, SpeedProgress, Settings as AppSettings, isMac } from '../lib/api';
 import { fmtSize } from '../lib/format';
+import { t as tr, LOCALE } from '../lib/i18n';
 
 type Detail = 'storage' | 'memory' | 'battery' | 'cpu' | 'gpu' | 'power' | 'network' | 'devices';
 const PAD = 10, MAIN_W = 448, DETAIL_W = 436, GAP = 12;
@@ -35,20 +36,20 @@ function useMounted() {
   useEffect(() => { let r2 = 0; const r1 = requestAnimationFrame(() => { r2 = requestAnimationFrame(() => setOn(true)); }); return () => { cancelAnimationFrame(r1); cancelAnimationFrame(r2); }; }, []);
   return on;
 }
-const rate = (bps: number) => (bps < 1024 ? `${Math.round(bps)} B/s` : bps < 1048576 ? `${(bps / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} KB/s` : `${(bps / 1048576).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} MB/s`);
-const mbps = (v?: number) => (v === undefined ? '—' : v.toLocaleString('pt-BR', { maximumFractionDigits: v < 10 ? 1 : 0 }));
-const pct1 = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+const rate = (bps: number) => (bps < 1024 ? `${Math.round(bps)} B/s` : bps < 1048576 ? `${(bps / 1024).toLocaleString(LOCALE, { maximumFractionDigits: 0 })} KB/s` : `${(bps / 1048576).toLocaleString(LOCALE, { maximumFractionDigits: 1 })} MB/s`);
+const mbps = (v?: number) => (v === undefined ? '—' : v.toLocaleString(LOCALE, { maximumFractionDigits: v < 10 ? 1 : 0 }));
+const pct1 = (v: number) => v.toLocaleString(LOCALE, { maximumFractionDigits: 1 });
 const tempTone = (t?: number) => (t === undefined ? 'text-[var(--p-muted)]' : t >= 90 ? 'text-[var(--p-danger)]' : t >= 75 ? 'text-[var(--p-warn)]' : 'text-[var(--p-ok)]');
 const sizeParts = (n: number, dec = 2) => { const [num, unit] = fmtSize(n, 'auto', dec).split(' '); return { num, unit }; };
 const days = (s: number) => { const d = Math.floor(s / 86400), h = Math.floor(s / 3600); return d >= 1 ? `${d} ${d === 1 ? 'dia' : 'dias'}` : h >= 1 ? `${h} h` : `${Math.max(1, Math.floor(s / 60))} min`; };
 
 const TIPS: { title: string; text: string; action: string; page: string }[] = [
-  { title: 'Cuidados em um clique', text: 'Limpeza, proteção, desempenho e apps esquecidos numa análise só.', action: 'Analisar', page: 'smartcare' },
-  { title: 'Veja o que mais ocupa espaço', text: 'O treemap mostra num relance as pastas que cresceram demais.', action: 'Abrir treemap', page: 'visual' },
-  { title: 'Apps esquecidos', text: 'Descubra programas que você não abre há meses e quanto espaço liberam.', action: 'Ver apps', page: 'discover' },
-  { title: 'Fotos parecidas e duplicados', text: 'Cópias e sequências de fotos somam gigabytes sem você perceber.', action: 'Ver acúmulos', page: 'clutter' },
-  { title: 'Arquivos grandes e antigos', text: 'Coisas paradas há mais de um ano costumam ser as primeiras a sair.', action: 'Ver idade', page: 'age' },
-  { title: 'Compare com o mês passado', text: 'O histórico mostra exatamente o que cresceu desde a última análise.', action: 'Abrir histórico', page: 'history' },
+  { title: tr("Cuidados em um clique"), text: tr("Limpeza, proteção, desempenho e apps esquecidos numa análise só."), action: tr("Analisar"), page: 'smartcare' },
+  { title: tr("Veja o que mais ocupa espaço"), text: tr("O treemap mostra num relance as pastas que cresceram demais."), action: tr("Abrir treemap"), page: 'visual' },
+  { title: tr("Apps esquecidos"), text: tr("Descubra programas que você não abre há meses e quanto espaço liberam."), action: tr("Ver apps"), page: 'discover' },
+  { title: tr("Fotos parecidas e duplicados"), text: tr("Cópias e sequências de fotos somam gigabytes sem você perceber."), action: tr("Ver acúmulos"), page: 'clutter' },
+  { title: tr("Arquivos grandes e antigos"), text: tr("Os arquivos parados há mais de um ano costumam ser os primeiros a sair."), action: tr("Ver idade"), page: 'age' },
+  { title: tr("Compare com o mês passado"), text: tr("O histórico mostra exatamente o que cresceu desde a última análise."), action: tr("Abrir histórico"), page: 'history' },
 ];
 
 // ---------- peças da coluna principal ----------
@@ -206,7 +207,7 @@ function LineChart({ series, w, h, grid, max }: { series: { data: number[]; colo
 }
 
 /** Quadro com cabeçalho (ícone, título, valor), texto e "Saiba mais". */
-function InfoCard({ icon, title, value, tone, text, link = 'Saiba mais', onLink, tint, delay = 0 }: { icon?: React.ReactNode; title: string; value?: React.ReactNode; tone?: string; text: React.ReactNode; link?: string; onLink?: () => void; tint?: string; delay?: number }) {
+function InfoCard({ icon, title, value, tone, text, link = tr("Saiba mais"), onLink, tint, delay = 0 }: { icon?: React.ReactNode; title: string; value?: React.ReactNode; tone?: string; text: React.ReactNode; link?: string; onLink?: () => void; tint?: string; delay?: number }) {
   return (
     <div className="anim-rise flex min-w-0 flex-col overflow-hidden rounded-2xl border border-[var(--p-line)]" style={{ animationDelay: `${delay}ms`, background: tint ? `linear-gradient(160deg, color-mix(in srgb, ${tint} 24%, transparent), var(--p-card) 75%)` : 'var(--p-card)' }}>
       <div className="flex items-center gap-2.5 border-b border-[var(--p-line)] bg-[var(--p-card)] px-3.5 py-3">
@@ -241,8 +242,8 @@ function Consumers({ list, by, unit, delay = 0 }: { list?: TopApp[]; by: 'cpu' |
   const [gone, setGone] = useState<Set<string>>(new Set());
   return (
     <>
-      <SubTitle delay={delay}>Maiores consumidores</SubTitle>
-      <div className="anim-rise flex px-1 pb-1.5 text-[12.5px] text-[var(--p-muted)]" style={{ animationDelay: `${delay + 40}ms` }}><span className="flex-1">Nome do processo</span><span className="w-[84px] text-right">{unit}</span><span className="w-[86px]" /></div>
+      <SubTitle delay={delay}>{tr("Maiores consumidores")}</SubTitle>
+      <div className="anim-rise flex px-1 pb-1.5 text-[12.5px] text-[var(--p-muted)]" style={{ animationDelay: `${delay + 40}ms` }}><span className="flex-1">{tr("Nome do processo")}</span><span className="w-[84px] text-right">{unit}</span><span className="w-[86px]" /></div>
       {!list ? <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin text-[var(--p-muted)]" /></div> : list.filter((a) => !gone.has(a.name)).map((a, i) => {
         const heavy = by === 'mem' ? a.mem > 2 * 1073741824 : a.cpu > 50;
         return (
@@ -254,7 +255,7 @@ function Consumers({ list, by, unit, delay = 0 }: { list?: TopApp[]; by: 'cpu' |
               if (confirm !== a.name) { setConfirm(a.name); setTimeout(() => setConfirm((c) => (c === a.name ? null : c)), 3000); return; }
               await cc.perfKill(a.pids); setGone((g) => new Set(g).add(a.name)); setConfirm(null);
             }} className={cx('w-[86px] text-right text-[14px] font-semibold transition-colors', confirm === a.name ? 'text-[var(--p-danger)]' : 'text-[var(--p-link)] hover:opacity-75')}>
-              {confirm === a.name ? 'Confirmar' : 'Encerrar'}
+              {confirm === a.name ? tr("Confirmar") : tr("Encerrar")}
             </button>
           </div>
         );
@@ -292,38 +293,38 @@ function StorageDetail({ open }: { open: Open }) {
   const known = cats.reduce((s, [, v]) => s + v, 0);
   const colors = ['var(--p-c1)', 'var(--p-c2)', 'var(--p-c3)', 'var(--p-c4)'];
   const parts = cats.map(([k, v], i) => ({ label: k, value: v, color: colors[i % 4] }));
-  if (disk) parts.push({ label: 'Outros', value: Math.max(0, disk.used - known), color: 'var(--p-others)' });
+  if (disk) parts.push({ label: tr("Outros"), value: Math.max(0, disk.used - known), color: 'var(--p-others)' });
   const freeT = useTween(disk?.free ?? 0, 900, true);
   const healthy = !hw?.health || /healthy|verified|ok/i.test(hw.health);
   const t: number | undefined = d?.ssd;
   const trash: number | null | undefined = d?.trash;
   return (
     <>
-      <Title>{disk?.label || 'Disco'}</Title>
+      <Title>{disk?.label || tr("Disco")}</Title>
       <div className="flex items-center gap-5">
         <Donut parts={parts} total={disk?.total || 1}>
-          {disk ? <BigValue {...sizeParts(freeT)} sub={`de ${fmtSize(disk.total, 'auto', 2)} disponíveis`} /> : <Loader2 size={18} className="animate-spin text-[var(--p-muted)]" />}
+          {disk ? <BigValue {...sizeParts(freeT)} sub={tr("de {0} disponíveis", fmtSize(disk.total, 'auto', 2))} /> : <Loader2 size={18} className="animate-spin text-[var(--p-muted)]" />}
         </Donut>
         {parts.length > 1 || !d?.computing
           ? <Legend items={parts.map((p) => ({ label: p.label, value: fmtSize(p.value, 'auto', 2), color: p.color }))} delay={120} />
-          : <div className="flex flex-1 items-center gap-2 text-[12.5px] text-[var(--p-soft)]"><Loader2 size={13} className="animate-spin" />Medindo as pastas…</div>}
+          : <div className="flex flex-1 items-center gap-2 text-[12.5px] text-[var(--p-soft)]"><Loader2 size={13} className="animate-spin" />{tr("Medindo as pastas…")}</div>}
       </div>
       <div className="mt-5 grid grid-cols-2 gap-3">
-        <InfoCard delay={200} icon={<Heart size={18} className="text-[var(--p-soft)]" fill="currentColor" />} title="Saúde" value={!hw ? '—' : healthy ? 'Boa' : 'Falha'} tone={healthy ? undefined : 'var(--p-danger)'} tint={healthy ? undefined : 'var(--p-danger)'}
-          text={!hw ? 'O sistema não informou a saúde desta unidade.' : healthy ? 'Esta unidade está em boas condições.' : `O disco relatou: ${hw.health}. Faça backup quanto antes.`} onLink={() => open('overview')} />
+        <InfoCard delay={200} icon={<Heart size={18} className="text-[var(--p-soft)]" fill="currentColor" />} title={tr("Saúde")} value={!hw ? '—' : healthy ? tr("Boa") : tr("Falha")} tone={healthy ? undefined : 'var(--p-danger)'} tint={healthy ? undefined : 'var(--p-danger)'}
+          text={!hw ? tr("O sistema não informou a saúde desta unidade.") : healthy ? tr("Esta unidade está em boas condições.") : tr("O disco relatou: {0}. Faça uma cópia de segurança dos seus arquivos quanto antes.", hw.health)} onLink={() => open('overview')} />
         {t !== undefined
-          ? <InfoCard delay={260} icon={<Thermometer size={18} className="text-[var(--p-soft)]" />} title="Temperatura" value={`${Math.round(t)}°C`} tone={t >= 70 ? 'var(--p-danger)' : t >= 55 ? 'var(--p-warn)' : undefined} tint={t >= 70 ? 'var(--p-danger)' : undefined}
-              text={t >= 70 ? 'A unidade está muito quente. Deixe o computador esfriar.' : t >= 55 ? 'A unidade está aquecida pelo uso intenso.' : 'A temperatura está no intervalo perfeito de funcionamento.'} onLink={() => open('performance')} />
-          : <InfoCard delay={260} icon={<HardDrive size={18} className="text-[var(--p-soft)]" />} title="Tipo" value={hw && hw.media !== 'Desconhecido' ? hw.media : '—'} text={hw ? `${hw.bus} · ${hw.model}` : 'Sem informações da unidade.'} onLink={() => open('overview')} />}
+          ? <InfoCard delay={260} icon={<Thermometer size={18} className="text-[var(--p-soft)]" />} title={tr("Temperatura")} value={`${Math.round(t)}°C`} tone={t >= 70 ? 'var(--p-danger)' : t >= 55 ? 'var(--p-warn)' : undefined} tint={t >= 70 ? 'var(--p-danger)' : undefined}
+              text={t >= 70 ? tr("A unidade está muito quente. Deixe o computador esfriar.") : t >= 55 ? tr("A unidade está aquecida pelo uso intenso.") : tr("A temperatura está no intervalo perfeito de funcionamento.")} onLink={() => open('performance')} />
+          : <InfoCard delay={260} icon={<HardDrive size={18} className="text-[var(--p-soft)]" />} title={tr("Tipo")} value={hw && hw.media !== 'Desconhecido' ? hw.media : '—'} text={hw ? `${hw.bus} · ${hw.model}` : tr("Sem informações da unidade.")} onLink={() => open('overview')} />}
       </div>
-      <SubTitle delay={320}>Componentes</SubTitle>
+      <SubTitle delay={320}>{tr("Componentes")}</SubTitle>
       <div className="grid grid-cols-2 gap-3">
         <div className="anim-rise rounded-2xl border border-[var(--p-line)] bg-[var(--p-card)] px-3.5 py-3" style={{ animationDelay: '380ms' }}>
-          <div className="flex items-center gap-2.5"><Trash2 size={18} className="text-[var(--p-soft)]" /><span className="text-[14px] font-semibold">Lixeira</span></div>
+          <div className="flex items-center gap-2.5"><Trash2 size={18} className="text-[var(--p-soft)]" /><span className="text-[14px] font-semibold">{tr("Lixeira")}</span></div>
           {trash !== null && <Bar value={trash ? Math.min(100, (trash / 2147483648) * 100) : 0} className="mt-4" />}
-          <div className={cx('text-[12.5px] text-[var(--p-soft)]', trash === null ? 'mt-4' : 'mt-2')}>{trash === null ? 'Sem acesso à Lixeira' : `Em uso: ${trash === undefined ? '…' : fmtSize(trash, 'auto', 1)}`}</div>
+          <div className={cx('text-[12.5px] text-[var(--p-soft)]', trash === null ? 'mt-4' : 'mt-2')}>{trash === null ? tr("Sem acesso à Lixeira") : tr("Em uso: {0}", trash === undefined ? '…' : fmtSize(trash, 'auto', 1))}</div>
           <div className="mt-2.5 text-right">
-            {trash === null ? <button onClick={() => cc.openFullDiskAccess()} className="text-[13px] font-semibold text-[var(--p-link)]">Dar acesso</button> : <button onClick={() => open('cleanup')} className="text-[13px] font-semibold text-[var(--p-link)]">Liberar</button>}
+            {trash === null ? <button onClick={() => cc.openFullDiskAccess()} className="text-[13px] font-semibold text-[var(--p-link)]">{tr("Dar acesso")}</button> : <button onClick={() => open('cleanup')} className="text-[13px] font-semibold text-[var(--p-link)]">{tr("Liberar")}</button>}
           </div>
         </div>
       </div>
@@ -337,14 +338,14 @@ function QuickFreeMemory() {
   const run = async () => {
     if (state === 'busy') return;
     setState('busy');
-    let msg = 'Não liberou';
-    try { const r = await cc.freeMemory(false); msg = r.ok ? `${fmtSize(r.freed, 'auto', 0)} livres` : 'Cancelado'; } catch { /* */ }
+    let msg = tr("Não liberou");
+    try { const r = await cc.freeMemory(false); msg = r.ok ? `${fmtSize(r.freed, 'auto', 0)} livres` : tr("Cancelado"); } catch { /* */ }
     setState(msg);
     setTimeout(() => setState('idle'), 4000);
   };
-  if (state === 'busy') return <span className="flex items-center gap-1 text-[13px] font-semibold text-[var(--p-accent)]"><Loader2 size={12} className="animate-spin" />Liberando</span>;
+  if (state === 'busy') return <span className="flex items-center gap-1 text-[13px] font-semibold text-[var(--p-accent)]"><Loader2 size={12} className="animate-spin" />{tr("Liberando")}</span>;
   if (state !== 'idle') return <span className="text-[12px] font-semibold text-[var(--p-accent)]">{state}</span>;
-  return <Action onClick={run}>Liberar</Action>;
+  return <Action onClick={run}>{tr("Liberar")}</Action>;
 }
 
 /** Botão de liberar memória (como o "Liberar RAM" do CleanMyMac). */
@@ -353,15 +354,15 @@ function FreeMemory() {
   const [msg, setMsg] = useState('');
   const run = async () => {
     setBusy(true); setMsg('');
-    try { const r = await cc.freeMemory(false); setMsg(r.message); } catch { setMsg('Não foi possível liberar a memória'); }
+    try { const r = await cc.freeMemory(false); setMsg(r.message); } catch { setMsg(tr("Não foi possível liberar a memória")); }
     setBusy(false);
   };
   return (
     <div className="mt-4 flex items-center gap-3">
       <button onClick={run} disabled={busy} className="flex items-center gap-2 rounded-full bg-[var(--p-accent)] px-4 py-1.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60">
-        {busy ? <Loader2 size={14} className="animate-spin" /> : <MemoryStick size={14} />}{busy ? 'Liberando…' : 'Liberar memória'}
+        {busy ? <Loader2 size={14} className="animate-spin" /> : <MemoryStick size={14} />}{busy ? tr("Liberando…") : tr("Liberar memória")}
       </button>
-      <span className="text-[12px] text-[var(--p-muted)]">{msg || (isMac ? 'Pede sua senha (purge).' : 'Esvazia a memória parada dos programas.')}</span>
+      <span className="text-[12px] text-[var(--p-muted)]">{msg || (isMac ? tr("O macOS pede a sua senha (purge).") : tr("Esvazia a memória parada dos programas."))}</span>
     </div>
   );
 }
@@ -372,28 +373,28 @@ function MemoryDetail({ open }: { open: Open }) {
   const avail = det?.available ?? (m ? m.total - m.used : 0);
   const availT = useTween(avail, 900, true);
   const parts = det ? [
-    { label: 'Ativa', value: det.active, color: 'var(--p-s1)' },
-    { label: 'Fixa', value: det.wired, color: 'var(--p-s2)' },
-    { label: 'Comprimida', value: det.compressed, color: 'var(--p-s3)' },
-  ].filter((p) => p.value > 0) : m ? [{ label: 'Em uso', value: m.used, color: 'var(--p-s2)' }] : [];
+    { label: tr("Ativa"), value: det.active, color: 'var(--p-s1)' },
+    { label: tr("Fixa"), value: det.wired, color: 'var(--p-s2)' },
+    { label: tr("Comprimida"), value: det.compressed, color: 'var(--p-s3)' },
+  ].filter((p) => p.value > 0) : m ? [{ label: tr("Em uso"), value: m.used, color: 'var(--p-s2)' }] : [];
   const lvl = m?.level;
   return (
     <>
-      <Title>Memória</Title>
+      <Title>{tr("Memória")}</Title>
       <div className="flex items-center gap-5">
         <Donut parts={parts} total={m?.total || 1}>
-          {m ? <BigValue {...sizeParts(availT)} sub={`de ${fmtSize(m.total, 'auto', 0)} disponíveis`} /> : <Loader2 size={18} className="animate-spin text-[var(--p-muted)]" />}
+          {m ? <BigValue {...sizeParts(availT)} sub={tr("de {0} disponíveis", fmtSize(m.total, 'auto', 0))} /> : <Loader2 size={18} className="animate-spin text-[var(--p-muted)]" />}
         </Donut>
         <Legend items={parts.map((p) => ({ label: p.label, value: fmtSize(p.value, 'auto', 2), color: p.color }))} delay={120} />
       </div>
       <FreeMemory />
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <InfoCard delay={200} title="Pressão" value={m ? `${m.pressure}%` : '…'} tone={lvl === 'critical' ? 'var(--p-danger)' : lvl === 'warn' ? 'var(--p-warn)' : undefined} tint={lvl === 'critical' ? 'var(--p-danger)' : undefined}
-          text={lvl === 'critical' ? 'A memória está no limite. Feche apps que você não está usando.' : lvl === 'warn' ? 'A memória está ficando apertada.' : `O ${isMac ? 'Mac' : 'PC'} está pronto para aceitar mais tarefas.`} onLink={() => open('performance')} />
-        <InfoCard delay={260} title={isMac ? 'Arquivo de troca' : 'Arquivo de paginação'} value={det && det.swapTotal > 0 ? fmtSize(det.swapUsed, 'auto', 2) : '—'}
-          text={`Uma área do disco que ajuda a memória do ${isMac ? 'Mac' : 'PC'} quando a RAM acaba.`} onLink={() => open('performance')} />
+        <InfoCard delay={200} title={tr("Pressão")} value={m ? `${m.pressure}%` : '…'} tone={lvl === 'critical' ? 'var(--p-danger)' : lvl === 'warn' ? 'var(--p-warn)' : undefined} tint={lvl === 'critical' ? 'var(--p-danger)' : undefined}
+          text={lvl === 'critical' ? tr("A memória está no limite. Feche apps que você não está usando.") : lvl === 'warn' ? tr("A memória está ficando apertada.") : tr("O {0} está pronto para aceitar mais tarefas.", isMac ? 'Mac' : 'PC')} onLink={() => open('performance')} />
+        <InfoCard delay={260} title={isMac ? tr("Arquivo de troca") : tr("Arquivo de paginação")} value={det && det.swapTotal > 0 ? fmtSize(det.swapUsed, 'auto', 2) : '—'}
+          text={tr("Uma área do disco que ajuda a memória do {0} quando a RAM acaba.", isMac ? 'Mac' : 'PC')} onLink={() => open('performance')} />
       </div>
-      <Consumers list={d?.top} by="mem" unit="Uso" delay={320} />
+      <Consumers list={d?.top} by="mem" unit={tr("Uso")} delay={320} />
     </>
   );
 }
@@ -404,14 +405,14 @@ function BatteryDetail() {
   const b = d?.battery, h = d?.health, t: number | undefined = d?.temperature;
   const pctT = useTween(b?.percent ?? 0, 900, true);
   if (d && !b) {
-    return (<><Title>Energia</Title><InfoCard icon={<PlugZap size={18} className="text-[var(--p-accent)]" />} title="Ligado na tomada" text="Este computador não tem bateria." /></>);
+    return (<><Title>{tr("Energia")}</Title><InfoCard icon={<PlugZap size={18} className="text-[var(--p-accent)]" />} title={tr("Ligado na tomada")} text={tr("Este computador não tem bateria.")} /></>);
   }
   const max: number | undefined = h?.maxCapacity;
-  const status = !b ? '…' : b.charging ? 'Carregando' : b.plugged ? 'Não carregando' : 'Na bateria';
-  const sub = !b ? '' : b.plugged ? 'Usando adaptador de energia' : b.minutesLeft ? `${Math.floor(b.minutesLeft / 60)} h ${b.minutesLeft % 60} min restantes` : 'Usando a bateria';
+  const status = !b ? '…' : b.charging ? tr("Carregando") : b.plugged ? tr("Não carregando") : tr("Na bateria");
+  const sub = !b ? '' : b.plugged ? tr("Usando adaptador de energia") : b.minutesLeft ? `${Math.floor(b.minutesLeft / 60)} h ${b.minutesLeft % 60} min restantes` : tr("Usando a bateria");
   return (
     <>
-      <Title>Bateria</Title>
+      <Title>{tr("Bateria")}</Title>
       <div className="flex items-center gap-5">
         <SegRing pct={b?.percent ?? 0} color={b && b.percent <= 15 && !b.plugged ? 'var(--p-danger)' : 'var(--p-accent)'}>
           <div className="flex items-baseline gap-1"><span className="text-[44px] font-semibold leading-none tabular-nums">{b ? Math.round(pctT) : '…'}</span><span className="text-[17px] font-semibold">%</span></div>
@@ -419,18 +420,18 @@ function BatteryDetail() {
         <div className="anim-rise min-w-0 flex-1" style={{ animationDelay: '120ms' }}>
           <div className="text-[18px] font-semibold leading-tight">{status}</div>
           <div className="mt-1 text-[13px] leading-snug text-[var(--p-soft)]">{sub}</div>
-          {h?.cycles !== undefined && <><div className="mt-4 text-[20px] font-semibold tabular-nums">{h.cycles}{isMac ? ' / 1000' : ''}</div><div className="text-[13px] text-[var(--p-soft)]">ciclos de carga</div></>}
+          {h?.cycles !== undefined && <><div className="mt-4 text-[20px] font-semibold tabular-nums">{h.cycles}{isMac ? ' / 1000' : ''}</div><div className="text-[13px] text-[var(--p-soft)]">{tr("ciclos de carga")}</div></>}
         </div>
       </div>
       <div className="mt-5 grid grid-cols-2 gap-3">
-        <InfoCard delay={200} icon={<Heart size={18} className="text-[var(--p-soft)]" fill="currentColor" />} title="Saúde" value={max !== undefined ? `${max}%` : h?.condition || '—'} tone={max !== undefined && max < 80 ? 'var(--p-warn)' : undefined}
-          text={max === undefined ? 'O sistema não informou a capacidade da bateria.' : max >= 95 ? 'A bateria está em ótimas condições.' : max >= 80 ? 'A bateria está em boas condições, mas já perdeu parte da capacidade.' : 'A bateria perdeu bastante capacidade. Considere a troca.'}
+        <InfoCard delay={200} icon={<Heart size={18} className="text-[var(--p-soft)]" fill="currentColor" />} title={tr("Saúde")} value={max !== undefined ? `${max}%` : h?.condition || '—'} tone={max !== undefined && max < 80 ? 'var(--p-warn)' : undefined}
+          text={max === undefined ? tr("O sistema não informou a capacidade da bateria.") : max >= 95 ? tr("A bateria está em ótimas condições.") : max >= 80 ? tr("A bateria está em boas condições, mas já perdeu parte da capacidade.") : tr("A bateria perdeu bastante capacidade. Por isso, pense em trocar a bateria.")}
           onLink={batterySettings} />
-        <InfoCard delay={260} icon={<Thermometer size={18} className="text-[var(--p-soft)]" />} title="Temperatura" value={t !== undefined ? `${Math.round(t)}°C` : '—'} tone={t === undefined ? undefined : t >= 45 ? 'var(--p-danger)' : t >= 35 ? 'var(--p-warn)' : undefined} tint={t !== undefined && t >= 45 ? 'var(--p-danger)' : undefined}
-          text={t === undefined ? 'Sensor de temperatura da bateria indisponível.' : t >= 45 ? 'A bateria está quente demais. Feche apps pesados e deixe esfriar.' : t >= 35 ? 'A temperatura da bateria não é a ideal.' : 'A temperatura da bateria está ideal.'}
+        <InfoCard delay={260} icon={<Thermometer size={18} className="text-[var(--p-soft)]" />} title={tr("Temperatura")} value={t !== undefined ? `${Math.round(t)}°C` : '—'} tone={t === undefined ? undefined : t >= 45 ? 'var(--p-danger)' : t >= 35 ? 'var(--p-warn)' : undefined} tint={t !== undefined && t >= 45 ? 'var(--p-danger)' : undefined}
+          text={t === undefined ? tr("Sensor de temperatura da bateria indisponível.") : t >= 45 ? tr("A bateria está quente demais. Feche apps pesados e deixe esfriar.") : t >= 35 ? tr("A temperatura da bateria não é a ideal.") : tr("A temperatura da bateria está ideal.")}
           onLink={batterySettings} />
       </div>
-      <Consumers list={cpu?.top} by="cpu" unit="Uso" delay={320} />
+      <Consumers list={cpu?.top} by="cpu" unit={tr("Uso")} delay={320} />
     </>
   );
 }
@@ -441,7 +442,7 @@ function CpuDetail({ hist, open }: { hist: { u: number; s: number }[]; open: Ope
   const user = d?.split.user ?? 0, sys = d?.split.system ?? 0, idle = d ? Math.max(0, 100 - user - sys) : 0;
   const top = Math.max(25, Math.ceil(Math.max(0, ...hist.map((p) => p.u + p.s)) / 25) * 25);
   const model = String(d?.model || 'Processador').replace(/\(R\)|\(TM\)|CPU|@.*$/gi, '').replace(/\s+/g, ' ').trim();
-  const items = [{ label: 'Disponíveis', value: idle, color: 'var(--p-track-strong)' }, { label: 'Usuário', value: user, color: 'var(--p-c4)' }, { label: 'Sistema', value: sys, color: 'var(--p-c1)' }];
+  const items = [{ label: tr("Disponíveis"), value: idle, color: 'var(--p-track-strong)' }, { label: tr("Usuário"), value: user, color: 'var(--p-c4)' }, { label: tr("Sistema"), value: sys, color: 'var(--p-c1)' }];
   return (
     <>
       <Title>{model}</Title>
@@ -457,13 +458,13 @@ function CpuDetail({ hist, open }: { hist: { u: number; s: number }[]; open: Ope
         </div>
       </div>
       <div className="mt-5 grid grid-cols-2 gap-3">
-        <InfoCard delay={200} icon={<Clock size={18} className="text-[var(--p-soft)]" />} title="Ligado há" value={d ? days(d.uptime) : '…'}
-          text={!d ? '' : d.uptime < 86400 * 2 ? 'Você iniciou o sistema há pouco tempo.' : d.uptime < 86400 * 7 ? 'Tudo certo. Reinicie de vez em quando para aplicar atualizações.' : 'Ligado há muitos dias. Reiniciar libera memória e aplica atualizações.'} onLink={() => open('performance')} />
-        <InfoCard delay={260} icon={<Thermometer size={18} className="text-[var(--p-soft)]" />} title="Temperatura" value={t !== undefined ? `${Math.round(t)}°C` : '—'} tone={t === undefined ? undefined : t >= 90 ? 'var(--p-danger)' : t >= 75 ? 'var(--p-warn)' : undefined} tint={t !== undefined && t >= 90 ? 'var(--p-danger)' : t !== undefined && t >= 75 ? 'var(--p-warn)' : undefined}
-          text={t === undefined ? (isMac ? 'Sensor indisponível.' : 'O Windows só informa a temperatura com permissão de administrador ou suporte do fabricante.') : t >= 90 ? `A temperatura do ${isMac ? 'Mac' : 'PC'} está muito acima da recomendada. Feche apps pesados.` : t >= 75 ? 'O processador está aquecido pelo uso intenso.' : 'A temperatura está no intervalo normal.'}
+        <InfoCard delay={200} icon={<Clock size={18} className="text-[var(--p-soft)]" />} title={tr("Ligado há")} value={d ? days(d.uptime) : '…'}
+          text={!d ? '' : d.uptime < 86400 * 2 ? tr("Você iniciou o sistema há pouco tempo.") : d.uptime < 86400 * 7 ? tr("Tudo certo. Reinicie de vez em quando para aplicar atualizações.") : tr("O computador está ligado há muitos dias. Reiniciar libera memória e aplica as atualizações.")} onLink={() => open('performance')} />
+        <InfoCard delay={260} icon={<Thermometer size={18} className="text-[var(--p-soft)]" />} title={tr("Temperatura")} value={t !== undefined ? `${Math.round(t)}°C` : '—'} tone={t === undefined ? undefined : t >= 90 ? 'var(--p-danger)' : t >= 75 ? 'var(--p-warn)' : undefined} tint={t !== undefined && t >= 90 ? 'var(--p-danger)' : t !== undefined && t >= 75 ? 'var(--p-warn)' : undefined}
+          text={t === undefined ? (isMac ? tr("Sensor indisponível.") : tr("O Windows só informa a temperatura com permissão de administrador ou suporte do fabricante.")) : t >= 90 ? tr("A temperatura do {0} está muito acima da recomendada. Feche apps pesados.", isMac ? 'Mac' : 'PC') : t >= 75 ? tr("O processador está aquecido pelo uso intenso.") : tr("A temperatura está no intervalo normal.")}
           onLink={() => open('performance')} />
       </div>
-      <Consumers list={d?.top} by="cpu" unit="Uso, %" delay={320} />
+      <Consumers list={d?.top} by="cpu" unit={tr("Uso, %")} delay={320} />
     </>
   );
 }
@@ -483,18 +484,18 @@ function SpeedCircle() {
         {running && <><span className="anim-ring-pulse absolute inset-5 rounded-full border-2 border-[var(--p-accent)]" /><span className="anim-ring-pulse absolute inset-5 rounded-full border-2 border-[var(--p-accent)]" style={{ animationDelay: '.8s' }} /></>}
         {running && <svg className="anim-spin-fast absolute inset-[18px]" viewBox="0 0 120 120"><circle cx="60" cy="60" r="57" fill="none" stroke="var(--p-accent)" strokeWidth="3" strokeLinecap="round" strokeDasharray="60 400" style={{ filter: glow('var(--p-accent)') }} /></svg>}
         <span className="absolute inset-[22px] flex flex-col items-center justify-center rounded-full border border-[var(--p-line)] bg-[var(--p-disc-strong)] transition-transform group-hover:scale-[1.03] group-active:scale-[.98]">
-          {!started || phase === 'error' ? <span className="px-3 text-[15px] font-semibold leading-tight text-[var(--p-soft)]">{phase === 'error' ? 'Tentar de novo' : <>Testar<br />velocidade</>}</span>
-            : phase === 'done' ? <><span className="text-[30px] font-semibold leading-none tabular-nums">{mbps(p?.download)}</span><span className="mt-1 text-[11px] text-[var(--p-soft)]">Mbps. Clique para testar de novo.</span></>
-              : <><span className="text-[30px] font-semibold leading-none tabular-nums">{phase === 'ping' || !p ? '…' : mbps(live)}</span><span className="mt-1 text-[11px] text-[var(--p-soft)]">{phase === 'upload' ? 'Mbps envio' : phase === 'download' ? 'Mbps download' : 'medindo latência'}</span></>}
+          {!started || phase === 'error' ? <span className="px-3 text-[15px] font-semibold leading-tight text-[var(--p-soft)]">{phase === 'error' ? tr("Tentar de novo") : <>{tr("Testar")}<br />{tr("velocidade")}</>}</span>
+            : phase === 'done' ? <><span className="text-[30px] font-semibold leading-none tabular-nums">{mbps(p?.download)}</span><span className="mt-1 text-[11px] text-[var(--p-soft)]">{tr("Mbps. Clique para testar de novo.")}</span></>
+              : <><span className="text-[30px] font-semibold leading-none tabular-nums">{phase === 'ping' || !p ? '…' : mbps(live)}</span><span className="mt-1 text-[11px] text-[var(--p-soft)]">{phase === 'upload' ? tr("Mbps envio") : phase === 'download' ? tr("Mbps download") : tr("medindo latência")}</span></>}
         </span>
       </button>
       <div className="min-w-0 flex-1">
         {phase === 'done' ? (
           <div className="space-y-2.5">
-            {[['Latência', `${p?.ping ?? '—'} ms`], ['Download', `${mbps(p?.download)} Mbps`], ['Upload', `${mbps(p?.upload)} Mbps`]].map(([k, v]) => <div key={k}><div className="text-[12.5px] text-[var(--p-soft)]">{k}</div><div className="text-[16px] font-semibold tabular-nums">{v}</div></div>)}
+            {[[tr("Latência"), `${p?.ping ?? '—'} ms`], ['Download', `${mbps(p?.download)} Mbps`], ['Upload', `${mbps(p?.upload)} Mbps`]].map(([k, v]) => <div key={k}><div className="text-[12.5px] text-[var(--p-soft)]">{k}</div><div className="text-[16px] font-semibold tabular-nums">{v}</div></div>)}
           </div>
-        ) : phase === 'error' ? <div className="text-[12.5px] text-[var(--p-danger)]">Não foi possível testar: {p?.error}</div> : (
-          <><div className="text-[15px] font-semibold">Como funciona</div><div className="mt-1 text-[12.5px] leading-snug text-[var(--p-soft)]">Para medir a velocidade, o CleanCode baixa e envia um pequeno arquivo de teste.</div></>
+        ) : phase === 'error' ? <div className="text-[12.5px] text-[var(--p-danger)]">{tr("Não foi possível testar:")} {p?.error}</div> : (
+          <><div className="text-[15px] font-semibold">{tr("Como funciona")}</div><div className="mt-1 text-[12.5px] leading-snug text-[var(--p-soft)]">{tr("Para medir a velocidade, o CleanCode baixa e envia um pequeno arquivo de teste.")}</div></>
         )}
       </div>
     </div>
@@ -506,26 +507,26 @@ function NetworkDetail({ s, hist }: { s: MetricsSnapshot | null; hist: { rx: num
   const info = d?.info || {};
   const wifi = s?.network && /wi-?fi/i.test(s.network.kind);
   const lvl = info.securityLevel as string | undefined;
-  const secText = !d ? null : !info.security ? (wifi ? 'Conectado.' : 'Conectado por cabo: o tráfego até o roteador não passa pelo ar.')
-    : lvl === 'open' ? 'Rede aberta: qualquer pessoa por perto pode ver o que não estiver criptografado. Evite senhas e bancos.'
-      : lvl === 'weak' ? `Esta rede usa uma criptografia antiga (${info.security}), que é fácil de quebrar. Se a rede for sua, troque a segurança do roteador para WPA2 ou WPA3.`
-        : `Esta rede é protegida com ${info.security}, então os dados entre o computador e o roteador são criptografados.`;
+  const secText = !d ? null : !info.security ? (wifi ? 'Conectado.' : tr("Conectado por cabo, então os dados até o roteador não passam pelo ar."))
+    : lvl === 'open' ? tr("Esta rede é aberta. Por isso, qualquer pessoa por perto pode ver o que não estiver criptografado. Evite digitar senhas e usar bancos nessa rede.")
+      : lvl === 'weak' ? tr("Esta rede usa uma criptografia antiga ({0}), que é fácil de quebrar. Se a rede for sua, troque a segurança do roteador para WPA2 ou WPA3.", info.security)
+        : tr("Esta rede é protegida com {0}, então os dados entre o computador e o roteador são criptografados.", info.security);
   const cards: [string, number | undefined, number | undefined, number[], string][] = [
     ['Download', s?.network?.rxTotal, s?.network?.rxRate, hist.rx, 'var(--p-c4)'],
     ['Upload', s?.network?.txTotal, s?.network?.txRate, hist.tx, 'var(--p-c1)'],
   ];
   return (
     <>
-      <Title>Rede</Title>
+      <Title>{tr("Rede")}</Title>
       <div className="anim-rise overflow-hidden rounded-2xl border border-[var(--p-line)] bg-[var(--p-card)]" style={{ animationDelay: '60ms' }}>
         <div className="flex items-center gap-3.5 border-b border-[var(--p-line)] bg-[var(--p-card)] px-4 py-3">
           {wifi ? <Wifi size={26} className="text-[var(--p-soft)]" /> : <Cable size={26} className="text-[var(--p-soft)]" />}
-          <div className="min-w-0"><div className="truncate text-[15px] font-semibold">{info.ssid || s?.network?.kind || 'Sem conexão'}</div><div className="text-[12.5px] text-[var(--p-soft)]">{wifi ? 'Conexão Wi-Fi' : s?.network ? 'Conexão cabeada' : 'Desconectado'}</div></div>
-          {lvl && <span className={cx('ml-auto rounded-full px-2.5 py-0.5 text-[11px] font-semibold', lvl === 'open' || lvl === 'weak' ? 'bg-[color-mix(in_srgb,var(--p-warn)_22%,transparent)] text-[var(--p-warn)]' : 'bg-[color-mix(in_srgb,var(--p-accent)_20%,transparent)] text-[var(--p-link)]')}>{lvl === 'open' ? 'Aberta' : lvl === 'weak' ? 'Fraca' : lvl === 'strong' ? 'Forte' : 'Segura'}</span>}
+          <div className="min-w-0"><div className="truncate text-[15px] font-semibold">{info.ssid || s?.network?.kind || tr("Sem conexão")}</div><div className="text-[12.5px] text-[var(--p-soft)]">{wifi ? tr("Conexão Wi-Fi") : s?.network ? tr("Conexão cabeada") : tr("Desconectado")}</div></div>
+          {lvl && <span className={cx('ml-auto rounded-full px-2.5 py-0.5 text-[11px] font-semibold', lvl === 'open' || lvl === 'weak' ? 'bg-[color-mix(in_srgb,var(--p-warn)_22%,transparent)] text-[var(--p-warn)]' : 'bg-[color-mix(in_srgb,var(--p-accent)_20%,transparent)] text-[var(--p-link)]')}>{lvl === 'open' ? tr("Aberta") : lvl === 'weak' ? tr("Fraca") : lvl === 'strong' ? tr("Forte") : tr("Segura")}</span>}
         </div>
         <div className="px-4 py-3">
-          {secText === null ? <div className="flex items-center gap-1.5 text-[12.5px] text-[var(--p-soft)]"><Loader2 size={12} className="animate-spin" />Lendo detalhes da rede…</div> : <p className="text-[12.5px] leading-snug text-[var(--p-soft)]">{secText}</p>}
-          {(info.ip || info.router || info.channel) && <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-[var(--p-muted)]">{info.ip && <span>IP {info.ip}</span>}{info.router && <span>Roteador {info.router}</span>}{info.channel && <span>Canal {info.channel}</span>}{info.phy && <span>{info.phy}</span>}</div>}
+          {secText === null ? <div className="flex items-center gap-1.5 text-[12.5px] text-[var(--p-soft)]"><Loader2 size={12} className="animate-spin" />{tr("Lendo detalhes da rede…")}</div> : <p className="text-[12.5px] leading-snug text-[var(--p-soft)]">{secText}</p>}
+          {(info.ip || info.router || info.channel) && <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-[var(--p-muted)]">{info.ip && <span>{tr("IP")} {info.ip}</span>}{info.router && <span>{tr("Roteador")} {info.router}</span>}{info.channel && <span>{tr("Canal")} {info.channel}</span>}{info.phy && <span>{info.phy}</span>}</div>}
         </div>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3">
@@ -537,7 +538,7 @@ function NetworkDetail({ s, hist }: { s: MetricsSnapshot | null; hist: { rx: num
           </div>
         ))}
       </div>
-      <SubTitle delay={240}>Teste a sua conexão</SubTitle>
+      <SubTitle delay={240}>{tr("Teste a sua conexão")}</SubTitle>
       <SpeedCircle />
     </>
   );
@@ -551,11 +552,11 @@ function GpuDetail({ hist, open }: { hist: number[]; open: Open }) {
   const t: number | undefined = live.temp;
   return (
     <>
-      <Title>{g?.name || 'Placa de vídeo'}</Title>
+      <Title>{g?.name || tr("Placa de vídeo")}</Title>
       <div className="flex items-center gap-5">
         <div className="shrink-0"><LineChart w={236} h={150} grid max={100} series={[{ data: hist, color: 'var(--p-c4)' }]} /></div>
         <div className="min-w-0 flex-1 space-y-4">
-          {[{ l: 'Em uso', v: d ? `${util} %` : '…', c: 'var(--p-c4)' }, { l: 'Núcleos', v: g?.cores ?? '—', c: 'var(--p-c2)' }, { l: isMac ? 'Memória da GPU' : 'Memória de vídeo', v: live.memUsed ? fmtSize(live.memUsed, 'auto', 1) : '—', c: 'var(--p-c3)' }].map((it, i) => (
+          {[{ l: tr("Em uso"), v: d ? `${util} %` : '…', c: 'var(--p-c4)' }, { l: tr("Núcleos"), v: g?.cores ?? '—', c: 'var(--p-c2)' }, { l: isMac ? tr("Memória da GPU") : tr("Memória de vídeo"), v: live.memUsed ? fmtSize(live.memUsed, 'auto', 1) : '—', c: 'var(--p-c3)' }].map((it, i) => (
             <div key={it.l} className="anim-rise flex gap-3" style={{ animationDelay: `${120 + i * 70}ms` }}>
               <span className="w-1 shrink-0 rounded-full" style={{ background: it.c }} />
               <div><div className="text-[19px] font-semibold leading-tight tabular-nums">{it.v}</div><div className="text-[13px] text-[var(--p-soft)]">{it.l}</div></div>
@@ -564,20 +565,20 @@ function GpuDetail({ hist, open }: { hist: number[]; open: Open }) {
         </div>
       </div>
       <div className="mt-5 grid grid-cols-2 gap-3">
-        <InfoCard delay={200} icon={<Monitor size={18} className="text-[var(--p-soft)]" />} title={isMac ? 'Gráficos' : 'Driver'} value={isMac ? g?.api || 'Metal' : g?.driver || '—'}
-          text={(d?.displays || []).length ? `${d.displays.length} tela(s): ${d.displays.map((x: any) => `${x.name}${x.resolution ? ` (${String(x.resolution).replace(/ @.*/, '')})` : ''}`).join(', ')}` : 'Nenhuma tela externa conectada.'} onLink={() => open('hardware')} link="Monitor de hardware" />
-        <InfoCard delay={260} icon={<Thermometer size={18} className="text-[var(--p-soft)]" />} title="Temperatura" value={t !== undefined ? `${Math.round(t)}°C` : '—'} tone={t !== undefined && t >= 85 ? 'var(--p-danger)' : t !== undefined && t >= 75 ? 'var(--p-warn)' : undefined}
-          text={t === undefined ? (isMac ? 'Nos chips Apple a GPU divide o mesmo sensor do processador.' : 'O Windows só informa a temperatura da GPU em placas NVIDIA.') : t >= 85 ? 'Muito quente: verifique a ventilação.' : 'Dentro do normal.'} onLink={() => open('hardware')} link="Ver sensores" />
+        <InfoCard delay={200} icon={<Monitor size={18} className="text-[var(--p-soft)]" />} title={isMac ? tr("Gráficos") : tr("Driver")} value={isMac ? g?.api || 'Metal' : g?.driver || '—'}
+          text={(d?.displays || []).length ? `${d.displays.length} tela(s): ${d.displays.map((x: any) => `${x.name}${x.resolution ? ` (${String(x.resolution).replace(/ @.*/, '')})` : ''}`).join(', ')}` : tr("Nenhuma tela externa conectada.")} onLink={() => open('hardware')} link={tr("Monitor de hardware")} />
+        <InfoCard delay={260} icon={<Thermometer size={18} className="text-[var(--p-soft)]" />} title={tr("Temperatura")} value={t !== undefined ? `${Math.round(t)}°C` : '—'} tone={t !== undefined && t >= 85 ? 'var(--p-danger)' : t !== undefined && t >= 75 ? 'var(--p-warn)' : undefined}
+          text={t === undefined ? (isMac ? tr("Nos chips da Apple, a placa de vídeo usa o mesmo sensor do processador.") : tr("O Windows só informa a temperatura da GPU em placas NVIDIA.")) : t >= 85 ? tr("Muito quente. Confira a ventilação.") : tr("Dentro do normal.")} onLink={() => open('hardware')} link={tr("Ver sensores")} />
       </div>
       {memPct !== undefined && (
         <div className="anim-rise mt-3 rounded-2xl border border-[var(--p-line)] bg-[var(--p-card)] px-3.5 py-3" style={{ animationDelay: '300ms' }}>
-          <div className="flex justify-between text-[13px]"><span className="font-semibold">{isMac ? 'Memória unificada usada pela GPU' : 'Memória de vídeo em uso'}</span><span className="tabular-nums text-[var(--p-soft)]">{fmtSize(live.memUsed, 'auto', 1)} de {fmtSize(live.memTotal, 'auto', 0)}</span></div>
+          <div className="flex justify-between text-[13px]"><span className="font-semibold">{isMac ? tr("Memória unificada usada pela GPU") : tr("Memória de vídeo em uso")}</span><span className="tabular-nums text-[var(--p-soft)]">{fmtSize(live.memUsed, 'auto', 1)} {tr("de")} {fmtSize(live.memTotal, 'auto', 0)}</span></div>
           <Bar value={memPct} className="mt-2" />
         </div>
       )}
       {live.procs?.length ? (
         <>
-          <SubTitle delay={340}>Apps que mais usam a placa de vídeo</SubTitle>
+          <SubTitle delay={340}>{tr("Apps que mais usam a placa de vídeo")}</SubTitle>
           {live.procs.map((p: any, i: number) => <div key={p.pid} className="anim-rise flex items-center gap-3 px-1 py-1.5 text-[14px]" style={{ animationDelay: `${380 + i * 50}ms` }}><span className="min-w-0 flex-1 truncate">{p.name}</span><span className="tabular-nums text-[var(--p-soft)]">{pct1(p.util)} %</span></div>)}
         </>
       ) : null}
@@ -592,16 +593,16 @@ function PowerDetail({ hist }: { hist: number[] }) {
   const wT = useTween(w ?? 0, 700, true);
   return (
     <>
-      <Title>Energia</Title>
+      <Title>{tr("Energia")}</Title>
       <div className="flex items-center gap-5">
         <div className="relative flex h-[150px] w-[236px] shrink-0 items-end overflow-hidden rounded-2xl border border-[var(--p-line)] bg-[var(--p-card)]">
-          <div className="absolute left-4 top-3"><div className="text-[34px] font-semibold leading-none tabular-nums">{w !== undefined ? wT.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) : '—'}<span className="ml-1 text-[15px]">W</span></div><div className="mt-1 text-[12px] text-[var(--p-soft)]">{p.systemW !== undefined ? 'consumo do sistema' : 'potência da bateria'}</div></div>
+          <div className="absolute left-4 top-3"><div className="text-[34px] font-semibold leading-none tabular-nums">{w !== undefined ? wT.toLocaleString(LOCALE, { maximumFractionDigits: 1 }) : '—'}<span className="ml-1 text-[15px]">W</span></div><div className="mt-1 text-[12px] text-[var(--p-soft)]">{p.systemW !== undefined ? tr("consumo do sistema") : tr("potência da bateria")}</div></div>
           <LineChart w={236} h={80} series={[{ data: hist, color: 'var(--p-c2)' }]} />
         </div>
         <div className="min-w-0 flex-1 space-y-4">
-          {[{ l: 'Carregador', v: p.adapterW ? `${p.adapterW} W` : b?.plugged ? 'Conectado' : 'Desconectado', c: 'var(--p-accent)' },
-            { l: p.batteryW !== undefined && p.batteryW >= 0 ? 'Entrando na bateria' : 'Saindo da bateria', v: p.batteryW !== undefined ? `${Math.abs(p.batteryW).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} W` : '—', c: 'var(--p-c3)' },
-            { l: 'Tensão', v: p.voltage ? `${p.voltage.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} V` : '—', c: 'var(--p-c1)' }].map((it, i) => (
+          {[{ l: tr("Carregador"), v: p.adapterW ? `${p.adapterW} W` : b?.plugged ? tr("Conectado") : tr("Desconectado"), c: 'var(--p-accent)' },
+            { l: p.batteryW !== undefined && p.batteryW >= 0 ? tr("Entrando na bateria") : tr("Saindo da bateria"), v: p.batteryW !== undefined ? `${Math.abs(p.batteryW).toLocaleString(LOCALE, { maximumFractionDigits: 1 })} W` : '—', c: 'var(--p-c3)' },
+            { l: tr("Tensão"), v: p.voltage ? `${p.voltage.toLocaleString(LOCALE, { maximumFractionDigits: 2 })} V` : '—', c: 'var(--p-c1)' }].map((it, i) => (
             <div key={it.l} className="anim-rise flex gap-3" style={{ animationDelay: `${120 + i * 70}ms` }}>
               <span className="w-1 shrink-0 rounded-full" style={{ background: it.c }} />
               <div><div className="text-[19px] font-semibold leading-tight tabular-nums">{it.v}</div><div className="text-[13px] text-[var(--p-soft)]">{it.l}</div></div>
@@ -610,10 +611,10 @@ function PowerDetail({ hist }: { hist: number[] }) {
         </div>
       </div>
       <div className="mt-5 grid grid-cols-2 gap-3">
-        <InfoCard delay={200} icon={<Zap size={18} className="text-[var(--p-soft)]" />} title={b ? 'Bateria' : 'Alimentação'} value={b ? `${b.percent}%` : 'Tomada'}
-          text={!b ? 'Ligado direto na tomada.' : b.charging ? 'Carregando.' : b.plugged ? 'Na tomada, carga pausada para preservar a bateria.' : b.minutesLeft ? `${Math.floor(b.minutesLeft / 60)} h ${b.minutesLeft % 60} min restantes.` : 'Usando a bateria.'} />
-        <InfoCard delay={260} icon={<Heart size={18} className="text-[var(--p-soft)]" fill="currentColor" />} title="Saúde" value={h?.maxCapacity !== undefined ? `${h.maxCapacity}%` : '—'}
-          text={h?.cycles !== undefined ? `${h.cycles} ciclos de carga${p.plan ? ` · plano ${p.plan}` : ''}.` : p.plan ? `Plano de energia: ${p.plan}.` : 'Sem dados de saúde.'} />
+        <InfoCard delay={200} icon={<Zap size={18} className="text-[var(--p-soft)]" />} title={b ? tr("Bateria") : tr("Alimentação")} value={b ? `${b.percent}%` : tr("Tomada")}
+          text={!b ? tr("Ligado direto na tomada.") : b.charging ? tr("Carregando.") : b.plugged ? tr("Na tomada, com a carga pausada para proteger a bateria.") : b.minutesLeft ? tr("{0} h {1} min restantes.", Math.floor(b.minutesLeft / 60), b.minutesLeft % 60) : tr("Usando a bateria.")} />
+        <InfoCard delay={260} icon={<Heart size={18} className="text-[var(--p-soft)]" fill="currentColor" />} title={tr("Saúde")} value={h?.maxCapacity !== undefined ? `${h.maxCapacity}%` : '—'}
+          text={h?.cycles !== undefined ? tr("{0} ciclos de carga{1}.", h.cycles, p.plan ? ` · plano ${p.plan}` : '') : p.plan ? tr("Plano de energia: {0}.", p.plan) : tr("Sem dados de saúde.")} />
       </div>
     </>
   );
@@ -627,37 +628,37 @@ function DevicesDetail() {
   const badge = (icon: React.ReactNode) => <span className="flex h-8 w-8 items-center justify-center rounded-lg text-white" style={{ background: 'linear-gradient(135deg, var(--p-accent), color-mix(in srgb, var(--p-accent) 50%, #000))' }}>{icon}</span>;
   return (
     <>
-      <Title>Dispositivos conectados</Title>
-      {!d ? <div className="flex justify-center py-6"><Loader2 size={16} className="animate-spin text-[var(--p-muted)]" /></div> : !d.devices.length ? <p className="anim-rise px-1 py-4 text-center text-[13px] text-[var(--p-soft)]">Nenhum dispositivo Bluetooth conectado.</p> : (
+      <Title>{tr("Dispositivos conectados")}</Title>
+      {!d ? <div className="flex justify-center py-6"><Loader2 size={16} className="animate-spin text-[var(--p-muted)]" /></div> : !d.devices.length ? <p className="anim-rise px-1 py-4 text-center text-[13px] text-[var(--p-soft)]">{tr("Nenhum dispositivo Bluetooth conectado.")}</p> : (
         <div className="grid grid-cols-2 gap-3">
           {d.devices.map((x: any, i: number) => (
             <div key={x.name} className={tile} style={{ animationDelay: `${60 + i * 60}ms` }}>
               <div className="flex items-center gap-3">
                 <MiniRing value={x.battery} color={x.battery !== undefined && x.battery <= 15 ? 'var(--p-danger)' : 'var(--p-accent)'}>{badge(<Bluetooth size={16} />)}</MiniRing>
-                <span className="text-[12.5px] font-semibold text-[var(--p-soft)]">{x.battery !== undefined ? `${x.battery}%` : 'Sem dados da bateria'}</span>
+                <span className="text-[12.5px] font-semibold text-[var(--p-soft)]">{x.battery !== undefined ? `${x.battery}%` : tr("Sem dados da bateria")}</span>
               </div>
               <div className="mt-4 truncate text-[14.5px] font-semibold">{x.name}</div>
-              <div className="mt-0.5 flex items-center gap-1.5 text-[12.5px] text-[var(--p-soft)]"><Bluetooth size={13} />Bluetooth</div>
+              <div className="mt-0.5 flex items-center gap-1.5 text-[12.5px] text-[var(--p-soft)]"><Bluetooth size={13} />{tr("Bluetooth")}</div>
             </div>
           ))}
         </div>
       )}
-      <SubTitle delay={160}>Discos externos</SubTitle>
-      {!d ? null : !d.external.length ? <p className="anim-rise px-4 py-5 text-center text-[13px] leading-snug text-[var(--p-soft)]" style={{ animationDelay: '200ms' }}>Quando você conectar um disco externo ou um pendrive, ele vai aparecer aqui.</p> : (
+      <SubTitle delay={160}>{tr("Discos externos")}</SubTitle>
+      {!d ? null : !d.external.length ? <p className="anim-rise px-4 py-5 text-center text-[13px] leading-snug text-[var(--p-soft)]" style={{ animationDelay: '200ms' }}>{tr("Quando você conectar um disco externo ou um pendrive, ele vai aparecer aqui.")}</p> : (
         <>
           <div className="grid grid-cols-2 gap-3">
             {d.external.map((x: any, i: number) => (
               <div key={x.root} className={tile} style={{ animationDelay: `${200 + i * 60}ms` }}>
                 <div className="flex items-center gap-3">
                   <MiniRing value={x.total ? ((x.total - x.free) / x.total) * 100 : 0}>{badge(isMac ? <HardDrive size={16} /> : <Usb size={16} />)}</MiniRing>
-                  <span className="text-[12.5px] font-semibold text-[var(--p-soft)]">{fmtSize(x.free, 'auto', 1)} livres</span>
+                  <span className="text-[12.5px] font-semibold text-[var(--p-soft)]">{fmtSize(x.free, 'auto', 1)} {tr("livres")}</span>
                 </div>
                 <div className="mt-4 truncate text-[14.5px] font-semibold">{x.label}</div>
-                <div className="mt-0.5 flex items-center justify-between gap-2 text-[12.5px] text-[var(--p-soft)]"><span className="truncate">{msg[x.root] || `de ${fmtSize(x.total, 'auto', 0)}`}</span><button onClick={() => eject(x.root)} className="shrink-0 font-semibold text-[var(--p-link)]">Ejetar</button></div>
+                <div className="mt-0.5 flex items-center justify-between gap-2 text-[12.5px] text-[var(--p-soft)]"><span className="truncate">{msg[x.root] || tr("de {0}", fmtSize(x.total, 'auto', 0))}</span><button onClick={() => eject(x.root)} className="shrink-0 font-semibold text-[var(--p-link)]">{tr("Ejetar")}</button></div>
               </div>
             ))}
           </div>
-          {d.external.length > 1 && <div className="mt-2 text-right"><button onClick={() => d.external.forEach((x: any) => eject(x.root))} className="text-[13px] font-semibold text-[var(--p-link)]">Ejetar todos</button></div>}
+          {d.external.length > 1 && <div className="mt-2 text-right"><button onClick={() => d.external.forEach((x: any) => eject(x.root))} className="text-[13px] font-semibold text-[var(--p-link)]">{tr("Ejetar todos")}</button></div>}
         </>
       )}
     </>
@@ -753,11 +754,11 @@ export default function Panel() {
   const gpuT = useTween(s?.gpu?.util ?? 0, 400);
   const powerNow = s?.power?.systemW ?? (s?.power?.batteryW !== undefined ? Math.abs(s.power.batteryW) : undefined);
   const level = s?.health.level || 'good';
-  const levelText = level === 'good' ? 'Boa' : level === 'fair' ? 'Regular' : 'Atenção';
+  const levelText = level === 'good' ? tr("Boa") : level === 'fair' ? tr("Regular") : tr("Atenção");
   const levelColor = level === 'good' ? 'var(--p-accent)' : level === 'fair' ? 'var(--p-warn)' : 'var(--p-danger)';
   const b = s?.battery;
   const BattIcon = !b ? PlugZap : b.charging ? BatteryCharging : b.percent > 60 ? BatteryFull : b.percent > 20 ? BatteryMedium : BatteryLow;
-  const battText = !b ? 'Na tomada' : b.charging ? 'Carregando' : b.plugged ? 'Na tomada' : b.minutesLeft ? `${Math.floor(b.minutesLeft / 60)} h ${b.minutesLeft % 60} min restantes` : 'Não está carregando';
+  const battText = !b ? tr("Na tomada") : b.charging ? tr("Carregando") : b.plugged ? tr("Na tomada") : b.minutesLeft ? `${Math.floor(b.minutesLeft / 60)} h ${b.minutesLeft % 60} min restantes` : tr("Não está carregando");
   const NetIcon = s?.network && /wi-?fi/i.test(s.network.kind) ? Wifi : Cable;
   const more = <ChevronRight size={15} className="absolute right-3 top-4 text-[var(--p-muted)] opacity-60" />;
   const active = (k: Detail) => detail === k && !closing;
@@ -786,7 +787,7 @@ export default function Panel() {
         <div className="panel-root no-scrollbar relative z-10 shrink-0 overflow-y-auto p-5" style={{ width: MAIN_W, maxHeight: colH }}>
           <div className="anim-rise flex items-center gap-3 px-1 pb-3">
             <div className="min-w-0 flex-1">
-              <div className="text-[20px] font-semibold tracking-tight">Saúde do {device}: <span style={{ color: levelColor }}>{s ? levelText : '…'}</span></div>
+              <div className="text-[20px] font-semibold tracking-tight">{tr("Saúde do")} {device}: <span style={{ color: levelColor }}>{s ? levelText : '…'}</span></div>
               <div className="truncate text-[13px] text-[var(--p-muted)]">{s?.machine || ' '}{s && s.health.issues.length ? ` · ${s.health.issues.join(', ')}` : ''}</div>
             </div>
             <HealthRing level={level} />
@@ -796,8 +797,8 @@ export default function Panel() {
             <div className="flex items-center gap-3">
               {settings?.notifyEnabled ? <ShieldCheck size={22} className="text-[var(--p-accent)]" /> : <BellOff size={22} className="text-[var(--p-muted)]" />}
               <div className="min-w-0 flex-1">
-                <div className="text-[14px] font-semibold">Monitoramento {settings?.notifyEnabled ? 'ativo' : 'pausado'}</div>
-                <div className="text-xs leading-snug text-[var(--p-muted)]">{settings?.notifyEnabled ? `O CleanCode avisa quando um disco cresce mais de ${fmtSize((settings?.notifyThresholdMB || 1024) * 1048576, 'auto', 0)}${settings?.notifyApps ? ' ou quando você instala um app' : ''}.` : 'Para receber avisos, ative as notificações nas Configurações.'}</div>
+                <div className="text-[14px] font-semibold">{tr("Monitoramento")} {settings?.notifyEnabled ? 'ativo' : 'pausado'}</div>
+                <div className="text-xs leading-snug text-[var(--p-muted)]">{settings?.notifyEnabled ? tr("O CleanCode avisa quando um disco cresce mais de {0}{1}.", fmtSize((settings?.notifyThresholdMB || 1024) * 1048576, 'auto', 0), settings?.notifyApps ? ' ou quando você instala um app' : '') : tr("Para receber avisos, ative as notificações nas Configurações.")}</div>
               </div>
               <ChevronRight size={15} className="text-[var(--p-muted)] opacity-60" />
             </div>
@@ -808,22 +809,22 @@ export default function Panel() {
               {more}
               <div className="flex items-start gap-3 pr-4">
                 <HardDrive size={20} className="mt-0.5 shrink-0 text-[var(--p-muted)]" />
-                <div className="min-w-0 flex-1"><div className="truncate text-[14px] font-semibold">{s?.disk?.label || 'Disco'}</div><div className="whitespace-nowrap text-xs text-[var(--p-muted)]">Livres: <span className="tabular-nums text-[var(--p-fg)]">{s?.disk ? fmtSize(freeT, 'auto', 1) : '…'}</span></div></div>
+                <div className="min-w-0 flex-1"><div className="truncate text-[14px] font-semibold">{s?.disk?.label || tr("Disco")}</div><div className="whitespace-nowrap text-xs text-[var(--p-muted)]">{tr("Livres:")} <span className="tabular-nums text-[var(--p-fg)]">{s?.disk ? fmtSize(freeT, 'auto', 1) : '…'}</span></div></div>
               </div>
               {s?.disk && <Bar value={(1 - s.disk.free / s.disk.total) * 100} tone={s.disk.free / s.disk.total < 0.1 ? 'var(--p-danger)' : undefined} className="mt-3" />}
-              <div className="mt-2.5 text-right"><Action onClick={() => open('cleanup')}>Liberar</Action></div>
+              <div className="mt-2.5 text-right"><Action onClick={() => open('cleanup')}>{tr("Liberar")}</Action></div>
             </Card>
 
             <Card delay={120} onClick={() => toggle('memory')} active={active('memory')}>
               {more}
               <div className="flex items-start gap-3 pr-4">
                 <MemoryStick size={20} className="mt-0.5 shrink-0 text-[var(--p-muted)]" />
-                <div className="min-w-0 flex-1"><div className="text-[14px] font-semibold">Memória</div><div className="text-xs text-[var(--p-muted)]">Pressão: <span className="tabular-nums text-[var(--p-fg)]">{s ? `${Math.round(pressT)}%` : '…'}</span></div></div>
+                <div className="min-w-0 flex-1"><div className="text-[14px] font-semibold">{tr("Memória")}</div><div className="text-xs text-[var(--p-muted)]">{tr("Pressão:")} <span className="tabular-nums text-[var(--p-fg)]">{s ? `${Math.round(pressT)}%` : '…'}</span></div></div>
               </div>
               {s && <Bar value={s.memory.pressure} tone={s.memory.level === 'critical' ? 'var(--p-danger)' : s.memory.level === 'warn' ? 'var(--p-warn)' : undefined} className="mt-3" />}
               <div className="mt-2.5 flex items-center justify-between gap-2">
                 <QuickFreeMemory />
-                <span className="text-[11px] tabular-nums text-[var(--p-muted)]">{s ? `${fmtSize(s.memory.used, 'auto', 1)} de ${fmtSize(s.memory.total, 'auto', 0)}` : ''}</span>
+                <span className="text-[11px] tabular-nums text-[var(--p-muted)]">{s ? tr("{0} de {1}", fmtSize(s.memory.used, 'auto', 1), fmtSize(s.memory.total, 'auto', 0)) : ''}</span>
               </div>
             </Card>
 
@@ -831,7 +832,7 @@ export default function Panel() {
               {more}
               <div className="flex items-start gap-3 pr-4">
                 <BattIcon size={20} className={cx('mt-0.5 shrink-0', b?.charging ? 'text-[var(--p-accent)]' : 'text-[var(--p-muted)]')} />
-                <div className="min-w-0 flex-1"><div className="flex items-baseline justify-between gap-1"><span className="text-[14px] font-semibold">{b ? 'Bateria' : 'Energia'}</span>{b && <span className="text-[13px] font-semibold tabular-nums">{Math.round(battT)}%</span>}</div><div className="truncate text-xs text-[var(--p-muted)]">{battText}</div></div>
+                <div className="min-w-0 flex-1"><div className="flex items-baseline justify-between gap-1"><span className="text-[14px] font-semibold">{b ? tr("Bateria") : tr("Energia")}</span>{b && <span className="text-[13px] font-semibold tabular-nums">{Math.round(battT)}%</span>}</div><div className="truncate text-xs text-[var(--p-muted)]">{battText}</div></div>
               </div>
               {b && <Bar value={b.percent} tone={b.percent <= 15 && !b.plugged ? 'var(--p-danger)' : undefined} className="mt-3" />}
               {s?.temperatures.battery !== undefined && <div className="mt-2.5 text-right text-[11px] text-[var(--p-muted)]">{s.temperatures.battery.toFixed(0)} °C</div>}
@@ -841,8 +842,8 @@ export default function Panel() {
               <div className="flex items-start gap-3">
                 <Cpu size={20} className="mt-0.5 shrink-0 text-[var(--p-muted)]" />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline justify-between gap-1"><span className="text-[14px] font-semibold">CPU</span>{s?.cpu.temperature !== undefined && <span className={cx('flex items-center gap-0.5 text-[13px] font-semibold tabular-nums', tempTone(s.cpu.temperature))}><Thermometer size={12} />{Math.round(s.cpu.temperature)}°C</span>}</div>
-                  <div className="text-xs text-[var(--p-muted)]">Carga: <span className="tabular-nums text-[var(--p-fg)]">{s ? `${Math.round(loadT)}%` : '…'}</span></div>
+                  <div className="flex items-baseline justify-between gap-1"><span className="text-[14px] font-semibold">{tr("CPU")}</span>{s?.cpu.temperature !== undefined && <span className={cx('flex items-center gap-0.5 text-[13px] font-semibold tabular-nums', tempTone(s.cpu.temperature))}><Thermometer size={12} />{Math.round(s.cpu.temperature)}°C</span>}</div>
+                  <div className="text-xs text-[var(--p-muted)]">{tr("Carga:")} <span className="tabular-nums text-[var(--p-fg)]">{s ? `${Math.round(loadT)}%` : '…'}</span></div>
                 </div>
               </div>
               <div className="mt-2"><Spark data={cpuHist} w={168} h={30} /></div>
@@ -852,8 +853,8 @@ export default function Panel() {
               <div className="flex items-start gap-3">
                 <Gpu size={20} className="mt-0.5 shrink-0 text-[var(--p-muted)]" />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline justify-between gap-1"><span className="text-[14px] font-semibold">GPU</span>{s?.gpu?.temp !== undefined && <span className={cx('flex items-center gap-0.5 text-[13px] font-semibold tabular-nums', tempTone(s.gpu.temp))}><Thermometer size={12} />{Math.round(s.gpu.temp)}°C</span>}</div>
-                  <div className="text-xs text-[var(--p-muted)]">Uso: <span className="tabular-nums text-[var(--p-fg)]">{s?.gpu?.util !== undefined ? `${Math.round(gpuT)}%` : '—'}</span></div>
+                  <div className="flex items-baseline justify-between gap-1"><span className="text-[14px] font-semibold">{tr("GPU")}</span>{s?.gpu?.temp !== undefined && <span className={cx('flex items-center gap-0.5 text-[13px] font-semibold tabular-nums', tempTone(s.gpu.temp))}><Thermometer size={12} />{Math.round(s.gpu.temp)}°C</span>}</div>
+                  <div className="text-xs text-[var(--p-muted)]">{tr("Uso:")} <span className="tabular-nums text-[var(--p-fg)]">{s?.gpu?.util !== undefined ? `${Math.round(gpuT)}%` : '—'}</span></div>
                 </div>
               </div>
               <div className="mt-2"><Spark data={gpuHist} w={168} h={30} /></div>
@@ -863,34 +864,34 @@ export default function Panel() {
               {more}
               <div className="flex items-start gap-3 pr-4">
                 <Zap size={20} className="mt-0.5 shrink-0 text-[var(--p-muted)]" />
-                <div className="min-w-0 flex-1"><div className="text-[14px] font-semibold">Energia</div><div className="text-xs text-[var(--p-muted)]">{powerNow !== undefined ? <><span className="tabular-nums text-[var(--p-fg)]">{powerNow.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} W</span> agora</> : 'Sem leitura'}</div></div>
+                <div className="min-w-0 flex-1"><div className="text-[14px] font-semibold">{tr("Energia")}</div><div className="text-xs text-[var(--p-muted)]">{powerNow !== undefined ? <><span className="tabular-nums text-[var(--p-fg)]">{powerNow.toLocaleString(LOCALE, { maximumFractionDigits: 1 })} W</span> {tr("agora")}</> : tr("Sem leitura")}</div></div>
               </div>
               <div className="mt-2"><Spark data={powerHist} w={168} h={30} max={1} /></div>
             </Card>
 
             <Card delay={240} onClick={() => toggle('network')} active={active('network')}>
               {more}
-              <div className="flex items-center gap-3 pr-4"><NetIcon size={20} className="shrink-0 text-[var(--p-muted)]" /><div className="truncate text-[14px] font-semibold">{s?.network?.kind || 'Rede'}</div></div>
+              <div className="flex items-center gap-3 pr-4"><NetIcon size={20} className="shrink-0 text-[var(--p-muted)]" /><div className="truncate text-[14px] font-semibold">{s?.network?.kind || tr("Rede")}</div></div>
               <div className="mt-2.5 space-y-1 text-[13px] tabular-nums">
                 <div className="flex items-center gap-1.5"><ArrowUp size={13} className="text-[var(--p-muted)]" />{s?.network ? rate(s.network.txRate) : '—'}</div>
                 <div className="flex items-center gap-1.5"><ArrowDown size={13} className="text-[var(--p-muted)]" />{s?.network ? rate(s.network.rxRate) : '—'}</div>
               </div>
-              <div className="mt-2.5 text-right"><Action onClick={() => openDetail('network')}><span className="inline-flex items-center gap-1"><Gauge size={13} />Testar velocidade</span></Action></div>
+              <div className="mt-2.5 text-right"><Action onClick={() => openDetail('network')}><span className="inline-flex items-center gap-1"><Gauge size={13} />{tr("Testar velocidade")}</span></Action></div>
             </Card>
 
             <Card delay={280} onClick={() => toggle('devices')} active={active('devices')}>
               {more}
-              <div className="pr-4 text-[14px] font-semibold">Dispositivos conectados</div>
+              <div className="pr-4 text-[14px] font-semibold">{tr("Dispositivos conectados")}</div>
               <div className="mt-2.5 space-y-1.5">
-                {!s ? <div className="text-xs text-[var(--p-muted)]">…</div> : s.devices.length === 0 ? <div className="text-xs text-[var(--p-muted)]">Nenhum dispositivo Bluetooth</div> : s.devices.slice(0, 3).map((d) => (
+                {!s ? <div className="text-xs text-[var(--p-muted)]">…</div> : s.devices.length === 0 ? <div className="text-xs text-[var(--p-muted)]">{tr("Nenhum dispositivo Bluetooth")}</div> : s.devices.slice(0, 3).map((d) => (
                   <div key={d.name} className="flex items-center gap-1.5 text-[13px]"><Bluetooth size={13} className="shrink-0 text-[var(--p-muted)]" /><span className="min-w-0 flex-1 truncate">{d.name}</span>{d.battery !== undefined && <span className="text-[11px] tabular-nums text-[var(--p-muted)]">{d.battery}%</span>}</div>
                 ))}
-                {s && s.devices.length > 3 && <div className="text-[11px] text-[var(--p-muted)]">+{s.devices.length - 3} outros</div>}
+                {s && s.devices.length > 3 && <div className="text-[11px] text-[var(--p-muted)]">+{s.devices.length - 3} {tr("outros")}</div>}
               </div>
             </Card>
           </div>
 
-          <div className="anim-rise px-1 pb-2 pt-4 text-[15px] font-semibold text-[var(--p-muted)]" style={{ animationDelay: '320ms' }}>Recomendação de hoje</div>
+          <div className="anim-rise px-1 pb-2 pt-4 text-[15px] font-semibold text-[var(--p-muted)]" style={{ animationDelay: '320ms' }}>{tr("Recomendação de hoje")}</div>
           <Card delay={340}>
             <div className="flex gap-3.5">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" style={{ background: 'linear-gradient(135deg, var(--p-accent), color-mix(in srgb, var(--p-accent) 45%, #ffffff))' }}><Sparkles size={21} className="text-white" /></div>
@@ -903,9 +904,9 @@ export default function Panel() {
           </Card>
 
           <div className="anim-rise mt-3 flex items-center gap-2 border-t border-[var(--p-line)] px-1 pt-3" style={{ animationDelay: '380ms' }}>
-            <button title="Abrir o CleanCode" onClick={() => open()} className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--p-line)] bg-[var(--p-track)] hover:bg-[var(--p-card-hover)]"><AppWindow size={16} /></button>
-            <button onClick={() => open()} className="flex-1 text-center text-[14px] font-medium hover:text-[var(--p-accent)]">Abrir CleanCode</button>
-            <button title="Configurações" onClick={() => open('settings')} className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--p-line)] bg-[var(--p-track)] hover:bg-[var(--p-card-hover)]"><Settings size={16} /></button>
+            <button title={tr("Abrir o CleanCode")} onClick={() => open()} className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--p-line)] bg-[var(--p-track)] hover:bg-[var(--p-card-hover)]"><AppWindow size={16} /></button>
+            <button onClick={() => open()} className="flex-1 text-center text-[14px] font-medium hover:text-[var(--p-accent)]">{tr("Abrir CleanCode")}</button>
+            <button title={tr("Configurações")} onClick={() => open('settings')} className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--p-line)] bg-[var(--p-track)] hover:bg-[var(--p-card-hover)]"><Settings size={16} /></button>
           </div>
         </div>
       </div>

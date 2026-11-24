@@ -5,6 +5,7 @@ import { cc, Drive, DriveHardware, isMac } from '../lib/api';
 import { fmtSize, fmtNum, fmtPct, PALETTE, driveTag } from '../lib/format';
 import { Button, Empty, ProgressBar, cx } from '../components/ui';
 import { openFdaAssistant } from '../components/FdaAssistant';
+import { t } from '../lib/i18n';
 
 export function PageBody({ children, className }: { children: React.ReactNode; className?: string }) {
   return <div className={cx('h-full overflow-y-auto', className)}><div className="mx-auto max-w-[1400px] px-6 py-6">{children}</div></div>;
@@ -17,14 +18,14 @@ export function NeedsScan() {
   return (
     <Empty
       icon={<HardDrive size={22} />}
-      title="Nenhuma varredura ativa"
-      text="Escolha um disco ou uma pasta para analisar. Esta tela mostra os dados da análise que está aberta."
+      title={t("Nenhuma varredura ativa")}
+      text={t("Escolha um disco ou uma pasta para analisar. Esta tela mostra os dados da análise que está aberta.")}
       action={
         <div className="flex flex-wrap justify-center gap-2">
           {drives.filter((d) => d.total > 0).map((d) => (
             <Button key={d.root} icon={<HardDrive size={14} />} onClick={() => startScan(d.root)}>{driveTag(d.root)} {d.label && <span className="text-muted">{d.label}</span>}</Button>
           ))}
-          <Button variant="primary" icon={<FolderOpen size={14} />} onClick={async () => { const p = await cc.pickFolder(); if (p) startScan(p); }}>Escolher pasta…</Button>
+          <Button variant="primary" icon={<FolderOpen size={14} />} onClick={async () => { const p = await cc.pickFolder(); if (p) startScan(p); }}>{t("Escolher pasta…")}</Button>
         </div>
       }
     />
@@ -43,14 +44,14 @@ export function ScopeBar({ right }: { right?: React.ReactNode }) {
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-surface px-3 py-2">
       <div className="flex min-w-0 flex-wrap items-center gap-0.5 text-xs">
-        <span className="mr-1 text-muted">Escopo:</span>
+        <span className="mr-1 text-muted">{t("Escopo:")}</span>
         {crumbs.map((c, i) => (
           <React.Fragment key={c.id}>
             {i > 0 && <ChevronRight size={12} className="text-faint" />}
             <button onClick={() => select(c.id)} className={cx('rounded px-1.5 py-0.5 transition-colors hover:bg-hover', i === crumbs.length - 1 ? 'font-medium text-fg' : 'text-muted')}>{c.name}</button>
           </React.Fragment>
         ))}
-        <button onClick={() => go('explorer')} className="ml-2 text-accent hover:underline">alterar no Explorador</button>
+        <button onClick={() => go('explorer')} className="ml-2 text-accent hover:underline">{t("alterar no Explorador")}</button>
       </div>
       <div className="flex items-center gap-2">
         <ScanBadge />
@@ -63,7 +64,7 @@ export function ScopeBar({ right }: { right?: React.ReactNode }) {
 export function ScanBadge() {
   const { active } = useApp();
   if (!active || active.done) return null;
-  return <span className="flex items-center gap-1.5 text-xs text-accent"><Loader2 size={12} className="animate-spin" /> Varrendo… {fmtNum(active.progress?.files)} arquivos</span>;
+  return <span className="flex items-center gap-1.5 text-xs text-accent"><Loader2 size={12} className="animate-spin" /> {t("Varrendo…")} {fmtNum(active.progress?.files)} {t("arquivos")}</span>;
 }
 
 export function Donut({ data, size = 180, thickness = 26, center }: { data: { label: string; value: number; color?: string }[]; size?: number; thickness?: number; center?: React.ReactNode }) {
@@ -121,12 +122,12 @@ export function DriveBadges({ hw, loading, compact }: { hw?: DriveHardware; load
   const mediaCls = hw.media === 'SSD' ? 'border-transparent bg-accent-soft text-accent' : hw.media === 'HD' ? 'border-line-strong bg-surface-2 text-fg' : 'border-line bg-surface-2 text-muted';
   const usb2 = hw.usb && /2\.0|1\.\d/.test(hw.usb);
   const details = [
-    hw.brand && `Fabricante: ${hw.brand}`, `Modelo: ${hw.model}`, hw.firmware && `Firmware: ${hw.firmware}`,
-    hw.health && `Saúde: ${hw.health === 'Healthy' ? 'boa' : hw.health}`, hw.diskSize && `Disco físico: ${fmtSize(hw.diskSize)}`, hw.usbNote,
+    hw.brand && t("Fabricante: {0}", hw.brand), t("Modelo: {0}", hw.model), hw.firmware && t("Firmware: {0}", hw.firmware),
+    hw.health && t("Saúde: {0}", hw.health === 'Healthy' ? t("boa") : t(hw.health)), hw.diskSize && t("Disco físico: {0}", fmtSize(hw.diskSize)), hw.usbNote && t(hw.usbNote),
   ].filter(Boolean).join('\n');
   return (
     <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5" title={details}>
-      <span className={chip + ' ' + mediaCls}>{hw.media === 'Desconhecido' ? 'Tipo ?' : hw.media}</span>
+      <span className={chip + ' ' + mediaCls}>{hw.media === 'Desconhecido' ? t("Tipo desconhecido") : hw.media}</span>
       <span className={chip + ' border-line bg-surface-2 text-fg'}>{hw.bus}</span>
       {hw.usb && <span className={chip + ' ' + (usb2 ? 'border-transparent bg-warn-soft text-warn' : 'border-transparent bg-accent-soft text-accent')}>{hw.usb}</span>}
       {hw.usbNote && <AlertTriangle size={13} className="text-warn"><title>{hw.usbNote}</title></AlertTriangle>}
@@ -151,10 +152,10 @@ export function FullDiskAccessBanner({ className }: { className?: string }) {
     <div className={cx('flex flex-wrap items-center gap-3 rounded-lg border border-transparent bg-warn-soft px-4 py-3', className)}>
       <ShieldAlert size={18} className="shrink-0 text-warn" />
       <div className="min-w-0 flex-1 text-[13px]">
-        <div className="font-medium text-fg">O CleanCode não tem Acesso Total ao Disco</div>
-        <div className="text-xs text-muted">Sem esse acesso, pastas como ~/Library, Mail, Mensagens e a Lixeira aparecem como “Acesso negado” e ficam fora dos totais. O assistente mostra o caminho em menos de um minuto.</div>
+        <div className="font-medium text-fg">{t("O CleanCode não tem Acesso Total ao Disco")}</div>
+        <div className="text-xs text-muted">{t("Sem esse acesso, pastas como ~/Library, Mail, Mensagens e a Lixeira aparecem como “Acesso negado” e ficam fora dos totais. O assistente mostra o caminho em menos de um minuto.")}</div>
       </div>
-      <Button size="sm" variant="primary" icon={<ShieldAlert size={13} />} onClick={openFdaAssistant}>Liberar acesso</Button>
+      <Button size="sm" variant="primary" icon={<ShieldAlert size={13} />} onClick={openFdaAssistant}>{t("Liberar acesso")}</Button>
     </div>
   );
 }

@@ -40,6 +40,14 @@ try {
   const mod = { exports: {} }; new Function('module', 'exports', js)(mod, mod.exports);
   const notes = (mod.exports.CHANGELOG || []).slice(0, 8);
   if (notes.length) lines.push(`notes: ${Buffer.from(JSON.stringify(notes), 'utf8').toString('base64')}`);
+  // versões traduzidas das novidades (o app usa a do próprio idioma; versões antigas ignoram estas chaves)
+  for (const lang of ['en', 'es']) {
+    let dict = {};
+    try { dict = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src', 'locales', `${lang}.json`), 'utf8')); } catch { /* sem dicionário */ }
+    const tr = (s) => (s && dict[s]) || s;
+    const translated = notes.map((n) => ({ ...n, headline: tr(n.headline), groups: (n.groups || []).map((g) => ({ ...g, title: tr(g.title), items: (g.items || []).map(tr) })) }));
+    if (notes.length) lines.push(`notes_${lang}: ${Buffer.from(JSON.stringify(translated), 'utf8').toString('base64')}`);
+  }
 } catch (e) { console.warn('novidades fora do feed:', e.message); }
 lines.push(`releaseDate: '${new Date().toISOString()}'`, '');
 fs.writeFileSync(path.join(root, 'release', feed), lines.join('\n'));

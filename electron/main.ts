@@ -1,3 +1,5 @@
+// O idioma precisa ser descoberto antes de qualquer outro módulo montar textos.
+import { LANG } from './lang';
 import { app, BrowserWindow, ipcMain, dialog, shell, clipboard, nativeTheme, nativeImage, Tray, Menu, screen, powerMonitor } from 'electron';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
@@ -24,6 +26,7 @@ import * as Clutter from './clutter';
 import { appDossier, gameDossier } from './dossier';
 import { onlineDossier } from './dossierOnline';
 import { storageMap } from './storageMap';
+import { t as tr, LOCALE } from './i18n';
 
 declare const __UPDATE_SOURCE__: string; // definidas no build (scripts/build-electron.mjs)
 declare const __FEED_ID__: string;
@@ -58,6 +61,8 @@ const DEFAULTS = {
   whatsNewFixed: false,
   // Modo Jogo: pastas extras onde procurar jogos
   gameDirs: [] as string[],
+  // idioma: 'auto' segue o idioma do computador; 'pt', 'en' ou 'es' fixa um idioma
+  language: 'auto' as 'auto' | 'pt' | 'en' | 'es',
 };
 type Settings = typeof DEFAULTS;
 let settings: Settings = { ...DEFAULTS };
@@ -113,17 +118,17 @@ function createTray() {
   tray = new Tray(system.trayImage(path.join(__dirname, '..')));
   tray.setToolTip('CleanCode: monitorando discos');
   const menu = () => Menu.buildFromTemplate([
-    { label: 'Abrir CleanCode', click: showMain },
+    { label: tr("Abrir CleanCode"), click: showMain },
     { type: 'separator' },
-    { label: 'Liberar memória', click: async () => {
-      const r = await system.game.freeMemory(false).catch(() => ({ ok: false, freed: 0, message: 'Não foi possível liberar a memória' }));
-      showNotification({ kind: 'update', title: r.ok ? 'Memória liberada' : 'Liberar memória', detail: r.message } as MonitorEvent);
+    { label: tr("Liberar memória"), click: async () => {
+      const r = await system.game.freeMemory(false).catch(() => ({ ok: false, freed: 0, message: tr("Não foi possível liberar a memória") }));
+      showNotification({ kind: 'update', title: r.ok ? tr("Memória liberada") : tr("Liberar memória"), detail: r.message } as MonitorEvent);
     } },
     { type: 'separator' },
-    { label: 'Notificações', type: 'checkbox', checked: settings.notifyEnabled, click: (i) => { settings.notifyEnabled = i.checked; saveSettings(); applyMonitor(); broadcastSettings(); } },
-    { label: `Iniciar com o ${system.osName}`, type: 'checkbox', checked: settings.startWithWindows, enabled: app.isPackaged, click: (i) => { settings.startWithWindows = i.checked; saveSettings(); applyLoginItem(); broadcastSettings(); } },
+    { label: tr("Notificações"), type: 'checkbox', checked: settings.notifyEnabled, click: (i) => { settings.notifyEnabled = i.checked; saveSettings(); applyMonitor(); broadcastSettings(); } },
+    { label: tr("Iniciar com o {0}", system.osName), type: 'checkbox', checked: settings.startWithWindows, enabled: app.isPackaged, click: (i) => { settings.startWithWindows = i.checked; saveSettings(); applyLoginItem(); broadcastSettings(); } },
     { type: 'separator' },
-    { label: 'Sair', click: quitApp },
+    { label: tr("Sair"), click: quitApp },
   ]);
   // clique: painel com a saúde do computador; botão direito (ou Ctrl+clique no Mac): menu
   tray.on('click', (e) => { if (isMac && e.ctrlKey) tray?.popUpContextMenu(menu()); else togglePanel(); });
@@ -198,7 +203,7 @@ ipcMain.handle('hardware:live', () => hardwareLive());
 ipcMain.handle('hardware:disks', () => system.metrics.disks().catch(() => []));
 ipcMain.handle('hardware:advanced', async (_e, on: boolean) => {
   const f = on ? system.metrics.advancedActivate : system.metrics.advancedDeactivate;
-  return f ? f() : { ok: false, message: 'No Mac o monitoramento avançado já é automático' };
+  return f ? f() : { ok: false, message: tr("No Mac, o monitoramento avançado já é automático") };
 });
 // ---------- limpeza ----------
 const activityFile = path.join(userDir, 'activity.json');
@@ -222,7 +227,7 @@ let startupCache: import('./platform').StartupItem[] = [];
 ipcMain.handle('perf:startup', async () => (startupCache = await system.perf.startupItems()));
 ipcMain.handle('perf:setStartup', async (_e, id: string, enabled: boolean) => {
   const item = startupCache.find((x) => x.id === id);
-  if (!item || item.control === 'none') return { ok: false, message: 'Item não encontrado' };
+  if (!item || item.control === 'none') return { ok: false, message: tr("Item não encontrado") };
   const r = await system.perf.setStartupItem(item, enabled);
   if (r.ok) { item.enabled = enabled; logActivity({ kind: 'startup', name: item.name, enabled }); }
   return r;
@@ -247,7 +252,7 @@ ipcMain.handle('clutter:scan', (e) => Clutter.scan((ch, d) => { if (!e.sender.is
 ipcMain.handle('clutter:cancel', () => { Clutter.cancel(); return true; });
 ipcMain.handle('clutter:trash', async (_e, paths: string[]) => {
   const r = await Clutter.trash(paths);
-  if (r.removed) logActivity({ kind: 'cleanup', name: 'Acúmulos', freed: r.freed, removed: r.removed, failed: r.failed.length, mode: 'trash' });
+  if (r.removed) logActivity({ kind: 'cleanup', name: tr("Acúmulos"), freed: r.freed, removed: r.removed, failed: r.failed.length, mode: 'trash' });
   return r;
 });
 // ---------- proteção ----------
@@ -261,7 +266,7 @@ ipcMain.handle('repairs:fix', async (_e, ids: string[]) => {
   const dir = path.join(backupRoot, stamp);
   const res = await system.repairs.fix(items, dir);
   const ok = res.filter((x) => x.ok).length;
-  if (ok) logActivity({ kind: 'cleanup', name: isMac ? 'Reparos do sistema' : 'Reparos do registro', freed: 0, removed: ok, failed: res.length - ok, mode: isMac ? 'trash' : 'delete', backup: isMac ? undefined : stamp });
+  if (ok) logActivity({ kind: 'cleanup', name: isMac ? tr("Reparos do sistema") : tr("Reparos do registro"), freed: 0, removed: ok, failed: res.length - ok, mode: isMac ? 'trash' : 'delete', backup: isMac ? undefined : stamp });
   try { if (fs.existsSync(dir) && !fs.readdirSync(dir).length) fs.rmdirSync(dir); } catch { /* */ }
   return { results: res, backup: fs.existsSync(dir) ? stamp : null };
 });
@@ -271,9 +276,9 @@ ipcMain.handle('repairs:backups', () => {
     .filter((b) => b.files).sort((a, b) => b.at - a.at).slice(0, 30);
 });
 ipcMain.handle('repairs:restore', async (_e, id: string) => {
-  if (!/^[\w-]+$/.test(id)) return { ok: false, message: 'Backup inválido' };
+  if (!/^[\w-]+$/.test(id)) return { ok: false, message: tr("A cópia de segurança não é válida") };
   const r = await system.repairs.restore(path.join(backupRoot, id));
-  if (r.ok) logActivity({ kind: 'maintenance', tasks: ['Registro restaurado do backup'], failed: 0 });
+  if (r.ok) logActivity({ kind: 'maintenance', tasks: [tr("Registro restaurado do backup")], failed: 0 });
   return r;
 });
 ipcMain.handle('repairs:errors', () => system.repairs.recentErrors());
@@ -286,8 +291,8 @@ async function checkRepairs() {
   settings.repairsSeen = items.map((x) => x.id).slice(0, 800); saveSettings();
   if (!fresh.length) return;
   const one = fresh[0];
-  showNotification({ kind: 'repair', title: fresh.length === 1 ? `Item quebrado: ${one.title}` : `${fresh.length} itens quebrados encontrados`, drive: '', amount: 0,
-    detail: fresh.length === 1 ? one.detail : 'Programas removidos que ainda iniciam, atalhos e entradas que apontam para arquivos que sumiram. Clique para revisar e corrigir com backup.', page: 'repairs' });
+  showNotification({ kind: 'repair', title: fresh.length === 1 ? tr("Item quebrado: {0}", one.title) : tr("{0} itens quebrados encontrados", fresh.length), drive: '', amount: 0,
+    detail: fresh.length === 1 ? one.detail : tr("Encontramos programas removidos que ainda iniciam, além de atalhos e entradas que apontam para arquivos que não existem mais. Clique para revisar e corrigir com uma cópia de segurança."), page: 'repairs' });
 }
 setTimeout(() => { checkRepairs(); setInterval(checkRepairs, 6 * 3600000); }, 3 * 60000);
 
@@ -296,13 +301,13 @@ ipcMain.handle('browsers:scan', () => Browsers.scan());
 ipcMain.handle('browsers:clean', async (_e, sel: { profileId: string; items: Browsers.ItemId[] }[]) => {
   const r = await Browsers.clean(sel);
   const freed = r.reduce((s, x) => s + x.freed, 0);
-  if (r.some((x) => x.ok)) logActivity({ kind: 'cleanup', name: 'Navegadores', freed, removed: r.filter((x) => x.ok).length, failed: r.filter((x) => !x.ok).length, mode: 'delete' });
+  if (r.some((x) => x.ok)) logActivity({ kind: 'cleanup', name: tr("Navegadores"), freed, removed: r.filter((x) => x.ok).length, failed: r.filter((x) => !x.ok).length, mode: 'delete' });
   return r;
 });
 ipcMain.handle('browsers:optimize', async (_e, ids: string[]) => {
   const r = await Browsers.optimize(ids);
   const freed = r.reduce((s, x) => s + x.freed, 0);
-  if (r.some((x) => x.ok)) logActivity({ kind: 'cleanup', name: 'Navegadores (otimização)', freed, removed: r.filter((x) => x.ok).length, failed: r.filter((x) => !x.ok).length, mode: 'delete' });
+  if (r.some((x) => x.ok)) logActivity({ kind: 'cleanup', name: tr("Navegadores (otimização)"), freed, removed: r.filter((x) => x.ok).length, failed: r.filter((x) => !x.ok).length, mode: 'delete' });
   return r;
 });
 ipcMain.handle('browsers:close', (_e, id: string) => Browsers.closeBrowser(id));
@@ -314,7 +319,7 @@ ipcMain.handle('game:toggle', (_e, id: string, on: boolean) => system.game.setTo
 ipcMain.handle('game:games', () => system.game.games(settings.gameDirs));
 ipcMain.handle('game:dirs', () => settings.gameDirs);
 ipcMain.handle('game:addDir', async (e) => {
-  const r = await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender)!, { title: 'Pasta com jogos', properties: ['openDirectory'] });
+  const r = await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender)!, { title: tr("Pasta com jogos"), properties: ['openDirectory'] });
   const dir = r.canceled ? null : r.filePaths[0];
   if (dir && !settings.gameDirs.includes(dir)) { settings.gameDirs = [...settings.gameDirs, dir]; saveSettings(); }
   return settings.gameDirs;
@@ -338,7 +343,7 @@ ipcMain.handle('game:start', async (_e, o: import('./platform').GameSessionOptio
 ipcMain.handle('game:stop', async () => { const r = await system.game.stop(); gameSession = null; return r; });
 ipcMain.handle('game:shaders', async () => {
   const r = await system.game.cleanShaders();
-  if (r.freed) logActivity({ kind: 'cleanup', name: 'Cache de shaders', freed: r.freed, removed: 1, failed: 0, mode: 'delete' });
+  if (r.freed) logActivity({ kind: 'cleanup', name: tr("Cache de shaders"), freed: r.freed, removed: 1, failed: 0, mode: 'delete' });
   return r;
 });
 ipcMain.handle('game:launch', async (_e, target: string) => {
@@ -373,7 +378,7 @@ ipcMain.handle('protection:scan', async () => {
   return report;
 });
 ipcMain.handle('protection:quickScan', async () => {
-  const r = await (system.protection.quickScan?.() ?? Promise.resolve({ ok: false, message: 'Indisponível neste sistema' }));
+  const r = await (system.protection.quickScan?.() ?? Promise.resolve({ ok: false, message: tr("Indisponível neste sistema") }));
   logActivity({ kind: 'protection', name: 'quickScan', failed: r.ok ? 0 : 1 });
   return r;
 });
@@ -420,7 +425,7 @@ function fmtBytes(n: number) {
   const u = ['B', 'KB', 'MB', 'GB', 'TB'];
   let i = 0, v = n;
   while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
-  return v.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' ' + u[i];
+  return v.toLocaleString(LOCALE, { maximumFractionDigits: 1 }) + ' ' + u[i];
 }
 function showNotification(e: MonitorEvent) {
   if (!settings.notifyEnabled) return;
@@ -440,9 +445,9 @@ function showNotification(e: MonitorEvent) {
   win.setAlwaysOnTop(true, 'screen-saver');
   notifyWin = win;
   const query = {
-    title: e.kind === 'app' ? `${e.title}: ${e.detail || ''}` : e.title, drive: e.drive, label: e.driveLabel || (e.drive === 'C:' ? 'Disco local' : ''),
+    title: e.kind === 'app' ? `${e.title}: ${e.detail || ''}` : e.title, drive: e.drive, label: e.driveLabel || (e.drive === 'C:' ? tr("Disco local") : ''),
     amount: e.amount ? fmtBytes(e.amount) : '', amountNote: e.kind === 'app' && e.amount ? '(estimado)' : e.kind === 'disk' ? 'consumidos' : '',
-    detail: e.kind === 'app' ? (e.amount ? '' : 'Tamanho ainda não informado pelo instalador') : (e.detail || ''),
+    detail: e.kind === 'app' ? (e.amount ? '' : tr("O instalador ainda não informou o tamanho")) : (e.detail || ''),
     theme: dark ? 'dark' : 'light', ms: '10000', variant: e.kind === 'update' ? 'update' : 'growth', accent: accentHex(dark), corner: top ? 'top' : 'bottom',
   };
   if (e.kind === 'update' || e.kind === 'repair') Object.assign(query, { title: e.title, drive: '', amount: '', amountNote: '', detail: e.detail || '', variant: 'update' });
@@ -542,7 +547,7 @@ async function runUpdateCheck(silent: boolean) {
       maybeInstallReady();
     } else if (info && silent && availableNotified !== info.version) {
       availableNotified = info.version;
-      showNotification({ kind: 'update', title: `CleanCode ${info.version} disponível`, drive: '', amount: 0, detail: 'Clique para abrir e atualizar com um clique, sem abrir o instalador.' });
+      showNotification({ kind: 'update', title: tr("O CleanCode {0} está disponível", info.version), drive: '', amount: 0, detail: tr("Clique para abrir o app e atualizar com um clique, sem abrir o instalador.") });
     }
   } catch (err: any) {
     // sem internet numa verificação automática: só tenta de novo depois (sem mostrar erro)
@@ -572,14 +577,14 @@ function maybeInstallReady() {
   if (!visible) { installReadyNow(); return; }
   if (readyNotified !== updateState.info.version) {
     readyNotified = updateState.info.version;
-    showNotification({ kind: 'update', title: `CleanCode ${updateState.info.version} pronto para instalar`, drive: '', amount: 0,
-      detail: 'Será instalado sozinho quando você fechar a janela. Para atualizar agora, use "Reiniciar para atualizar" no topo do app.' });
+    showNotification({ kind: 'update', title: tr("O CleanCode {0} está pronto para instalar", updateState.info.version), drive: '', amount: 0,
+      detail: tr("Será instalado sozinho quando você fechar a janela. Para atualizar agora, use \"Reiniciar para atualizar\" no topo do app.") });
   }
 }
 ipcMain.handle('update:state', () => ({ ...updateState, defaultSource: DEFAULT_UPDATE_SOURCE }));
 ipcMain.handle('update:check', () => runUpdateCheck(false));
 ipcMain.handle('update:pickSource', async (e) => {
-  const r = await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender)!, { title: `Pasta com o ${FEED_FILE} e o instalador`, properties: ['openDirectory'] });
+  const r = await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender)!, { title: tr("Pasta com o {0} e o instalador", FEED_FILE), properties: ['openDirectory'] });
   if (r.canceled || !r.filePaths[0]) return null;
   settings.updateSource = r.filePaths[0]; saveSettings(); broadcastSettings();
   watchUpdateSource(); runUpdateCheck(false);
@@ -606,9 +611,9 @@ async function demoInstall() {
 // atualizar pelo popup central: baixa (se ainda não baixou), instala acompanhando as etapas e só reinicia no fim
 ipcMain.handle('update:start', async () => {
   const info = updateState.info;
-  if (!info) throw new Error('Nenhuma atualização disponível');
+  if (!info) throw new Error(tr("Nenhuma atualização disponível"));
   if (DEMO_UPDATE) return demoInstall();
-  if (!app.isPackaged) throw new Error('A instalação automática só funciona na versão instalada');
+  if (!app.isPackaged) throw new Error(tr("A instalação automática só funciona na versão instalada."));
   try {
     // já baixando em segundo plano (instalação automática): espera terminar em vez de baixar de novo
     if (updateState.status === 'downloading') await new Promise<void>((res) => { const iv = setInterval(() => { if (updateState.status !== 'downloading') { clearInterval(iv); res(); } }, 300); });
@@ -636,8 +641,8 @@ ipcMain.handle('update:start', async () => {
 });
 ipcMain.handle('update:install', async () => {
   const info = updateState.info;
-  if (!info) throw new Error('Nenhuma atualização disponível');
-  if (!app.isPackaged) throw new Error('A instalação automática só funciona na versão instalada');
+  if (!info) throw new Error(tr("Nenhuma atualização disponível"));
+  if (!app.isPackaged) throw new Error(tr("A instalação automática só funciona na versão instalada."));
   try {
     if (!readyFile) await downloadReady(info);
     installReadyNow();
@@ -692,7 +697,7 @@ ipcMain.handle('monitor:checkNow', async () => { await monitor.check(); return m
 ipcMain.handle('notify:test', () => {
   const d = drives()[0];
   const tag = d ? (/^[a-zA-Z]:/.test(d.root) ? d.root.slice(0, 2) : d.root) : 'C:';
-  showNotification({ kind: 'disk', title: 'Uso de disco aumentou', drive: tag, driveLabel: d?.label || 'Disco local', amount: 2.4 * 1073741824, detail: d ? `Exemplo: agora com ${fmtBytes(d.free)} livres de ${fmtBytes(d.total)}` : 'Exemplo: agora com 228,3 GB livres de 952,6 GB' });
+  showNotification({ kind: 'disk', title: tr("O uso do disco aumentou"), drive: tag, driveLabel: d?.label || 'Disco local', amount: 2.4 * 1073741824, detail: d ? tr("Exemplo: agora com {0} livres de {1}", fmtBytes(d.free), fmtBytes(d.total)) : tr("Exemplo: agora com 228,3 GB livres de 952,6 GB") });
   return true;
 });
 ipcMain.handle('app:loginItemStatus', () => ({ packaged: app.isPackaged, openAtLogin: app.isPackaged ? system.loginItem.get() : false }));
@@ -737,7 +742,7 @@ function createWindow(initialPath?: string | null) {
       if (readyFile) { setTimeout(maybeInstallReady, 1200); return; }
       if (!trayHintShown && settings.notifyEnabled) {
         trayHintShown = true;
-        tray?.displayBalloon?.({ title: 'CleanCode continua rodando', content: 'O monitor de discos segue ativo na bandeja. Clique com o botão direito no ícone para sair.', iconType: 'info' });
+        tray?.displayBalloon?.({ title: tr("O CleanCode continua aberto"), content: tr("O monitor de discos continua ativo na bandeja. Para sair, clique com o botão direito no ícone."), iconType: 'info' });
       }
     }
   });
@@ -823,7 +828,7 @@ function startScan(root: string, owner: Electron.WebContents): number {
 }
 function query(scanId: number, method: string, args: any[] = []): Promise<any> {
   const s = scans.get(scanId);
-  if (!s) return Promise.reject(new Error('Varredura não encontrada'));
+  if (!s) return Promise.reject(new Error(tr("Varredura não encontrada")));
   const id = ++qSeq;
   return new Promise((res, rej) => { s.pending.set(id, { res, rej }); s.worker.postMessage({ type: 'query', id, method, args }); });
 }
@@ -863,7 +868,7 @@ ipcMain.handle('history:compare', async (_e, scanId: number, id: string | null) 
 });
 ipcMain.handle('history:exportSnapshot', async (e, scanId: number) => {
   const win = BrowserWindow.fromWebContents(e.sender)!;
-  const r = await dialog.showSaveDialog(win, { title: 'Salvar varredura', defaultPath: 'varredura.cleancode.json.gz', filters: [{ name: 'Varredura CleanCode', extensions: ['gz'] }] });
+  const r = await dialog.showSaveDialog(win, { title: tr("Salvar varredura"), defaultPath: 'varredura.cleancode.json.gz', filters: [{ name: tr("Varredura CleanCode"), extensions: ['gz'] }] });
   if (r.canceled || !r.filePath) return null;
   const snap = await query(scanId, 'snapshot');
   fs.writeFileSync(r.filePath, zlib.gzipSync(JSON.stringify(snap)));
@@ -871,11 +876,11 @@ ipcMain.handle('history:exportSnapshot', async (e, scanId: number) => {
 });
 ipcMain.handle('history:importSnapshot', async (e) => {
   const win = BrowserWindow.fromWebContents(e.sender)!;
-  const r = await dialog.showOpenDialog(win, { title: 'Importar varredura salva', filters: [{ name: 'Varredura CleanCode', extensions: ['gz', 'json'] }], properties: ['openFile'] });
+  const r = await dialog.showOpenDialog(win, { title: tr("Importar varredura salva"), filters: [{ name: tr("Varredura CleanCode"), extensions: ['gz', 'json'] }], properties: ['openFile'] });
   if (r.canceled || !r.filePaths[0]) return null;
   const buf = fs.readFileSync(r.filePaths[0]);
   const snap = JSON.parse((buf[0] === 0x1f ? zlib.gunzipSync(buf) : buf).toString('utf8'));
-  if (!snap.names || !snap.parents) throw new Error('Arquivo inválido');
+  if (!snap.names || !snap.parents) throw new Error(tr("O arquivo não é válido"));
   const id = `${Date.now()}`;
   fs.writeFileSync(path.join(historyDir, id + '.json.gz'), zlib.gzipSync(JSON.stringify(snap)));
   const idx = readHistIndex();
@@ -885,6 +890,8 @@ ipcMain.handle('history:importSnapshot', async (e) => {
 });
 
 // ---------- sistema / arquivos ----------
+// idioma das janelas (lido de forma síncrona pelo preload)
+ipcMain.on('app:lang', (e) => { e.returnValue = LANG; });
 ipcMain.handle('app:info', () => ({
   version: app.getVersion(), isAdmin: isAdmin(), electron: process.versions.electron, userData: userDir,
   platform: process.platform, osName: system.osName, fileManager: system.fileManager,
@@ -921,14 +928,14 @@ ipcMain.handle('fs:deletePermanent', async (_e, paths: string[]) => {
   return out;
 });
 ipcMain.handle('fs:move', async (e, paths: string[]) => {
-  const r = await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender)!, { title: 'Mover para…', properties: ['openDirectory', 'createDirectory'] });
+  const r = await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender)!, { title: tr("Mover para…"), properties: ['openDirectory', 'createDirectory'] });
   if (r.canceled || !r.filePaths[0]) return null;
   const dest = r.filePaths[0];
   const out: { path: string; ok: boolean; to?: string; error?: string }[] = [];
   for (const p of paths) {
     const to = path.join(dest, path.basename(p));
     try {
-      if (fs.existsSync(to)) throw new Error('Já existe um item com esse nome no destino');
+      if (fs.existsSync(to)) throw new Error(tr("Já existe um item com esse nome no destino"));
       try { await fs.promises.rename(p, to); }
       catch (err: any) {
         if (err.code !== 'EXDEV') throw err;
@@ -962,6 +969,8 @@ ipcMain.handle('settings:set', (_e, patch: Partial<Settings>) => {
   for (const w of windows) if (!w.isDestroyed() && w.webContents !== _e.sender) w.webContents.send('settings-changed', settings);
   return settings;
 });
+// reinicia o app (usado ao trocar o idioma, porque os textos são montados na abertura)
+ipcMain.handle('app:relaunch', () => { app.relaunch({ args: process.argv.slice(1).filter((a) => a !== '--hidden' && a !== '--updated') }); setTimeout(quitApp, 150); return true; });
 ipcMain.handle('app:restartAdmin', () => { if (system.canElevate) relaunchAsAdmin(); return system.canElevate; });
 ipcMain.handle('window:new', () => { createWindow(); return true; });
 ipcMain.handle('app:titlebar', (e, dark: boolean) => {
@@ -1046,7 +1055,7 @@ ipcMain.handle('apps:uninstall', async (e, ids: string[], silent: boolean) => {
   const results: any[] = [];
   for (const id of ids) {
     const a = appsCache?.find((x) => x.id === id);
-    if (!a) { results.push({ id, ok: false, message: 'Não encontrado' }); continue; }
+    if (!a) { results.push({ id, ok: false, message: tr("Não encontrado") }); continue; }
     if (!e.sender.isDestroyed()) e.sender.send('apps:uninstallProgress', { id, status: 'running' });
     const r = await system.uninstallApp(a, silent);
     results.push({ id, ...r });
@@ -1105,7 +1114,7 @@ ipcMain.handle('dossier:sizes', (_e, paths: string[]) => new Promise<Record<stri
 ipcMain.handle('dossier:online', (_e, q: DossierQuery, refresh?: boolean) => onlineDossier(q, !!refresh));
 ipcMain.handle('apps:removeEntry', async (_e, id: string) => {
   const a = appsCache?.find((x) => x.id === id);
-  if (!a) return { ok: false, message: 'Não encontrado' };
+  if (!a) return { ok: false, message: tr("Não encontrado") };
   const r = await system.removeEntry(a);
   if (r.ok && appsCache) appsCache = appsCache.filter((x) => x.id !== id);
   return r;
@@ -1133,10 +1142,10 @@ ipcMain.handle('export:run', async (e, scanId: number, nodeId: number, format: s
     return 'print';
   }
   const filters: Record<string, Electron.FileFilter> = {
-    csv: { name: 'CSV (Excel, separador ;)', extensions: ['csv'] }, xlsx: { name: 'Pasta de trabalho do Excel', extensions: ['xlsx'] },
-    html: { name: 'Página HTML', extensions: ['html'] }, pdf: { name: 'PDF', extensions: ['pdf'] }, txt: { name: 'Texto', extensions: ['txt'] },
+    csv: { name: tr("CSV (Excel, separador ;)"), extensions: ['csv'] }, xlsx: { name: tr("Pasta de trabalho do Excel"), extensions: ['xlsx'] },
+    html: { name: tr("Página HTML"), extensions: ['html'] }, pdf: { name: 'PDF', extensions: ['pdf'] }, txt: { name: tr("Texto"), extensions: ['txt'] },
   };
-  const r = await dialog.showSaveDialog(win, { title: 'Exportar', defaultPath: `CleanCode - ${base}.${format}`, filters: [filters[format]] });
+  const r = await dialog.showSaveDialog(win, { title: tr("Exportar"), defaultPath: `CleanCode - ${base}.${format}`, filters: [filters[format]] });
   if (r.canceled || !r.filePath) return null;
   const file = r.filePath;
   if (format === 'csv') writeText(file, toCSV(rows));
@@ -1158,7 +1167,7 @@ ipcMain.handle('export:run', async (e, scanId: number, nodeId: number, format: s
 ipcMain.handle('export:list', async (e, rows: any[], format: string, name: string, cols?: { key: string; label: string }[]) => {
   // exporta listas genéricas (resultados de busca, duplicados, apps)
   const win = BrowserWindow.fromWebContents(e.sender)!;
-  const r = await dialog.showSaveDialog(win, { title: 'Exportar lista', defaultPath: `CleanCode - ${name}.${format}`, filters: [{ name: format.toUpperCase(), extensions: [format] }] });
+  const r = await dialog.showSaveDialog(win, { title: tr("Exportar lista"), defaultPath: `CleanCode - ${name}.${format}`, filters: [{ name: format.toUpperCase(), extensions: [format] }] });
   if (r.canceled || !r.filePath) return null;
   if (format === 'csv') writeText(r.filePath, toCSV(rows, cols));
   else await toXLSX(rows, { root: '', node: name, date: Date.now(), totalSize: rows.reduce((s, x) => s + (x.size || 0), 0), totalFiles: rows.length }, r.filePath, cols);

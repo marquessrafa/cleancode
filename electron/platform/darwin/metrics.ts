@@ -6,6 +6,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import type { MetricsApi, MemoryInfo, BatteryInfo, Temperatures, NetCounters, ConnectedDevice, MemoryDetail, BatteryHealth, NetworkInfo, HardwareInfo, HwLive, DiskDetail } from '../types';
+import { t } from '../../i18n';
 
 function run(cmd: string, args: string[], timeout = 8000): Promise<string> {
   return new Promise((resolve) => execFile(cmd, args, { encoding: 'utf8', timeout, maxBuffer: 16 * 1024 * 1024 }, (_e, out) => resolve(out || '')));
@@ -165,7 +166,7 @@ async function readNetworkInfo(): Promise<NetworkInfo> {
       if (!c) continue;
       value.ssid = c._name; value.phy = c.spairport_network_phymode; value.channel = c.spairport_network_channel; value.signal = c.spairport_signal_noise;
       const sec = String(c.spairport_security_mode || '').replace('spairport_security_mode_', '');
-      value.security = sec.replace(/_/g, ' ').toUpperCase().replace('PERSONAL', 'Pessoal').replace('ENTERPRISE', 'Empresarial');
+      value.security = sec.replace(/_/g, ' ').toUpperCase().replace('PERSONAL', t("Pessoal")).replace('ENTERPRISE', t("Empresarial"));
       value.securityLevel = !sec || sec === 'none' ? 'open' : /wep/.test(sec) ? 'weak' : /wpa3/.test(sec) ? 'strong' : /wpa2/.test(sec) ? 'good' : 'weak';
       break;
     }
@@ -175,9 +176,9 @@ async function readNetworkInfo(): Promise<NetworkInfo> {
 }
 
 async function eject(root: string) {
-  if (!root.startsWith('/Volumes/')) return { ok: false, message: 'Só discos externos podem ser ejetados' };
+  if (!root.startsWith('/Volumes/')) return { ok: false, message: t("Só discos externos podem ser ejetados") };
   const r = await new Promise<{ ok: boolean; err: string }>((resolve) => execFile('/usr/sbin/diskutil', ['eject', root], { timeout: 60000 }, (e, _o, err) => resolve({ ok: !e, err: String(err || e?.message || '') })));
-  return r.ok ? { ok: true, message: 'Ejetado com segurança' } : { ok: false, message: /busy|in use/i.test(r.err) ? 'Em uso por algum app: feche os arquivos abertos e tente de novo' : r.err.slice(0, 160) };
+  return r.ok ? { ok: true, message: t("Ejetado com segurança") } : { ok: false, message: /busy|in use/i.test(r.err) ? t("Algum app está usando. Feche os arquivos abertos e tente de novo.") : r.err.slice(0, 160) };
 }
 
 // ---------- hardware ----------
@@ -193,9 +194,9 @@ async function hardware(): Promise<HardwareInfo> {
   const freqMax = await n('hw.cpufrequency_max');
   const modules = Array.isArray(mem._items) && mem._items.length
     ? mem._items.map((m: any) => ({ size: parseFloat(m.dimm_size) * 1073741824 || 0, speed: parseInt(m.dimm_speed, 10) || undefined, manufacturer: m.dimm_manufacturer, part: m.dimm_part_number, slot: m._name }))
-    : [{ size: os.totalmem(), manufacturer: mem.dimm_manufacturer, slot: 'Memória unificada' }];
+    : [{ size: os.totalmem(), manufacturer: mem.dimm_manufacturer, slot: t("Memória unificada") }];
   hwCache = {
-    cpu: { name: (await sysctl('machdep.cpu.brand_string')) || hw.chip_type || 'Processador', cores, threads: (await n('hw.logicalcpu')) || os.cpus().length, pCores: await n('hw.perflevel0.physicalcpu'), eCores: await n('hw.perflevel1.physicalcpu'), maxMHz: freqMax ? Math.round(freqMax / 1e6) : undefined, l2: await n('hw.perflevel0.l2cachesize') || await n('hw.l2cachesize'), l3: await n('hw.l3cachesize'), arch: process.arch === 'arm64' ? 'Apple Silicon (ARM64)' : 'Intel (x86-64)' },
+    cpu: { name: (await sysctl('machdep.cpu.brand_string')) || hw.chip_type || t("Processador"), cores, threads: (await n('hw.logicalcpu')) || os.cpus().length, pCores: await n('hw.perflevel0.physicalcpu'), eCores: await n('hw.perflevel1.physicalcpu'), maxMHz: freqMax ? Math.round(freqMax / 1e6) : undefined, l2: await n('hw.perflevel0.l2cachesize') || await n('hw.l2cachesize'), l3: await n('hw.l3cachesize'), arch: process.arch === 'arm64' ? 'Apple Silicon (ARM64)' : 'Intel (x86-64)' },
     gpus: gpus.map((g: any) => ({ name: g._name || g.sppci_model, cores: parseInt(g.sppci_cores, 10) || undefined, vram: parseInt(g.spdisplays_vram, 10) ? parseInt(g.spdisplays_vram, 10) * 1048576 : undefined, api: String(g.spdisplays_mtlgpufamilysupport || '').replace('spdisplays_metal', 'Metal ').trim() || undefined, vendor: String(g.spdisplays_vendor || 'Apple').replace(/^sppci_vendor_/, '') })),
     memory: { total: os.totalmem(), type: mem.dimm_type || modules[0]?.part, manufacturer: mem.dimm_manufacturer, modules },
     board: { system: hw.machine_name, model: hw.machine_model, version: hw.model_number, firmware: hw.boot_rom_version, chip: hw.chip_type || hw.cpu_type, manufacturer: 'Apple', chassis: /book/i.test(hw.machine_name || '') ? 'laptop' : 'desktop' },
@@ -241,21 +242,21 @@ async function hwLive(): Promise<HwLive> {
     advanced: { available: process.arch === 'arm64', active: !!power, source: 'IOReport' },
     sensors: [
       ...((power?.clusters || []).filter((c) => /^(E|P)CPU\d*$/.test(c.name)).flatMap((c) => {
-        const label = c.name.startsWith('E') ? 'Núcleos de eficiência' : 'Núcleos de desempenho';
+        const label = c.name.startsWith('E') ? t("Núcleos de eficiência") : t("Núcleos de desempenho");
         const suffix = /\d$/.test(c.name) ? ` ${Number(c.name.replace(/\D/g, '')) + 1}` : '';
-        return [{ kind: 'cpu' as const, group: 'clock', name: label + suffix, value: Math.round(c.active > 0.01 ? c.mhz : 0), unit: 'MHz' }, { kind: 'cpu' as const, group: 'load', name: `${label}${suffix} (ativo)`, value: Math.round(c.active * 100), unit: '%' }];
+        return [{ kind: 'cpu' as const, group: 'clock', name: label + suffix, value: Math.round(c.active > 0.01 ? c.mhz : 0), unit: t("MHz") }, { kind: 'cpu' as const, group: 'load', name: t("{0}{1} (ativo)", label, suffix), value: Math.round(c.active * 100), unit: '%' }];
       })),
-      ...(power?.gpuMhz !== undefined ? [{ kind: 'gpu' as const, group: 'clock', name: 'GPU', value: Math.round((power.gpuActive || 0) > 0.01 ? power.gpuMhz : 0), unit: 'MHz' }, { kind: 'gpu' as const, group: 'load', name: 'GPU (ativa)', value: Math.round((power.gpuActive || 0) * 100), unit: '%' }] : []),
+      ...(power?.gpuMhz !== undefined ? [{ kind: 'gpu' as const, group: 'clock', name: 'GPU', value: Math.round((power.gpuActive || 0) > 0.01 ? power.gpuMhz : 0), unit: t("MHz") }, { kind: 'gpu' as const, group: 'load', name: t("GPU (ativa)"), value: Math.round((power.gpuActive || 0) * 100), unit: '%' }] : []),
       ...(power?.gpuW !== undefined ? [{ kind: 'gpu' as const, group: 'power', name: 'GPU', value: Math.round(power.gpuW * 100) / 100, unit: 'W' }] : []),
       ...(power?.cpuW ? [{ kind: 'cpu' as const, group: 'power', name: 'CPU', value: Math.round(power.cpuW * 100) / 100, unit: 'W' }] : []),
-      ...(power?.aneW ? [{ kind: 'cpu' as const, group: 'power', name: 'Neural Engine', value: Math.round(power.aneW * 100) / 100, unit: 'W' }] : []),
-      ...(sysLoad ? [{ kind: 'psu' as const, group: 'power', name: 'Sistema', value: Math.round(+sysLoad / 10) / 100, unit: 'W' }] : []),
-      ...(volt ? [{ kind: 'battery' as const, group: 'volt', name: 'Bateria', value: volt / 1000, unit: 'V' }] : []),
-      ...(amp !== undefined ? [{ kind: 'battery' as const, group: 'current', name: 'Bateria', value: amp / 1000, unit: 'A' }] : []),
-      ...(temps.cpu !== undefined ? [{ kind: 'cpu' as const, name: 'Processador', value: temps.cpu }] : []),
+      ...(power?.aneW ? [{ kind: 'cpu' as const, group: 'power', name: t("Neural Engine"), value: Math.round(power.aneW * 100) / 100, unit: 'W' }] : []),
+      ...(sysLoad ? [{ kind: 'psu' as const, group: 'power', name: t("Sistema"), value: Math.round(+sysLoad / 10) / 100, unit: 'W' }] : []),
+      ...(volt ? [{ kind: 'battery' as const, group: 'volt', name: t("Bateria"), value: volt / 1000, unit: 'V' }] : []),
+      ...(amp !== undefined ? [{ kind: 'battery' as const, group: 'current', name: t("Bateria"), value: amp / 1000, unit: 'A' }] : []),
+      ...(temps.cpu !== undefined ? [{ kind: 'cpu' as const, name: t("Processador"), value: temps.cpu }] : []),
       ...(temps.gpu !== undefined ? [{ kind: 'gpu' as const, name: 'GPU', value: temps.gpu }] : []),
-      ...(temps.ssd !== undefined ? [{ kind: 'disk' as const, name: 'SSD interno', value: temps.ssd }] : []),
-      ...(temps.battery !== undefined ? [{ kind: 'battery' as const, name: 'Bateria', value: temps.battery }] : []),
+      ...(temps.ssd !== undefined ? [{ kind: 'disk' as const, name: t("SSD interno"), value: temps.ssd }] : []),
+      ...(temps.battery !== undefined ? [{ kind: 'battery' as const, name: t("Bateria"), value: temps.battery }] : []),
     ],
   };
   liveCache = { at: Date.now(), value };
@@ -272,11 +273,11 @@ async function disks(): Promise<DiskDetail[]> {
   for (const ctl of sp.SPNVMeDataType || []) for (const d of ctl._items || []) out.push({
     id: d.bsd_name || d._name, name: d._name, model: d.device_model, firmware: d.device_revision, bus: 'NVMe', media: 'SSD', size: Number(d.size_in_bytes) || undefined,
     link: [d.spnvme_linkspeed, d.spnvme_linkwidth].filter(Boolean).join(' · ') || undefined, trim: /yes/i.test(d.spnvme_trim_support || ''),
-    health: /verified/i.test(d.smart_status || '') ? 'Saudável' : d.smart_status, temp: d.removable_media === 'yes' ? undefined : temps.ssd, partitions: vols(d),
+    health: /verified/i.test(d.smart_status || '') ? t("Saudável") : d.smart_status, temp: d.removable_media === 'yes' ? undefined : temps.ssd, partitions: vols(d),
   });
   for (const ctl of sp.SPSerialATADataType || []) for (const d of ctl._items || []) out.push({
     id: d.bsd_name || d._name, name: d._name, model: d.device_model, firmware: d.device_revision, bus: 'SATA', media: /solid/i.test(d.spsata_medium_type || '') ? 'SSD' : 'HD',
-    size: Number(d.size_in_bytes) || undefined, trim: /yes/i.test(d.spsata_trim_support || ''), health: /verified/i.test(d.smart_status || '') ? 'Saudável' : d.smart_status, partitions: vols(d),
+    size: Number(d.size_in_bytes) || undefined, trim: /yes/i.test(d.spsata_trim_support || ''), health: /verified/i.test(d.smart_status || '') ? t("Saudável") : d.smart_status, partitions: vols(d),
   });
   const walk = (items: any[]) => { for (const it of items || []) { if (it.Media) for (const m of it.Media) out.push({ id: m.bsd_name || m._name, name: m._name || it._name, model: it._name, bus: 'USB', media: 'Externo', size: Number(m.size_in_bytes) || undefined, partitions: vols(m) }); walk(it._items); } };
   for (const bus of sp.SPUSBDataType || []) walk(bus._items);

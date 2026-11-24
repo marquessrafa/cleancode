@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { system } from './platform';
 import type { JunkCategory } from './platform';
+import { t as tr } from './i18n';
 
 export interface CategoryResult { id: string; size: number; count: number; denied?: boolean; items: { path: string; name: string; size: number; mtime: number; dir: boolean }[]; truncated?: boolean; error?: string }
 type Send = (channel: string, data: any) => void;
@@ -74,17 +75,17 @@ export async function clean(paths: string[], specials: string[], mode: 'trash' |
   for (const p of paths) {
     const info = allowed.get(p);
     done++;
-    if (!info) { res.failed.push({ path: p, error: 'Fora da última análise' }); continue; }
+    if (!info) { res.failed.push({ path: p, error: tr("Fora da última análise") }); continue; }
     const cat = lastCats.find((c) => c.id === info.category);
     const permanent = mode === 'delete' || cat?.removal === 'delete';
     try {
       if (permanent) await fs.promises.rm(p, { recursive: true, force: true, maxRetries: 2 });
       else await shell.trashItem(p);
-      if (fs.existsSync(p)) throw new Error('Em uso ou protegido');
+      if (fs.existsSync(p)) throw new Error(tr("Em uso ou protegido"));
       res.freed += info.size; res.removed++;
       allowed.delete(p);
     } catch (err: any) {
-      res.failed.push({ path: p, error: /EPERM|EACCES|denied|not permitted/i.test(String(err?.message)) ? 'Sem permissão' : /EBUSY|em uso/i.test(String(err?.message)) ? 'Em uso por outro programa' : String(err?.message || err).slice(0, 120) });
+      res.failed.push({ path: p, error: /EPERM|EACCES|denied|not permitted/i.test(String(err?.message)) ? tr("Sem permissão") : /EBUSY|em uso/i.test(String(err?.message)) ? tr("Em uso por outro programa") : String(err?.message || err).slice(0, 120) });
     }
     progress(p);
   }

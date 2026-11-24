@@ -7,6 +7,7 @@ import path from 'path';
 import fs from 'fs';
 import { system, drives } from './platform';
 import type { MemoryInfo, BatteryInfo, Temperatures, ConnectedDevice } from './platform';
+import { t as tr } from './i18n';
 
 export interface MetricsSnapshot {
   machine: string;
@@ -55,10 +56,10 @@ function health(s: Omit<MetricsSnapshot, 'health'>): MetricsSnapshot['health'] {
   let score = 0;
   if (s.disk && s.disk.total > 0) {
     const freePct = s.disk.free / s.disk.total;
-    if (freePct < 0.05) { score += 2; issues.push('disco quase cheio'); } else if (freePct < 0.15) { score += 1; issues.push('pouco espaço livre'); }
+    if (freePct < 0.05) { score += 2; issues.push('disco quase cheio'); } else if (freePct < 0.15) { score += 1; issues.push(tr("pouco espaço livre")); }
   }
-  if (s.memory.level === 'critical' || s.memory.pressure >= 90) { score += 2; issues.push('memória sob pressão'); }
-  else if (s.memory.level === 'warn' || s.memory.pressure >= 75) { score += 1; issues.push('memória alta'); }
+  if (s.memory.level === 'critical' || s.memory.pressure >= 90) { score += 2; issues.push(tr("memória sob pressão")); }
+  else if (s.memory.level === 'warn' || s.memory.pressure >= 75) { score += 1; issues.push(tr("memória alta")); }
   const t = s.temperatures.cpu;
   if (t !== undefined) { if (t >= 95) { score += 2; issues.push('CPU muito quente'); } else if (t >= 80) { score += 1; issues.push('CPU quente'); } }
   if (s.battery && !s.battery.plugged && s.battery.percent <= 10) { score += 1; issues.push('bateria baixa'); }

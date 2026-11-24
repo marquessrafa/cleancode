@@ -2,6 +2,7 @@
 import fs from 'fs';
 import { execFileSync } from 'child_process';
 import { ATTR, RawEntry, DriveInfo } from '../types';
+import { t as tr } from '../../i18n';
 
 export { ATTR };
 export const sep = '/';
@@ -126,7 +127,7 @@ export function drives(): DriveInfo[] {
 const userCache = new Map<number, string>();
 export function ownerOf(p: string): string {
   let uid: number;
-  try { uid = fs.lstatSync(p).uid; } catch { return '(sem acesso)'; }
+  try { uid = fs.lstatSync(p).uid; } catch { return tr("(sem acesso)"); }
   const hit = userCache.get(uid);
   if (hit) return hit;
   let name = `uid ${uid}`;

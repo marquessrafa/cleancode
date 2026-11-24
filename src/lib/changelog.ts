@@ -96,7 +96,7 @@ export const CHANGELOG: Release[] = [
     groups: [
       { title: 'Mac', icon: 'panel', items: [
         'A janelinha para arrastar o CleanCode até o Acesso Total ao Disco agora mostra o ícone, está maior e indica cada passo.',
-        'No macOS 27 os Ajustes abrem em Privacidade e Segurança (a Apple não permite abrir direto no item): é só clicar em Acesso Total ao Disco.',
+        'No macOS 27, os Ajustes abrem em Privacidade e Segurança, porque a Apple não permite abrir direto no item. Depois, clique em Acesso Total ao Disco.',
       ] },
     ],
   },
@@ -187,8 +187,8 @@ export const CHANGELOG: Release[] = [
   {
     version: '1.3.0', date: '2026-11-23', headline: 'Hardware, registro, navegadores e Modo Jogo',
     groups: [
-      { title: 'Registro do Windows / Reparos do macOS', icon: 'wrench', items: [
-        'Encontra entradas que apontam para programas e arquivos que não existem mais: inicialização, programas fantasmas, "Abrir com", menu do botão direito, atalhos e serviços.',
+      { title: 'Registro do Windows e Reparos do macOS', icon: 'wrench', items: [
+        'Encontra entradas que apontam para programas e arquivos que não existem mais, como itens de inicialização, programas fantasmas, "Abrir com", o menu do botão direito, atalhos e serviços.',
         'Backup .reg automático antes de cada correção, com restauração na própria tela.',
         'Aviso em segundo plano quando um item quebrado novo aparece, e lista dos apps que travaram nos últimos dias.',
         'No Mac: preferências corrompidas, agentes de inicialização órfãos e reconstrução do menu "Abrir com".',
@@ -196,7 +196,7 @@ export const CHANGELOG: Release[] = [
       { title: 'Navegadores', icon: 'globe', items: [
         'Chrome, Edge, Brave, Opera, Opera GX, Vivaldi, Chromium, Firefox e Safari, cada perfil separado.',
         'Limpe cache e imagens, cache de GPU, histórico, histórico de downloads, cookies e dados de sites, sessões e preenchimento automático.',
-        'Otimização: compacta os bancos internos do navegador. Senhas e favoritos nunca são apagados.',
+        'A otimização compacta os bancos de dados internos do navegador. As senhas e os favoritos nunca são apagados.',
       ] },
       { title: 'Modo Jogo', icon: 'gamepad', items: [
         'Sessão de jogo que fecha apps pesados, libera memória e põe o sistema em desempenho máximo; ao encerrar, restaura tudo.',
@@ -211,7 +211,7 @@ export const CHANGELOG: Release[] = [
       { title: 'Painel da barra de menus', icon: 'panel', items: [
         'Novos cartões de GPU (uso, memória, temperatura, apps que mais usam) e Energia (consumo em watts, carregador, bateria).',
         'Detalhes de armazenamento, memória, bateria, CPU, rede e dispositivos com anéis e gráficos animados.',
-        'Abre no canto da tela deslizando, sem piscar.',
+        'O painel abre no canto da tela deslizando, sem piscar.',
       ] },
       { title: 'Downloads', icon: 'download', items: [
         'Instaladores separados: macOS Apple Silicon e Intel, e Windows x64.',

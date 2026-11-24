@@ -6,6 +6,7 @@ import { fmtSize, fmtNum, fmtDate } from '../lib/format';
 import { useFileActions } from '../lib/actions';
 import { Button, Card, Checkbox, cx, Dropdown, Empty, openContextMenu, PageHeader, ProgressBar, Select, Stat } from '../components/ui';
 import { PageBody, ScopeBar } from './common';
+import { t } from '../lib/i18n';
 
 interface Group { size: number; count: number; wasted: number; files: Row[] }
 
@@ -44,41 +45,41 @@ export default function Duplicates() {
 
   return (
     <PageBody>
-      <PageHeader title="Arquivos duplicados" icon={<Copy size={18} />} description="Primeiro, o CleanCode junta os arquivos que têm o mesmo tamanho. Depois, ele compara o conteúdo desses arquivos com um código chamado hash (SHA-1) para confirmar que são iguais. Os arquivos que estão só na nuvem ficam de fora."
+      <PageHeader title={t("Arquivos duplicados")} icon={<Copy size={18} />} description={t("Primeiro, o CleanCode junta os arquivos que têm o mesmo tamanho. Depois, ele compara o conteúdo desses arquivos com um código chamado hash (SHA-1) para confirmar que são iguais. Os arquivos que estão só na nuvem ficam de fora.")}
         actions={<>
-          <span className="text-xs text-muted">Tamanho mínimo</span>
+          <span className="text-xs text-muted">{t("Tamanho mínimo")}</span>
           <Select className="w-28" value={minSize} onChange={setMin} options={[[4096, '4 KB'], [102400, '100 KB'], [1048576, '1 MB'], [10485760, '10 MB'], [104857600, '100 MB']].map(([v, l]) => ({ value: String(v), label: String(l) }))} />
-          <Button variant="primary" icon={<Play size={14} />} loading={busy} disabled={!active!.done} onClick={run}>{groups ? 'Procurar de novo' : 'Procurar duplicados'}</Button>
+          <Button variant="primary" icon={<Play size={14} />} loading={busy} disabled={!active!.done} onClick={run}>{groups ? t("Procurar de novo") : t("Procurar duplicados")}</Button>
         </>} />
       <ScopeBar />
       {busy && (
         <Card className="mb-4">
           <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted">
-            <span>{prog?.phase || 'Agrupando por tamanho…'} · continua em segundo plano se você sair desta tela</span>
-            <span className="flex items-center gap-3"><span className="tnum">{fmtNum(prog?.done)} / {fmtNum(prog?.total)}</span><Button size="sm" variant="ghost" onClick={() => task && cancelTask(task.key)}>Cancelar</Button></span>
+            <span>{prog?.phase || t("Agrupando por tamanho…")} {t("· continua em segundo plano se você sair desta tela")}</span>
+            <span className="flex items-center gap-3"><span className="tnum">{fmtNum(prog?.done)} / {fmtNum(prog?.total)}</span><Button size="sm" variant="ghost" onClick={() => task && cancelTask(task.key)}>{t("Cancelar")}</Button></span>
           </div>
           <ProgressBar value={prog ? prog.done / (prog.total || 1) : 0} indeterminate={!prog} />
         </Card>
       )}
-      {!groups && !busy && <Card><Empty icon={<Copy size={20} />} title={task?.status === 'cancelled' ? 'Busca cancelada' : task?.status === 'error' ? 'A busca falhou' : 'Procure duplicados na pasta selecionada'} text={active!.done ? 'A busca lê o conteúdo dos arquivos parecidos. Por isso, ela pode levar alguns minutos em discos grandes.' : 'Aguarde a varredura terminar.'} /></Card>}
+      {!groups && !busy && <Card><Empty icon={<Copy size={20} />} title={task?.status === 'cancelled' ? t("Busca cancelada") : task?.status === 'error' ? t("A busca falhou") : t("Procure duplicados na pasta selecionada")} text={active!.done ? t("A busca lê o conteúdo dos arquivos parecidos. Por isso, ela pode levar alguns minutos em discos grandes.") : t("Aguarde a varredura terminar.")} /></Card>}
       {groups && (
         <>
           <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Stat label="Grupos de duplicados" value={fmtNum(groups.length)} />
-            <Stat label="Arquivos envolvidos" value={fmtNum(allFiles.length)} />
-            <Stat label="Espaço desperdiçado" value={fmtSize(wasted, units)} tone="warn" />
-            <Stat label="Selecionados" value={fmtSize(selRows.reduce((s, f) => s + f.size, 0), units)} sub={`${sel.size} arquivo(s)`} />
+            <Stat label={t("Grupos de duplicados")} value={fmtNum(groups.length)} />
+            <Stat label={t("Arquivos envolvidos")} value={fmtNum(allFiles.length)} />
+            <Stat label={t("Espaço desperdiçado")} value={fmtSize(wasted, units)} tone="warn" />
+            <Stat label={t("Selecionados")} value={fmtSize(selRows.reduce((s, f) => s + f.size, 0), units)} sub={t("{0} arquivo(s)", sel.size)} />
           </div>
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <Dropdown trigger={<Button size="sm" icon={<Wand2 size={13} />}>Seleção automática</Button>} items={[
-              { label: 'Manter o mais recente de cada grupo', onClick: () => autoSelect('newest') },
-              { label: 'Manter o mais antigo de cada grupo', onClick: () => autoSelect('oldest') },
-              { label: 'Manter o de caminho mais curto', onClick: () => autoSelect('shortest') },
-              { separator: true }, { label: 'Limpar seleção', onClick: () => setSel(new Set()) },
+            <Dropdown trigger={<Button size="sm" icon={<Wand2 size={13} />}>{t("Seleção automática")}</Button>} items={[
+              { label: t("Manter o mais recente de cada grupo"), onClick: () => autoSelect('newest') },
+              { label: t("Manter o mais antigo de cada grupo"), onClick: () => autoSelect('oldest') },
+              { label: t("Manter o de caminho mais curto"), onClick: () => autoSelect('shortest') },
+              { separator: true }, { label: t("Limpar seleção"), onClick: () => setSel(new Set()) },
             ]} />
             <div className="flex-1" />
-            <Button size="sm" variant="ghost" icon={<Download size={13} />} onClick={() => cc.exportList(allFiles, 'xlsx', 'duplicados')}>Exportar</Button>
-            <Button size="sm" variant="danger" icon={<Trash2 size={13} />} disabled={!sel.size} onClick={() => actions.del(selRows.map((f) => ({ id: f.id, path: f.path!, name: f.name, size: f.size, kind: 'file' })))}>Excluir selecionados…</Button>
+            <Button size="sm" variant="ghost" icon={<Download size={13} />} onClick={() => cc.exportList(allFiles, 'xlsx', 'duplicados')}>{t("Exportar")}</Button>
+            <Button size="sm" variant="danger" icon={<Trash2 size={13} />} disabled={!sel.size} onClick={() => actions.del(selRows.map((f) => ({ id: f.id, path: f.path!, name: f.name, size: f.size, kind: 'file' })))}>{t("Excluir selecionados…")}</Button>
           </div>
           <div className="space-y-2">
             {groups.slice(0, 500).map((g, i) => {
@@ -89,8 +90,8 @@ export default function Duplicates() {
                     <ChevronRight size={14} className={cx('text-faint transition-transform duration-200', isOpen && 'rotate-90')} />
                     <File size={14} className="text-faint" />
                     <span className="flex-1 truncate text-[13px] font-medium">{g.files[0].name}</span>
-                    <span className="text-xs text-muted">{g.count} cópias de {fmtSize(g.size, units)}</span>
-                    <span className="w-28 text-right text-xs text-warn tnum">{fmtSize(g.wasted, units)} a mais</span>
+                    <span className="text-xs text-muted">{g.count} {t("cópias de")} {fmtSize(g.size, units)}</span>
+                    <span className="w-28 text-right text-xs text-warn tnum">{fmtSize(g.wasted, units)} {t("a mais")}</span>
                   </button>
                   {isOpen && (
                     <div className="border-t border-line anim-fade">

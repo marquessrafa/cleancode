@@ -6,6 +6,7 @@ import { fmtSize, fmtPct, categoryOf, PALETTE, CATEGORIES, OTHER } from '../lib/
 import { useFileActions } from '../lib/actions';
 import { Button, Card, cx, openContextMenu, PageHeader, Segmented, Toggle } from '../components/ui';
 import { BarList, Donut, Legend, PageBody, ScopeBar } from './common';
+import { t as tr } from '../lib/i18n';
 
 interface TNode { id: number; name: string; size: number; kind: string; ext?: string; children?: TNode[] }
 interface Rect { x: number; y: number; w: number; h: number; node: TNode; depth: number; color: string; leaf: boolean }
@@ -136,7 +137,7 @@ function Treemap({ root, opts, dark, onPick, onContext }: { root: TNode; opts: a
         <div className="pointer-events-none absolute z-10 rounded-md border border-line bg-surface px-2.5 py-1.5 text-xs shadow-lg" style={{ left: Math.min(hover.x + 14, size.w - 230), top: Math.min(hover.y + 14, size.h - 60) }}>
           <div className="max-w-[220px] truncate font-medium text-fg">{hover.r.node.name}</div>
           <div className="text-muted tnum">{fmtSize(hover.r.node.size)} · {fmtPct(hover.r.node.size / (root.size || 1))}</div>
-          <div className="text-faint">{hover.r.node.kind === 'file' ? 'Arquivo' : hover.r.node.kind === 'dir' ? 'Pasta (clique para entrar)' : hover.r.node.kind === 'free' ? 'Espaço livre' : 'Itens pequenos agrupados'}</div>
+          <div className="text-faint">{hover.r.node.kind === 'file' ? tr("Arquivo") : hover.r.node.kind === 'dir' ? tr("Pasta (clique para entrar)") : hover.r.node.kind === 'free' ? tr("Espaço livre") : tr("Itens pequenos agrupados")}</div>
         </div>
       )}
     </div>
@@ -173,7 +174,7 @@ export default function Visual() {
     const t: TNode = { ...tree, children: tree.children?.map(squash) };
     const d = drives.find((x) => x.root.toLowerCase() === active!.root.toLowerCase());
     const isDriveRoot = nodeId === 0 && !!d; // a varredura é de uma unidade inteira
-    if (tm.freeSpace && isDriveRoot && d) return { ...t, size: t.size + d.free, children: [...(t.children || []), { id: -999999, name: 'Espaço livre', size: d.free, kind: 'free' }] };
+    if (tm.freeSpace && isDriveRoot && d) return { ...t, size: t.size + d.free, children: [...(t.children || []), { id: -999999, name: tr("Espaço livre"), size: d.free, kind: 'free' }] };
     return t;
   }, [tree, tm.freeSpace, drives, nodeId, active]);
 
@@ -187,17 +188,17 @@ export default function Visual() {
 
   const top = (kids || []).slice(0, 11);
   const rest = (kids || []).slice(11).reduce((s, r) => s + r.size, 0);
-  const pieData = [...top.map((r, i) => ({ label: r.name, value: r.size, color: PALETTE[i % PALETTE.length], id: r.id, kind: r.kind })), ...(rest > 0 ? [{ label: 'Outros', value: rest, color: '#94a3b8', id: -1, kind: 'rest' }] : [])];
+  const pieData = [...top.map((r, i) => ({ label: r.name, value: r.size, color: PALETTE[i % PALETTE.length], id: r.id, kind: r.kind })), ...(rest > 0 ? [{ label: tr("Outros"), value: rest, color: '#94a3b8', id: -1, kind: 'rest' }] : [])];
   const total = (kids || []).reduce((s, r) => s + r.size, 0);
 
   return (
     <div className="mx-auto flex h-full max-w-[1400px] flex-col">
       <div className="px-6 pt-6">
-        <PageHeader title="Visualizações" icon={<LayoutGrid size={18} />} description="Mostra a pasta selecionada como um mapa de blocos (treemap), como um gráfico de pizza ou como um gráfico de barras. Para entrar em uma pasta, clique nela."
+        <PageHeader title={tr("Visualizações")} icon={<LayoutGrid size={18} />} description={tr("Mostra a pasta selecionada como um mapa de blocos (treemap), como um gráfico de pizza ou como um gráfico de barras. Para entrar em uma pasta, clique nela.")}
           actions={<Segmented value={tab} onChange={setTab} options={[
-            { value: 'treemap', label: <><LayoutGrid size={13} /> Treemap</> }, { value: 'pie', label: <><PieChart size={13} /> Pizza</> }, { value: 'bar', label: <><BarChart3 size={13} /> Barras</> },
+            { value: 'treemap', label: <><LayoutGrid size={13} /> {tr("Treemap")}</> }, { value: 'pie', label: <><PieChart size={13} /> {tr("Pizza")}</> }, { value: 'bar', label: <><BarChart3 size={13} /> {tr("Barras")}</> },
           ]} />} />
-        <ScopeBar right={nodeId > 0 && <Button size="sm" variant="ghost" icon={<ArrowUp size={13} />} onClick={async () => { const n: any = await cc.scanQuery(active!.id, 'nodeInfo', nodeId); select(n.parent); }}>Subir</Button>} />
+        <ScopeBar right={nodeId > 0 && <Button size="sm" variant="ghost" icon={<ArrowUp size={13} />} onClick={async () => { const n: any = await cc.scanQuery(active!.id, 'nodeInfo', nodeId); select(n.parent); }}>{tr("Subir")}</Button>} />
       </div>
       {tab === 'treemap' ? (
         <div className="flex min-h-0 flex-1 gap-4 px-6 pb-6">
@@ -205,16 +206,16 @@ export default function Visual() {
             {root ? <Treemap root={root} opts={tm} dark={dark} onPick={pick} onContext={ctx} /> : <div className="skeleton h-full rounded-md" />}
           </div>
           <div className="w-60 shrink-0 space-y-1 overflow-y-auto rounded-lg border border-line bg-surface p-4">
-            <div className="mb-2 text-xs font-medium text-muted">Opções do treemap</div>
-            <div className="text-xs text-muted">Nível de detalhe</div>
+            <div className="mb-2 text-xs font-medium text-muted">{tr("Opções do treemap")}</div>
+            <div className="text-xs text-muted">{tr("Nível de detalhe")}</div>
             <input type="range" min={1} max={5} value={tm.depth} onChange={(e) => setTm({ depth: +e.target.value })} className="w-full accent-[var(--accent)]" />
-            <Toggle checked={tm.showFiles} onChange={(v) => setTm({ showFiles: v })} label="Arquivos individuais" />
-            <Toggle checked={tm.hierarchy} onChange={(v) => setTm({ hierarchy: v })} label="Mostrar hierarquia" />
-            <Toggle checked={tm.labels} onChange={(v) => setTm({ labels: v })} label="Rótulos" />
-            <Toggle checked={tm.cushion} onChange={(v) => setTm({ cushion: v })} label="Efeito 3D (relevo)" />
-            <Toggle checked={tm.freeSpace} onChange={(v) => setTm({ freeSpace: v })} label="Espaço livre da unidade" hint="Funciona apenas quando você está na raiz de um disco" />
+            <Toggle checked={tm.showFiles} onChange={(v) => setTm({ showFiles: v })} label={tr("Arquivos individuais")} />
+            <Toggle checked={tm.hierarchy} onChange={(v) => setTm({ hierarchy: v })} label={tr("Mostrar hierarquia")} />
+            <Toggle checked={tm.labels} onChange={(v) => setTm({ labels: v })} label={tr("Rótulos")} />
+            <Toggle checked={tm.cushion} onChange={(v) => setTm({ cushion: v })} label={tr("Efeito 3D (relevo)")} />
+            <Toggle checked={tm.freeSpace} onChange={(v) => setTm({ freeSpace: v })} label={tr("Espaço livre da unidade")} hint={tr("Funciona apenas quando você está na raiz de um disco")} />
             {tm.showFiles && (
-              <div className="pt-3"><div className="mb-1.5 text-xs font-medium text-muted">Legenda</div>
+              <div className="pt-3"><div className="mb-1.5 text-xs font-medium text-muted">{tr("Legenda")}</div>
                 <Legend items={[...CATEGORIES, OTHER].map((c) => ({ label: c.label, color: c.color }))} />
               </div>
             )}
@@ -226,14 +227,14 @@ export default function Visual() {
             {tab === 'pie' ? (
               <>
                 <Card className="flex items-center justify-center">
-                  <Donut data={pieData} size={300} thickness={56} center={<><div className="text-xs text-muted">Total</div><div className="text-lg font-semibold">{fmtSize(total)}</div></>} />
+                  <Donut data={pieData} size={300} thickness={56} center={<><div className="text-xs text-muted">{tr("Total")}</div><div className="text-lg font-semibold">{fmtSize(total)}</div></>} />
                 </Card>
-                <Card title="Legenda">
+                <Card title={tr("Legenda")}>
                   <Legend items={pieData.map((d) => ({ label: d.label, color: d.color, value: `${fmtSize(d.value)} · ${fmtPct(d.value / (total || 1))}` }))} />
                 </Card>
               </>
             ) : (
-              <Card title="Subpastas e arquivos por tamanho" className="lg:col-span-2">
+              <Card title={tr("Subpastas e arquivos por tamanho")} className="lg:col-span-2">
                 <BarList items={(kids || []).slice(0, 30).map((r, i) => ({ key: r.id, label: <span className={cx(r.kind === 'dir' && 'font-medium')}>{r.name}</span>, value: r.size, sub: fmtPct(r.pct), color: PALETTE[i % PALETTE.length] }))}
                   onClick={(id) => { const r = kids!.find((k) => k.id === id); if (r?.kind === 'dir') select(id); }} />
               </Card>

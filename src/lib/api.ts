@@ -28,6 +28,7 @@ export interface Settings {
   treemap: { depth: number; showFiles: boolean; labels: boolean; hierarchy: boolean; freeSpace: boolean; cushion: boolean };
   runInBackground: boolean; startWithWindows: boolean; notifyEnabled: boolean; notifyDisk: boolean; notifyApps: boolean; notifyThresholdMB: number;
   updateSource: string; autoCheckUpdates: boolean; autoInstallUpdates: boolean;
+  language: 'auto' | 'pt' | 'en' | 'es';
 }
 export interface UpdateNote { version: string; date: string; headline: string; groups: { title: string; icon: string; items: string[] }[] }
 export interface UpdateState {
@@ -123,6 +124,10 @@ export interface SpeedProgress { phase: 'ping' | 'download' | 'upload' | 'done' 
 interface CC {
   /** process.platform, disponível já no carregamento (sem IPC) */
   platform: string;
+  /** idioma da interface, decidido pelo processo principal (configuração ou idioma do computador) */
+  lang: 'pt' | 'en' | 'es';
+  /** reinicia o CleanCode */
+  relaunch(): Promise<boolean>;
   info(): Promise<AppInfo>;
   drives(): Promise<Drive[]>;
   metricsSnapshot(): Promise<MetricsSnapshot>;

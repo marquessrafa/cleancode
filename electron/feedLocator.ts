@@ -5,6 +5,7 @@ import path from 'path';
 import os from 'os';
 import * as W from './platform/fs';
 import { FEED_FILE } from './updater';
+import { t } from './i18n';
 
 const MARKER = 'cleancode-feed.json';
 const SKIP = /^(node_modules|\.git|\.svn|appdata|windows|program files( \(x86\))?|programdata|\$recycle\.bin|system volume information|recovery|perflogs|msocache|windowsapps|dist|dist-electron|release-build|win-unpacked|\$windows\.~ws|\$windows\.~bt|config\.msi|library|system|private|volumes|cores)$/i;
@@ -22,7 +23,7 @@ function roots(hint: string): string[] {
   const out = new Set<string>();
   // ao redor do último local conhecido (ex.: pasta renomeada ou movida para perto)
   if (hint) { let p = path.dirname(hint); for (let i = 0; i < 3 && p && p !== path.dirname(p); i++) { out.add(p); p = path.dirname(p); } }
-  for (const sub of ['Desktop', 'Área de Trabalho', 'Documents', 'Documentos', 'Downloads', 'source', 'repos', 'Projects', 'Projetos', 'dev', 'code']) out.add(path.join(home, sub));
+  for (const sub of ['Desktop', t("Área de Trabalho"), 'Documents', 'Documentos', 'Downloads', 'source', 'repos', 'Projects', 'Projetos', 'dev', 'code']) out.add(path.join(home, sub));
   try { for (const e of fs.readdirSync(home, { withFileTypes: true })) if (e.isDirectory() && /^OneDrive/i.test(e.name)) { out.add(path.join(home, e.name)); out.add(path.join(home, e.name, 'Desktop')); out.add(path.join(home, e.name, 'Documents')); } } catch { /* */ }
   out.add(home);
   for (const d of W.drives()) if (d.type === 'Local' || d.type === 'Removível') out.add(d.root);

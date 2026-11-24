@@ -9,47 +9,48 @@ import { Page, useApp } from '../lib/store';
 import { cc, isMac } from '../lib/api';
 import { fmtSize, baseName } from '../lib/format';
 import { Button, Checkbox, cx, Dropdown, Modal, ProgressBar } from './ui';
+import { t as tr, LOCALE } from '../lib/i18n';
 
 const NAV: { group: string; items: { page: Page; label: string; icon: React.ReactNode; needsScan?: boolean }[] }[] = [
   { group: '', items: [
-    { page: 'overview', label: 'Visão geral', icon: <LayoutDashboard size={17} /> },
+    { page: 'overview', label: tr("Visão geral"), icon: <LayoutDashboard size={17} /> },
   ] },
   {
     group: 'Análise de disco', items: [
-      { page: 'explorer', label: 'Explorador', icon: <FolderTree size={17} />, needsScan: true },
-      { page: 'visual', label: 'Visualizações', icon: <LayoutGrid size={17} />, needsScan: true },
-      { page: 'types', label: 'Tipos de arquivo', icon: <FileType2 size={17} />, needsScan: true },
-      { page: 'age', label: 'Idade dos arquivos', icon: <CalendarClock size={17} />, needsScan: true },
-      { page: 'owners', label: 'Proprietários', icon: <Users size={17} />, needsScan: true },
-      { page: 'top', label: 'Maiores arquivos', icon: <ArrowDownWideNarrow size={17} />, needsScan: true },
-      { page: 'duplicates', label: 'Duplicados', icon: <Copy size={17} />, needsScan: true },
-      { page: 'search', label: 'Pesquisa avançada', icon: <Search size={17} />, needsScan: true },
-      { page: 'history', label: 'Histórico e comparação', icon: <History size={17} /> },
+      { page: 'explorer', label: tr("Explorador"), icon: <FolderTree size={17} />, needsScan: true },
+      { page: 'visual', label: tr("Visualizações"), icon: <LayoutGrid size={17} />, needsScan: true },
+      { page: 'types', label: tr("Tipos de arquivo"), icon: <FileType2 size={17} />, needsScan: true },
+      { page: 'age', label: tr("Idade dos arquivos"), icon: <CalendarClock size={17} />, needsScan: true },
+      { page: 'owners', label: tr("Proprietários"), icon: <Users size={17} />, needsScan: true },
+      { page: 'top', label: tr("Maiores arquivos"), icon: <ArrowDownWideNarrow size={17} />, needsScan: true },
+      { page: 'duplicates', label: tr("Duplicados"), icon: <Copy size={17} />, needsScan: true },
+      { page: 'search', label: tr("Pesquisa avançada"), icon: <Search size={17} />, needsScan: true },
+      { page: 'history', label: tr("Histórico e comparação"), icon: <History size={17} /> },
     ],
   },
   {
     group: 'Manutenção', items: [
-      { page: 'smartcare', label: 'Cuidados Inteligentes', icon: <HeartPulse size={17} /> },
-      { page: 'cleanup', label: 'Limpeza', icon: <Sparkles size={17} /> },
-      { page: 'clutter', label: 'Acúmulos', icon: <Layers size={17} /> },
-      { page: 'performance', label: 'Desempenho', icon: <Gauge size={17} /> },
-      { page: 'protection', label: 'Proteção', icon: <Shield size={17} /> },
-      { page: 'repairs', label: isMac ? 'Reparos' : 'Registro', icon: <Wrench size={17} /> },
-      { page: 'browsers', label: 'Navegadores', icon: <Globe size={17} /> },
-      { page: 'appdata', label: isMac ? 'Dados de apps' : 'AppData', icon: <FolderCog size={17} /> },
-      { page: 'game', label: 'Modo Jogo', icon: <Gamepad2 size={17} /> },
-      { page: 'activity', label: 'Atividades', icon: <Activity size={17} /> },
+      { page: 'smartcare', label: tr("Cuidados Inteligentes"), icon: <HeartPulse size={17} /> },
+      { page: 'cleanup', label: tr("Limpeza"), icon: <Sparkles size={17} /> },
+      { page: 'clutter', label: tr("Acúmulos"), icon: <Layers size={17} /> },
+      { page: 'performance', label: tr("Desempenho"), icon: <Gauge size={17} /> },
+      { page: 'protection', label: tr("Proteção"), icon: <Shield size={17} /> },
+      { page: 'repairs', label: isMac ? tr("Reparos") : tr("Registro"), icon: <Wrench size={17} /> },
+      { page: 'browsers', label: tr("Navegadores"), icon: <Globe size={17} /> },
+      { page: 'appdata', label: isMac ? tr("Dados de apps") : tr("AppData"), icon: <FolderCog size={17} /> },
+      { page: 'game', label: tr("Modo Jogo"), icon: <Gamepad2 size={17} /> },
+      { page: 'activity', label: tr("Atividades"), icon: <Activity size={17} /> },
     ],
   },
   {
     group: 'Hardware', items: [
-      { page: 'hardware', label: 'Monitor de hardware', icon: <CircuitBoard size={17} /> },
+      { page: 'hardware', label: tr("Monitor de hardware"), icon: <CircuitBoard size={17} /> },
     ],
   },
   {
     group: 'Aplicativos', items: [
-      { page: 'discover', label: 'Descoberta', icon: <Radar size={17} /> },
-      { page: 'uninstall', label: 'Desinstalador', icon: <PackageX size={17} /> },
+      { page: 'discover', label: tr("Descoberta"), icon: <Radar size={17} /> },
+      { page: 'uninstall', label: tr("Desinstalador"), icon: <PackageX size={17} /> },
     ],
   },
 ];
@@ -67,7 +68,7 @@ export function Sidebar() {
         {NAV.map((g, gi) => (
           <div key={gi} className={gi ? 'mt-4' : ''}>
             {g.group && (
-              <div className={cx('mb-1 h-5 px-2.5 text-[11px] font-medium uppercase tracking-wide text-faint transition-opacity duration-200 whitespace-nowrap', collapsed && 'opacity-0')}>{g.group}</div>
+              <div className={cx('mb-1 h-5 px-2.5 text-[11px] font-medium uppercase tracking-wide text-faint transition-opacity duration-200 whitespace-nowrap', collapsed && 'opacity-0')}>{tr(g.group)}</div>
             )}
             {g.items.map((it) => {
               const on = page === it.page;
@@ -87,8 +88,8 @@ export function Sidebar() {
                   </span>
                   <span className={cx('truncate whitespace-nowrap transition-opacity duration-200', collapsed && 'opacity-0')}>{it.label}</span>
                   {busyPages.has(it.page) && !collapsed
-                    ? <span className="ml-auto flex shrink-0 items-center" title={running[it.page]?.label || 'Em andamento'}><span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent" /></span></span>
-                    : it.needsScan && !active && !collapsed && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-line-strong" title="Requer uma varredura" />}
+                    ? <span className="ml-auto flex shrink-0 items-center" title={running[it.page]?.label || tr("Em andamento")}><span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent" /></span></span>
+                    : it.needsScan && !active && !collapsed && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-line-strong" title={tr("Requer uma varredura")} />}
                 </button>
               );
             })}
@@ -98,19 +99,19 @@ export function Sidebar() {
       <div className="relative overflow-hidden border-t border-[color-mix(in_srgb,var(--line)_80%,transparent)] px-2 py-2">
         <button
           onClick={() => go('settings')}
-          title={collapsed ? 'Configurações' : undefined}
+          title={collapsed ? tr("Configurações") : undefined}
           className={cx('side-item mb-0.5 flex h-9 w-full items-center gap-2.5 overflow-hidden rounded-[10px] px-2.5 text-[13px]', page === 'settings' ? 'on text-fg font-medium' : 'text-muted hover:bg-[var(--hover)] hover:text-fg')}
         >
           <Cog size={17} className="side-icon shrink-0" />
-          <span className={cx('truncate whitespace-nowrap transition-opacity duration-200', collapsed && 'opacity-0')}>Configurações</span>
+          <span className={cx('truncate whitespace-nowrap transition-opacity duration-200', collapsed && 'opacity-0')}>{tr("Configurações")}</span>
         </button>
         <button
           onClick={() => setSettings({ sidebarCollapsed: !collapsed })}
-          title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+          title={collapsed ? tr("Expandir menu") : tr("Recolher menu")}
           className="side-item flex h-9 w-full items-center gap-2.5 overflow-hidden rounded-[10px] px-2.5 text-[13px] text-muted hover:bg-[var(--hover)] hover:text-fg"
         >
           {collapsed ? <PanelLeftOpen size={17} className="shrink-0" /> : <PanelLeftClose size={17} className="shrink-0" />}
-          <span className={cx('truncate whitespace-nowrap transition-opacity duration-200', collapsed && 'opacity-0')}>Recolher menu</span>
+          <span className={cx('truncate whitespace-nowrap transition-opacity duration-200', collapsed && 'opacity-0')}>{tr("Recolher menu")}</span>
         </button>
       </div>
     </aside>
@@ -139,10 +140,10 @@ export function TopBar() {
     <header className="drag relative z-10 flex h-10 shrink-0 items-center" style={isMac ? { paddingLeft: 84, paddingRight: 12 } : { paddingLeft: 12, paddingRight: 150 }}>
       <div className="flex items-center gap-2 pr-3">
         <img src="./icon.png" className="h-5 w-5" alt="" />
-        <span className="text-[13px] font-semibold tracking-tight text-fg">CleanCode</span>
+        <span className="text-[13px] font-semibold tracking-tight text-fg">{tr("CleanCode")}</span>
         <div className="no-drag ml-1 flex items-center">
-          <button className="rounded p-1 text-muted hover:bg-[var(--hover)] hover:text-fg disabled:opacity-30 disabled:hover:bg-transparent" disabled={!canBack} onClick={navBack} title={isMac ? 'Voltar (⌘[)' : 'Voltar (Alt+←)'}><ChevronLeft size={16} /></button>
-          <button className="rounded p-1 text-muted hover:bg-[var(--hover)] hover:text-fg disabled:opacity-30 disabled:hover:bg-transparent" disabled={!canForward} onClick={navForward} title={isMac ? 'Avançar (⌘])' : 'Avançar (Alt+→)'}><ChevronRight size={16} /></button>
+          <button className="rounded p-1 text-muted hover:bg-[var(--hover)] hover:text-fg disabled:opacity-30 disabled:hover:bg-transparent" disabled={!canBack} onClick={navBack} title={isMac ? tr("Voltar (⌘[)") : tr("Voltar (Alt+←)")}><ChevronLeft size={16} /></button>
+          <button className="rounded p-1 text-muted hover:bg-[var(--hover)] hover:text-fg disabled:opacity-30 disabled:hover:bg-transparent" disabled={!canForward} onClick={navForward} title={isMac ? tr("Avançar (⌘])") : tr("Avançar (Alt+→)")}><ChevronRight size={16} /></button>
         </div>
       </div>
       {/* o contêiner continua arrastável; só as abas e botões são "no-drag" */}
@@ -161,12 +162,12 @@ export function TopBar() {
               {scanning ? <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-accent" /> : <HardDrive size={13} className="shrink-0" />}
               <span className="truncate">{baseName(s.root) || s.root}</span>
               {s.progress && <span className="text-faint tnum">{fmtSize(s.progress.size, 'auto', 0)}</span>}
-              <button className="ml-0.5 rounded p-0.5 opacity-0 transition-opacity hover:bg-line group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); closeScan(s.id); }} title="Fechar varredura"><X size={12} /></button>
+              <button className="ml-0.5 rounded p-0.5 opacity-0 transition-opacity hover:bg-line group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); closeScan(s.id); }} title={tr("Fechar varredura")}><X size={12} /></button>
             </div>
           );
         })}
         <div ref={addRef} className="relative shrink-0">
-          <button onClick={() => setAddOpen((o) => !o)} title="Analisar um disco ou uma pasta" className={cx('flex h-7 w-7 items-center justify-center rounded-md transition-colors', addOpen ? 'bg-hover text-fg' : 'text-muted hover:bg-hover hover:text-fg')}><Plus size={15} /></button>
+          <button onClick={() => setAddOpen((o) => !o)} title={tr("Analisar um disco ou uma pasta")} className={cx('flex h-7 w-7 items-center justify-center rounded-md transition-colors', addOpen ? 'bg-hover text-fg' : 'text-muted hover:bg-hover hover:text-fg')}><Plus size={15} /></button>
         </div>
         </div>
         <div className="h-full min-w-[40px] flex-1" />
@@ -175,20 +176,20 @@ export function TopBar() {
         const r = addRef.current!.getBoundingClientRect();
         return (
           <div className="no-drag anim-pop fixed z-[70] w-[300px] rounded-xl border border-line bg-surface p-1.5 shadow-2xl" style={{ left: Math.max(8, r.left - 8), top: r.bottom + 6 }} onMouseDown={(e) => e.stopPropagation()}>
-            <div className="px-2 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">Analisar um disco</div>
-            {drives === null ? <div className="flex items-center gap-2 px-2 py-2 text-[12px] text-muted"><Loader2 size={13} className="animate-spin" />Lendo unidades…</div> : drives.map((d) => (
+            <div className="px-2 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">{tr("Analisar um disco")}</div>
+            {drives === null ? <div className="flex items-center gap-2 px-2 py-2 text-[12px] text-muted"><Loader2 size={13} className="animate-spin" />{tr("Lendo unidades…")}</div> : drives.map((d) => (
               <button key={d.root} onClick={() => scanDrive(d.root)} className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left hover:bg-hover">
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent"><HardDrive size={15} /></span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[13px] font-medium">{d.label || d.root} <span className="font-normal text-muted">{d.root}</span></span>
                   <span className="mt-1 block h-1 overflow-hidden rounded-full bg-line"><span className="block h-full rounded-full bg-accent" style={{ width: `${Math.round((d.used / d.total) * 100)}%` }} /></span>
-                  <span className="mt-0.5 block text-[11px] text-muted tnum">{fmtSize(d.free, 'auto', 0)} livres de {fmtSize(d.total, 'auto', 0)}</span>
+                  <span className="mt-0.5 block text-[11px] text-muted tnum">{fmtSize(d.free, 'auto', 0)} {tr("livres de")} {fmtSize(d.total, 'auto', 0)}</span>
                 </span>
               </button>
             ))}
             <div className="my-1 h-px bg-line" />
             <button onClick={() => { setAddOpen(false); pick(); }} className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-[13px] font-medium hover:bg-hover">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-hover text-muted"><FolderOpen size={15} /></span>Escolher uma pasta…
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-hover text-muted"><FolderOpen size={15} /></span>{tr("Escolher uma pasta…")}
             </button>
           </div>
         );
@@ -198,12 +199,12 @@ export function TopBar() {
         <UpdateCheckButton />
         <ActivityCenter />
         {info?.canElevate && (info.isAdmin ? (
-          <span title="Executando como administrador" className="flex h-7 items-center gap-1 rounded-md px-2 text-xs text-accent"><ShieldCheck size={14} /> Admin</span>
+          <span title={tr("Executando como administrador")} className="flex h-7 items-center gap-1 rounded-md px-2 text-xs text-accent"><ShieldCheck size={14} /> {tr("Admin")}</span>
         ) : (
-          <button title="Abre o CleanCode de novo como administrador, para que ele consiga ler todas as pastas" onClick={async () => { toast('Solicitando elevação…', 'info'); await cc.restartAdmin(); }} className="flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted transition-colors hover:bg-hover hover:text-fg"><ShieldAlert size={14} /> Usuário</button>
+          <button title={tr("Abre o CleanCode de novo como administrador, para que ele consiga ler todas as pastas")} onClick={async () => { toast(tr("Pedindo permissão de administrador…"), 'info'); await cc.restartAdmin(); }} className="flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted transition-colors hover:bg-hover hover:text-fg"><ShieldAlert size={14} /> {tr("Usuário")}</button>
         ))}
         <button
-          title={`Tema: ${theme === 'system' ? 'sistema' : theme === 'light' ? 'claro' : 'escuro'}`}
+          title={tr("Tema: {0}", theme === 'system' ? 'sistema' : theme === 'light' ? 'claro' : 'escuro')}
           onClick={() => setSettings({ theme: nextTheme as any })}
           className="flex h-7 w-7 items-center justify-center rounded-md text-muted transition-colors hover:bg-hover hover:text-fg"
         >
@@ -224,15 +225,15 @@ function UpdateCheckButton() {
     setChecking(true);
     try {
       const r = await cc.updateCheck();
-      if ((r.status === 'available' || r.status === 'ready') && r.info) toast(`CleanCode ${r.info.version} disponível`, 'ok');
-      else if (r.status === 'error') toast(`Não foi possível verificar: ${r.error || 'sem conexão'}`, 'error');
-      else toast(`Você já está na versão mais recente (${info?.version || ''})`, 'ok');
-    } catch (e: any) { toast(`Não foi possível verificar: ${e?.message || e}`, 'error'); }
+      if ((r.status === 'available' || r.status === 'ready') && r.info) toast(tr("O CleanCode {0} está disponível", r.info.version), 'ok');
+      else if (r.status === 'error') toast(tr("Não foi possível verificar: {0}", r.error || 'sem conexão'), 'error');
+      else toast(tr("Você já está na versão mais recente ({0})", info?.version || ''), 'ok');
+    } catch (e: any) { toast(tr("Não foi possível verificar: {0}", e?.message || e), 'error'); }
     finally { setChecking(false); }
   };
   const busy = checking || update.status === 'checking';
   return (
-    <button onClick={check} disabled={busy} title="Buscar atualização"
+    <button onClick={check} disabled={busy} title={tr("Buscar atualização")}
       className="flex h-7 items-center gap-1.5 rounded-md border border-line px-2 text-xs text-muted transition-colors hover:bg-hover hover:text-fg disabled:opacity-80">
       <RefreshCw size={13} className={busy ? 'animate-spin' : ''} />
       <span className="tnum">v{info?.version || '…'}</span>
@@ -244,15 +245,15 @@ function UpdatePill() {
   const { update, installUpdate } = useApp();
   if (update.status === 'downloading') {
     const p = update.total ? (update.done || 0) / update.total : undefined;
-    return <span className="flex h-7 items-center gap-1.5 rounded-md bg-accent-soft px-2 text-xs text-accent"><Loader2 size={14} className="animate-spin" /> Baixando atualização{p !== undefined ? ` ${Math.round(p * 100)}%` : '…'}</span>;
+    return <span className="flex h-7 items-center gap-1.5 rounded-md bg-accent-soft px-2 text-xs text-accent"><Loader2 size={14} className="animate-spin" /> {tr("Baixando atualização")}{p !== undefined ? ` ${Math.round(p * 100)}%` : '…'}</span>;
   }
-  if (update.status === 'installing') return <span className="flex h-7 items-center gap-1.5 rounded-md bg-accent-soft px-2 text-xs text-accent"><Loader2 size={14} className="animate-spin" /> Instalando. O app vai abrir de novo sozinho.</span>;
+  if (update.status === 'installing') return <span className="flex h-7 items-center gap-1.5 rounded-md bg-accent-soft px-2 text-xs text-accent"><Loader2 size={14} className="animate-spin" /> {tr("Instalando. O app vai abrir de novo sozinho.")}</span>;
   if ((update.status !== 'available' && update.status !== 'ready') || !update.info) return null;
   const ready = update.status === 'ready';
   return (
-    <button onClick={installUpdate} title={ready ? 'A versão nova já foi baixada. Clique para instalar agora. Se preferir, ela será instalada sozinha quando você fechar a janela.' : 'Clique para ver as novidades e atualizar o app.'}
+    <button onClick={installUpdate} title={ready ? tr("A versão nova já foi baixada. Clique para instalar agora. Se preferir, ela será instalada sozinha quando você fechar a janela.") : tr("Clique para ver as novidades e atualizar o app.")}
       className="flex h-7 items-center gap-1.5 rounded-md bg-accent px-2.5 text-xs font-medium text-accent-fg transition-all hover:brightness-110 anim-fade">
-      <ArrowUpCircle size={14} /> {ready ? `Reiniciar para atualizar (${update.info.version})` : `Atualizar para ${update.info.version}`}
+      <ArrowUpCircle size={14} /> {ready ? tr("Reiniciar para atualizar ({0})", update.info.version) : tr("Atualizar para {0}", update.info.version)}
     </button>
   );
 }
@@ -279,26 +280,26 @@ export function ActivityCenter() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((o) => !o)}
-        title="Atividades em segundo plano"
+        title={tr("Atividades em segundo plano")}
         className={cx('flex h-7 items-center gap-1.5 rounded-md px-2 text-xs transition-colors', nRunning ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-fg')}
       >
         {nRunning ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
-        {nRunning ? `${nRunning} em andamento` : 'Atividades'}
+        {nRunning ? tr("{0} em andamento", nRunning) : tr("Atividades")}
       </button>
       {open && (
         <div className="absolute right-0 top-9 z-50 w-[380px] rounded-lg border border-line bg-surface p-2 shadow-2xl anim-pop">
           <div className="flex items-center justify-between px-2 pb-1.5 pt-1">
-            <span className="text-xs font-medium text-muted">Atividades</span>
-            {finished.length > 0 && <button onClick={clearFinishedTasks} className="text-[11px] text-muted hover:text-fg">Limpar concluídas</button>}
+            <span className="text-xs font-medium text-muted">{tr("Atividades")}</span>
+            {finished.length > 0 && <button onClick={clearFinishedTasks} className="text-[11px] text-muted hover:text-fg">{tr("Limpar concluídas")}</button>}
           </div>
           {runs.map(([p, r]) => (
             <div key={'p' + p} className="rounded-md px-2 py-2 hover:bg-hover">
               <div className="flex items-center gap-2 text-[13px]">
                 <span className="relative flex h-2.5 w-2.5 shrink-0"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent" /></span>
                 <span className="flex-1 truncate" title={r.label}>{r.label}</span>
-                <button className="text-xs text-accent hover:underline" onClick={() => { go(p as any); setOpen(false); }}>Abrir</button>
+                <button className="text-xs text-accent hover:underline" onClick={() => { go(p as any); setOpen(false); }}>{tr("Abrir")}</button>
               </div>
-              <div className="mt-1 pl-[18px] text-[11px] text-muted">em andamento há {Math.max(1, Math.round((Date.now() - r.since) / 1000))} s</div>
+              <div className="mt-1 pl-[18px] text-[11px] text-muted">{tr("em andamento há")} {Math.max(1, Math.round((Date.now() - r.since) / 1000))} s</div>
               <div className="mt-1.5 pl-[18px]"><ProgressBar indeterminate className="h-1" /></div>
             </div>
           ))}
@@ -306,10 +307,10 @@ export function ActivityCenter() {
             <div key={'s' + s.id} className="rounded-md px-2 py-2 hover:bg-hover">
               <div className="flex items-center gap-2 text-[13px]">
                 <Loader2 size={14} className="shrink-0 animate-spin text-accent" />
-                <span className="flex-1 truncate">Varrendo {s.root}</span>
-                <button className="text-xs text-accent hover:underline" onClick={() => { setActive(s.id); go('explorer'); setOpen(false); }}>Abrir</button>
+                <span className="flex-1 truncate">{tr("Varrendo")} {s.root}</span>
+                <button className="text-xs text-accent hover:underline" onClick={() => { setActive(s.id); go('explorer'); setOpen(false); }}>{tr("Abrir")}</button>
               </div>
-              <div className="mt-1 pl-6 text-[11px] text-muted tnum">{(s.progress?.files || 0).toLocaleString('pt-BR')} arquivos · {fmtSize(s.progress?.size)}</div>
+              <div className="mt-1 pl-6 text-[11px] text-muted tnum">{(s.progress?.files || 0).toLocaleString(LOCALE)} {tr("arquivos ·")} {fmtSize(s.progress?.size)}</div>
               <div className="mt-1.5 pl-6"><ProgressBar indeterminate className="h-1" /></div>
             </div>
           ))}
@@ -318,10 +319,10 @@ export function ActivityCenter() {
               <div className="flex items-center gap-2 text-[13px]">
                 <Loader2 size={14} className="shrink-0 animate-spin text-accent" />
                 <span className="flex-1 truncate" title={t.label}>{t.label}</span>
-                <button className="text-xs text-accent hover:underline" onClick={() => { if (t.scanId) setActive(t.scanId); if (t.nodeId !== undefined) select(t.nodeId); go(t.page); setOpen(false); }}>Abrir</button>
-                {t.kind !== 'uninstall' && <button className="text-xs text-muted hover:text-danger" onClick={() => cancelTask(t.key)}>Cancelar</button>}
+                <button className="text-xs text-accent hover:underline" onClick={() => { if (t.scanId) setActive(t.scanId); if (t.nodeId !== undefined) select(t.nodeId); go(t.page); setOpen(false); }}>{tr("Abrir")}</button>
+                {t.kind !== 'uninstall' && <button className="text-xs text-muted hover:text-danger" onClick={() => cancelTask(t.key)}>{tr("Cancelar")}</button>}
               </div>
-              <div className="mt-1 pl-6 text-[11px] text-muted tnum">{t.progress ? `${t.progress.phase} · ${t.progress.done.toLocaleString('pt-BR')} de ${t.progress.total.toLocaleString('pt-BR')}` : 'Iniciando…'}</div>
+              <div className="mt-1 pl-6 text-[11px] text-muted tnum">{t.progress ? tr("{0} · {1} de {2}", tr(t.progress.phase), t.progress.done.toLocaleString(LOCALE), t.progress.total.toLocaleString(LOCALE)) : tr("Iniciando…")}</div>
               <div className="mt-1.5 pl-6"><ProgressBar value={pct(t.progress)} indeterminate={pct(t.progress) === undefined} className="h-1" /></div>
             </div>
           ))}
@@ -329,7 +330,7 @@ export function ActivityCenter() {
             <button key={t.key} onClick={() => { if (t.scanId) setActive(t.scanId); if (t.nodeId !== undefined) select(t.nodeId); go(t.page); setOpen(false); }} className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[13px] hover:bg-hover">
               {t.status === 'done' ? <CheckCircle2 size={14} className="shrink-0 text-accent" /> : <AlertCircle size={14} className={cx('shrink-0', t.status === 'cancelled' ? 'text-muted' : 'text-danger')} />}
               <span className="flex-1 truncate" title={t.label}>{t.label}</span>
-              <span className="text-[11px] text-faint">{t.status === 'done' ? 'concluída' : t.status === 'cancelled' ? 'cancelada' : 'falhou'}</span>
+              <span className="text-[11px] text-faint">{t.status === 'done' ? tr("concluída") : t.status === 'cancelled' ? 'cancelada' : 'falhou'}</span>
             </button>
           ))}
         </div>
@@ -366,12 +367,12 @@ export function ConfirmDialog() {
       title={s.title}
       width={560}
       footer={<>
-        <Button variant="outline" onClick={close}>Cancelar</Button>
+        <Button variant="outline" onClick={close}>{tr("Cancelar")}</Button>
         <Button
           variant={s.danger ? 'danger' : 'primary'}
           disabled={!!s.requireCheck && !check}
           onClick={() => s.resolve({ ok: true, option: opt })}
-        >{s.confirmLabel || 'Confirmar'}</Button>
+        >{s.confirmLabel || tr("Confirmar")}</Button>
       </>}
     >
       {s.message && <div className="text-[13px] leading-relaxed text-muted">{s.message}</div>}

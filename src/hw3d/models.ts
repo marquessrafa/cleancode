@@ -2,6 +2,7 @@
 // placa de vídeo, processador, memória RAM, placa-mãe, SSD, energia (fonte ou bateria),
 // PC montado em gabinete de vidro, MacBook e notebook Windows. Cada modelo se anima com os dados ao vivo.
 import { THREE, Model, Live, mat, rbox, box, cyl, extrude, slab, canvasTex, pcbTexture, labelTexture, fan, ledStrip, ledRing, tempColor } from './core';
+import { t as tr, LOCALE } from '../lib/i18n';
 
 const accentHex = (l: Live) => '#' + l.accent.getHexString();
 
@@ -78,7 +79,7 @@ export function cpuModel(opts: { name?: string; sub?: string; cores?: number } =
   s1.moveTo(-a, -b); s1.lineTo(a, -b); s1.lineTo(a, -b * 0.35); s1.lineTo(a + n * 0.4, -b * 0.25); s1.lineTo(a + n * 0.4, b * 0.25); s1.lineTo(a, b * 0.35); s1.lineTo(a, b); s1.lineTo(-a, b); s1.lineTo(-a, b * 0.35); s1.lineTo(-a - n * 0.4, b * 0.25); s1.lineTo(-a - n * 0.4, -b * 0.25); s1.lineTo(-a, -b * 0.35); s1.lineTo(-a, -b);
   const lower = new THREE.Mesh(new THREE.ExtrudeGeometry(s1, { depth: 0.012, bevelEnabled: true, bevelThickness: 0.003, bevelSize: 0.004, bevelSegments: 3 }), metal);
   lower.rotation.x = -Math.PI / 2; lower.position.y = 0.012; lower.castShadow = true; g.add(lower);
-  const tex = labelTexture([{ text: (opts.name || 'PROCESSADOR').toUpperCase().slice(0, 22), size: 62 }, { text: opts.sub || '', size: 54 }, { text: opts.cores ? `${opts.cores} NÚCLEOS` : '', size: 48, alpha: 0.6 }], 1024, 900);
+  const tex = labelTexture([{ text: (opts.name || 'PROCESSADOR').toUpperCase().slice(0, 22), size: 62 }, { text: opts.sub || '', size: 54 }, { text: opts.cores ? tr("{0} NÚCLEOS", opts.cores) : '', size: 48, alpha: 0.6 }], 1024, 900);
   const topMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: tex, metalness: 0.95, roughness: 0.36 });
   const upper = slab(W * 0.66, D * 0.7, 0.012, 0.03, metal);
   upper.rotation.x = -Math.PI / 2; upper.position.y = 0.032; g.add(upper);
@@ -252,18 +253,18 @@ export function ssdModel(opts: { kind?: 'nvme' | 'sata' | 'hdd' | 'usb'; label?:
     for (let i = 0; i < 16; i++) { const f = box(L * 0.8, 0.012, 0.003, mat.metal(0x8b9199, 0.3)); f.position.set(-0.01, 0.045, -W * 0.42 + i * (W * 0.84 / 15)); g.add(f); }
     activity = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: new THREE.Color(0x3ddc97), emissiveIntensity: 2 });
     const bar = box(L * 0.78, 0.004, 0.006, activity); bar.position.set(-0.01, 0.04, W * 0.49); g.add(bar);
-    const lbl = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 0.05), new THREE.MeshStandardMaterial({ map: labelTexture([{ text: (opts.label || 'NVMe SSD').toUpperCase().slice(0, 18), size: 70 }, { text: 'M.2 2280 · PCIe', size: 54, alpha: 0.6 }], 1024, 340, '#1d2026', '#cfd5dd'), metalness: 0.5, roughness: 0.4 }));
+    const lbl = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 0.05), new THREE.MeshStandardMaterial({ map: labelTexture([{ text: (opts.label || 'NVMe SSD').toUpperCase().slice(0, 18), size: 70 }, { text: tr("M.2 2280 · PCIe"), size: 54, alpha: 0.6 }], 1024, 340, '#1d2026', '#cfd5dd'), metalness: 0.5, roughness: 0.4 }));
     lbl.rotation.x = -Math.PI / 2; lbl.position.set(-0.05, 0.0525, 0); g.add(lbl);
   } else if (kind === 'hdd') {
     const body = rbox(0.4, 0.1, 0.58, 0.01, mat.metal(0x8f959d, 0.4)); body.position.y = 0.05; g.add(body);
-    const top = new THREE.Mesh(new THREE.PlaneGeometry(0.36, 0.5), new THREE.MeshStandardMaterial({ map: labelTexture([{ text: (opts.label || 'DISCO RÍGIDO').toUpperCase().slice(0, 18), size: 70 }, { text: 'SATA · 3,5"', size: 54, alpha: 0.6 }], 1024, 1400, '#d9dde2', '#2c3036'), metalness: 0.6, roughness: 0.4 }));
+    const top = new THREE.Mesh(new THREE.PlaneGeometry(0.36, 0.5), new THREE.MeshStandardMaterial({ map: labelTexture([{ text: (opts.label || 'DISCO RÍGIDO').toUpperCase().slice(0, 18), size: 70 }, { text: tr("SATA · 3,5\""), size: 54, alpha: 0.6 }], 1024, 1400, '#d9dde2', '#2c3036'), metalness: 0.6, roughness: 0.4 }));
     top.rotation.x = -Math.PI / 2; top.position.y = 0.101; g.add(top);
     activity = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: new THREE.Color(0x3ddc97), emissiveIntensity: 2 });
   } else {
     const body = rbox(0.3, 0.028, 0.42, 0.012, kind === 'usb' ? mat.dark(0x1d2026, 0.4) : mat.metal(0x2f333a, 0.35)); body.position.y = 0.014; g.add(body);
     activity = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: new THREE.Color(0x3ddc97), emissiveIntensity: 2 });
     const stripe = box(0.3, 0.004, 0.006, activity); stripe.position.set(0, 0.03, 0.21); g.add(stripe);
-    const top = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.34), new THREE.MeshStandardMaterial({ map: labelTexture([{ text: (opts.label || (kind === 'usb' ? 'DISCO EXTERNO' : 'SSD SATA')).toUpperCase().slice(0, 16), size: 72 }, { text: kind === 'usb' ? 'USB' : 'SATA · 2,5"', size: 56, alpha: 0.6 }], 1024, 1340, '#22262d', '#d5dbe3'), metalness: 0.4, roughness: 0.4 }));
+    const top = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.34), new THREE.MeshStandardMaterial({ map: labelTexture([{ text: (opts.label || (kind === 'usb' ? 'DISCO EXTERNO' : 'SSD SATA')).toUpperCase().slice(0, 16), size: 72 }, { text: kind === 'usb' ? 'USB' : tr("SATA · 2,5\""), size: 56, alpha: 0.6 }], 1024, 1340, '#22262d', '#d5dbe3'), metalness: 0.4, roughness: 0.4 }));
     top.rotation.x = -Math.PI / 2; top.position.y = 0.0285; g.add(top);
   }
   return { group: g, focus: { distance: 0.95, target: [0, 0.02, 0], height: 0.5 }, update(live, t) { if (activity) { activity.emissive.copy(live.accent); activity.emissiveIntensity = 0.6 + (live.disk ?? 0.2) * 3 * (0.6 + 0.4 * Math.abs(Math.sin(t * 9))); } } };
@@ -457,10 +458,11 @@ function macScreen(accent: string) {
     c.save(); c.strokeStyle = 'rgba(255,255,255,0.92)'; c.lineWidth = 3.2; c.beginPath(); c.arc(34, 19, 9, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.arc(34, 19, 3, 0, Math.PI * 2); c.fill(); c.restore();
     c.font = '700 21px -apple-system, "SF Pro Text", "Segoe UI", sans-serif'; c.fillText('CleanCode', 62, 20);
     c.font = '500 21px -apple-system, "SF Pro Text", "Segoe UI", sans-serif';
-    let x = 186; for (const m of ['Arquivo', 'Editar', 'Visualizar', 'Janela', 'Ajuda']) { c.fillText(m, x, 20); x += c.measureText(m).width + 30; }
+    let x = 186; for (const m of [tr('Arquivo'), tr('Editar'), tr('Visualizar'), tr('Janela'), tr('Ajuda')]) { c.fillText(m, x, 20); x += c.measureText(m).width + 30; }
     // ícones à direita: bateria, Wi-Fi, busca, controles e relógio
-    const now = new Date(); const dias = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
-    const clock = `${dias[now.getDay()]} ${now.getDate()} ${now.toLocaleString('pt-BR', { month: 'short' }).replace('.', '')}  ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const now = new Date();
+    // dia da semana e mês curtos no idioma do app (ex.: "seg 24 nov", "Mon 24 Nov")
+    const clock = `${now.toLocaleString(LOCALE, { weekday: 'short' }).replace('.', '')} ${now.getDate()} ${now.toLocaleString(LOCALE, { month: 'short' }).replace('.', '')}  ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     c.textAlign = 'right'; c.fillText(clock, W - 24, 20); c.textAlign = 'left';
     let rx = W - 24 - c.measureText(clock).width - 36;
     c.strokeStyle = 'rgba(255,255,255,0.9)'; c.lineWidth = 2.4;
@@ -539,7 +541,7 @@ function winScreen(accent: string) {
     const now = new Date();
     c.fillStyle = 'rgba(255,255,255,0.9)'; c.textAlign = 'right'; c.textBaseline = 'middle';
     c.font = '500 17px "Segoe UI", -apple-system, sans-serif'; c.fillText(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`, W - 24, H - 38);
-    c.font = '400 15px "Segoe UI", -apple-system, sans-serif'; c.fillText(now.toLocaleDateString('pt-BR'), W - 24, H - 18);
+    c.font = '400 15px "Segoe UI", -apple-system, sans-serif'; c.fillText(now.toLocaleDateString(LOCALE), W - 24, H - 18);
     c.textAlign = 'left';
     let rx = W - 150; c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 2;
     c.strokeRect(rx, H - 36, 24, 12); c.fillRect(rx + 25, H - 33, 2.5, 6); c.fillRect(rx + 2, H - 34, 16, 8); rx -= 34;      // bateria

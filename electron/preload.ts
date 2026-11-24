@@ -9,7 +9,9 @@ const on = (ch: string, cb: (d: any) => void) => {
 
 contextBridge.exposeInMainWorld('cc', {
   platform: process.platform,
+  lang: ipcRenderer.sendSync('app:lang') as 'pt' | 'en' | 'es',
   info: () => inv('app:info'),
+  relaunch: () => inv('app:relaunch'),
   drives: () => inv('drives:list'),
   metricsSnapshot: () => inv('metrics:snapshot'),
   metricsDetails: (kind: string) => inv('metrics:details', kind),

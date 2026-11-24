@@ -7,6 +7,7 @@ import { execFile } from 'child_process';
 import os from 'os';
 import { TRIM_MEM } from './game';
 import type { PerfApi, StartupItem, MaintenanceTask, ProcInfo } from '../types';
+import { t as tr } from '../../i18n';
 
 function run(cmd: string, args: string[], timeout = 60000): Promise<{ ok: boolean; out: string; err: string }> {
   return new Promise((resolve) => execFile(cmd, args, { encoding: 'utf8', timeout, windowsHide: true, maxBuffer: 16 * 1024 * 1024 }, (e, out, err) => resolve({ ok: !e, out: out || '', err: String(err || e?.message || '') })));
@@ -49,20 +50,20 @@ async function startupItems(): Promise<StartupItem[]> {
 
 async function setStartupItem(item: StartupItem, enabled: boolean) {
   const [hive, sub, name] = (item.location || '').split('|');
-  if (!hive || !sub || !name) return { ok: false, message: 'Item inválido' };
+  if (!hive || !sub || !name) return { ok: false, message: tr("O item não é válido") };
   // mesmo formato do Gerenciador de Tarefas: 12 bytes, o primeiro indica o estado
   const script = `$p=${psq(`${hive}\\${APPROVED}\\${sub}`)}; if(-not (Test-Path -LiteralPath $p)){ New-Item -Path $p -Force | Out-Null }; ` +
     `$b=[byte[]](${enabled ? 2 : 3},0,0,0,0,0,0,0,0,0,0,0); Set-ItemProperty -LiteralPath $p -Name ${psq(name)} -Value $b -Type Binary`;
   const r = hive === 'HKLM:' ? await psAdmin(script, 120000) : await ps(script);
-  return r.ok ? { ok: true, message: enabled ? 'Ativado (vale no próximo login)' : 'Desativado (vale no próximo login)' } : { ok: false, message: /canceled|cancelad/i.test(r.err) ? 'Permissão de administrador negada' : r.err.slice(0, 200) };
+  return r.ok ? { ok: true, message: enabled ? tr("Ativado (vale no próximo login)") : tr("Desativado (vale no próximo login)") } : { ok: false, message: /canceled|cancelad/i.test(r.err) ? tr("Permissão de administrador negada") : r.err.slice(0, 200) };
 }
 
 const TASKS: (MaintenanceTask & { cmd: string })[] = [
-  { id: 'free-ram', name: 'Liberar memória', description: 'Esvazia a memória parada dos programas abertos. Eles recarregam o que precisarem.', admin: false, duration: 'segundos', recommended: true, cmd: TRIM_MEM },
-  { id: 'flush-dns', name: 'Limpar cache de DNS', description: 'Resolve sites que não abrem depois de mudanças de rede ou de DNS.', admin: false, duration: 'segundos', recommended: true, cmd: 'ipconfig /flushdns' },
-  { id: 'optimize', name: 'Otimizar unidades', description: 'Envia TRIM aos SSDs e desfragmenta HDs (o mesmo do "Otimizar unidades" do Windows).', admin: true, duration: 'alguns minutos', recommended: true, cmd: 'Optimize-Volume -DriveLetter $env:SystemDrive[0] -Verbose' },
-  { id: 'sfc', name: 'Reparar arquivos do sistema', description: 'Verifica e corrige arquivos do Windows corrompidos (SFC).', admin: true, duration: '10 a 30 minutos', cmd: 'sfc /scannow' },
-  { id: 'dism', name: 'Reparar imagem do Windows', description: 'Corrige a imagem do sistema usada pelo SFC (DISM /RestoreHealth).', admin: true, duration: '10 a 30 minutos', cmd: 'DISM /Online /Cleanup-Image /RestoreHealth' },
+  { id: 'free-ram', name: tr("Liberar memória"), description: tr("Esvazia a memória parada dos programas abertos. Eles recarregam o que precisarem."), admin: false, duration: 'segundos', recommended: true, cmd: TRIM_MEM },
+  { id: 'flush-dns', name: tr("Limpar cache de DNS"), description: tr("Resolve sites que não abrem depois de mudanças de rede ou de DNS."), admin: false, duration: 'segundos', recommended: true, cmd: 'ipconfig /flushdns' },
+  { id: 'optimize', name: tr("Otimizar unidades"), description: tr("Envia o comando TRIM para os SSDs e desfragmenta os HDs, o mesmo que o \"Otimizar unidades\" do Windows faz."), admin: true, duration: 'alguns minutos', recommended: true, cmd: 'Optimize-Volume -DriveLetter $env:SystemDrive[0] -Verbose' },
+  { id: 'sfc', name: tr("Reparar arquivos do sistema"), description: tr("Verifica e corrige arquivos do Windows corrompidos (SFC)."), admin: true, duration: tr("10 a 30 minutos"), cmd: 'sfc /scannow' },
+  { id: 'dism', name: tr("Reparar imagem do Windows"), description: tr("Corrige a imagem do sistema usada pelo SFC (DISM /RestoreHealth)."), admin: true, duration: tr("10 a 30 minutos"), cmd: 'DISM /Online /Cleanup-Image /RestoreHealth' },
 ];
 
 async function runTasks(ids: string[]) {
@@ -70,7 +71,7 @@ async function runTasks(ids: string[]) {
   const results: { id: string; ok: boolean; message: string }[] = [];
   for (const t of chosen.filter((x) => !x.admin)) {
     const r = await ps(t.cmd);
-    results.push({ id: t.id, ok: r.ok, message: r.ok ? 'Concluído' : r.err.slice(0, 200) });
+    results.push({ id: t.id, ok: r.ok, message: r.ok ? tr("Concluído") : r.err.slice(0, 200) });
   }
   const admin = chosen.filter((x) => x.admin);
   if (admin.length) {
@@ -81,7 +82,7 @@ async function runTasks(ids: string[]) {
     const out = (await ps(`Get-Content ${log} -ErrorAction SilentlyContinue; Remove-Item ${log} -ErrorAction SilentlyContinue`)).out;
     for (const t of admin) {
       const ok = new RegExp(`OK ${t.id}\\b`).test(out);
-      results.push({ id: t.id, ok, message: ok ? 'Concluído' : !r.ok && !out ? 'Permissão de administrador negada' : 'O comando terminou com erro' });
+      results.push({ id: t.id, ok, message: ok ? tr("Concluído") : !r.ok && !out ? tr("Permissão de administrador negada") : tr("O comando terminou com erro") });
     }
   }
   return results;

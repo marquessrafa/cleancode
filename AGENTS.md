@@ -65,14 +65,26 @@ Regras:
 O app em si continua em português do Brasil. Os documentos internos de desenvolvimento
 (`docs/DESENVOLVIMENTO.md`, `docs/MAC-PORT.md` e `docs/PARIDADE.md`) também ficam em português.
 
-## 3. Notas de versão e changelog
+## 3. Idiomas do app
+
+O app funciona em português do Brasil, inglês e espanhol.
+
+- **Como o idioma é escolhido.** O arquivo `electron/lang.ts` decide o idioma assim que o app abre. Primeiro, ele usa a escolha das Configurações (`language`). Se a escolha for "Automático", ele usa o idioma do computador. Se o idioma do computador não for português nem espanhol, ele usa o inglês. Para testar outro idioma, abra o app com a variável `CLEANCODE_LANG=en` ou `CLEANCODE_LANG=es`.
+- **Como escrever um texto novo.** Todo texto que aparece na tela passa pela função `t()`. Nas janelas, importe de `src/lib/i18n`. No processo principal, importe de `electron/i18n`. O texto em português é a própria chave, por exemplo `t('Limpar a Lixeira')`.
+- **Valores que mudam.** Use `{0}`, `{1}` e assim por diante dentro do texto, e passe os valores depois: `t('{0} itens encontrados', n)`. Não monte frases juntando pedaços, porque a ordem das palavras muda de um idioma para outro.
+- **Traduções.** Para cada texto novo, adicione a tradução em `src/locales/en.json` e em `src/locales/es.json`, no mesmo commit. Quando um texto não tem tradução, o app mostra o texto em português.
+- **Números e datas.** Use `LOCALE` (exportado pelos mesmos arquivos) em `toLocaleString` e `toLocaleDateString`. Não escreva `'pt-BR'` fixo.
+- **Textos que vêm do processo principal.** Quando uma tela mostra um rótulo que veio pronto do processo principal (por exemplo, o nome de um grupo ou de um campo), passe esse rótulo por `t()` na hora de mostrar.
+- **Novidades das versões.** O changelog continua em português. O script `scripts/make-latest.cjs` gera as versões em inglês e em espanhol no feed de atualização (`notes_en` e `notes_es`), a partir dos dicionários. Por isso, traduza também os itens novos do changelog nos dicionários.
+
+## 4. Notas de versão e changelog
 
 - Cada item do changelog (`src/lib/changelog.ts`) é uma frase completa que diz o que mudou para a
   pessoa que usa o app. Esses itens aparecem na janela de novidades e no popup de atualização.
 - As notas de versão (`release-notes/<versão>.md`) seguem o mesmo estilo. Explique primeiro o que
   mudou para quem usa o app. Depois, se for útil, explique como a mudança funciona por dentro.
 
-## 4. Privacidade
+## 5. Privacidade
 
 - Não coloque nome de usuário, e-mail, nome de rede Wi-Fi, endereços IP ou nomes de projetos pessoais
   em capturas de tela, commits ou documentos públicos.

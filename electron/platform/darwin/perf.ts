@@ -9,6 +9,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import type { PerfApi, StartupItem, MaintenanceTask, ProcInfo } from '../types';
+import { t as tr } from '../../i18n';
 
 const UID = typeof process.getuid === 'function' ? process.getuid() : 501;
 function run(cmd: string, args: string[], timeout = 20000): Promise<{ ok: boolean; out: string; err: string }> {
@@ -68,7 +69,7 @@ async function startupItems(): Promise<StartupItem[]> {
     const half = Math.floor(parts.length / 2);
     for (let i = 0; i < half; i++) {
       const p = parts[half + i] && parts[half + i] !== 'missing value' ? parts[half + i] : '';
-      out.push({ id: `login:${parts[i]}`, name: parts[i], detail: p || 'Registrado pelo próprio app', kind: 'login', scope: 'user', enabled: true, control: 'remove', location: p || undefined });
+      out.push({ id: `login:${parts[i]}`, name: parts[i], detail: p || tr("Registrado pelo próprio app"), kind: 'login', scope: 'user', enabled: true, control: 'remove', location: p || undefined });
     }
   }
   const order = { login: 0, agent: 1, daemon: 2, run: 3, folder: 4 };
@@ -77,9 +78,9 @@ async function startupItems(): Promise<StartupItem[]> {
 
 async function setStartupItem(item: StartupItem, enabled: boolean): Promise<{ ok: boolean; message: string }> {
   if (item.kind === 'login') {
-    if (enabled) return { ok: false, message: 'Para adicionar de novo, use Ajustes do Sistema › Geral › Itens de Início' };
+    if (enabled) return { ok: false, message: tr("Para adicionar de novo, use Ajustes do Sistema › Geral › Itens de Início") };
     const r = await run('/usr/bin/osascript', ['-e', `tell application "System Events" to delete login item ${asq(item.name)}`]);
-    return r.ok ? { ok: true, message: 'Removido dos itens de início' } : { ok: false, message: r.err.slice(0, 200) };
+    return r.ok ? { ok: true, message: tr("Removido dos itens de início") } : { ok: false, message: r.err.slice(0, 200) };
   }
   const label = item.name, file = item.location || '';
   if (item.kind === 'daemon') {
@@ -87,24 +88,24 @@ async function setStartupItem(item: StartupItem, enabled: boolean): Promise<{ ok
       ? `launchctl enable system/${label}; launchctl bootstrap system ${JSON.stringify(file)} 2>/dev/null; true`
       : `launchctl disable system/${label}; launchctl bootout system/${label} 2>/dev/null; true`;
     const r = await runAsAdmin(cmd, 60000);
-    return r.ok ? { ok: true, message: enabled ? 'Ativado' : 'Desativado' } : { ok: false, message: /cancel/i.test(r.err) ? 'Senha cancelada' : r.err.slice(0, 200) };
+    return r.ok ? { ok: true, message: enabled ? tr("Ativado") : tr("Desativado") } : { ok: false, message: /cancel/i.test(r.err) ? tr("Senha cancelada") : r.err.slice(0, 200) };
   }
   // agentes: preferência por usuário (vale para os de /Library também), sem senha
   const svc = `gui/${UID}/${label}`;
   const r1 = await run('/bin/launchctl', [enabled ? 'enable' : 'disable', svc]);
   if (enabled) await run('/bin/launchctl', ['bootstrap', `gui/${UID}`, file]);
   else await run('/bin/launchctl', ['bootout', svc]);
-  return r1.ok ? { ok: true, message: enabled ? 'Ativado (vale a partir de agora)' : 'Desativado e encerrado' } : { ok: false, message: r1.err.slice(0, 200) };
+  return r1.ok ? { ok: true, message: enabled ? tr("Ativado (vale a partir de agora)") : tr("Desativado e encerrado") } : { ok: false, message: r1.err.slice(0, 200) };
 }
 
 // ---------- manutenção ----------
 const TASKS: (MaintenanceTask & { script: string })[] = [
-  { id: 'free-ram', name: 'Liberar memória', description: 'Descarta o cache de arquivos inativo para abrir espaço na RAM.', admin: true, duration: 'segundos', recommended: true, script: '/usr/sbin/purge' },
-  { id: 'flush-dns', name: 'Limpar cache de DNS', description: 'Resolve sites que não abrem depois de mudanças de rede ou de DNS.', admin: true, duration: 'segundos', recommended: true, script: '/usr/bin/dscacheutil -flushcache; /usr/bin/killall -HUP mDNSResponder' },
-  { id: 'thin-snapshots', name: 'Reduzir instantâneos locais', description: 'Remove instantâneos locais do Time Machine que ocupam espaço "liberável" no disco.', admin: true, duration: 'até 1 minuto', recommended: true, script: '/usr/bin/tmutil thinlocalsnapshots / 999999999999 4' },
-  { id: 'periodic', name: 'Scripts de manutenção', description: 'Roda as rotinas diárias, semanais e mensais do macOS (rotação de logs, limpezas).', admin: true, duration: 'até 1 minuto', script: '/usr/sbin/periodic daily weekly monthly' },
-  { id: 'reindex-spotlight', name: 'Reindexar o Spotlight', description: 'Refaz o índice de busca. Use se a busca estiver lenta ou incompleta; a reindexação continua em segundo plano.', admin: true, duration: 'segundos para iniciar', script: '/usr/bin/mdutil -E /' },
-  { id: 'reset-permissions', name: 'Reparar permissões do usuário', description: 'Restaura as permissões padrão da sua pasta pessoal. Use se apps reclamarem de acesso.', admin: true, duration: 'alguns minutos', script: `/usr/sbin/diskutil resetUserPermissions / ${UID}` },
+  { id: 'free-ram', name: tr("Liberar memória"), description: tr("Descarta o cache de arquivos inativo para abrir espaço na RAM."), admin: true, duration: 'segundos', recommended: true, script: '/usr/sbin/purge' },
+  { id: 'flush-dns', name: tr("Limpar cache de DNS"), description: tr("Resolve sites que não abrem depois de mudanças de rede ou de DNS."), admin: true, duration: 'segundos', recommended: true, script: '/usr/bin/dscacheutil -flushcache; /usr/bin/killall -HUP mDNSResponder' },
+  { id: 'thin-snapshots', name: tr("Reduzir instantâneos locais"), description: tr("Remove instantâneos locais do Time Machine que ocupam espaço \"liberável\" no disco."), admin: true, duration: tr("até 1 minuto"), recommended: true, script: '/usr/bin/tmutil thinlocalsnapshots / 999999999999 4' },
+  { id: 'periodic', name: tr("Scripts de manutenção"), description: tr("Roda as rotinas diárias, semanais e mensais do macOS, como a troca dos registros de atividade e as limpezas."), admin: true, duration: tr("até 1 minuto"), script: '/usr/sbin/periodic daily weekly monthly' },
+  { id: 'reindex-spotlight', name: tr("Reindexar o Spotlight"), description: tr("Refaz o índice de busca. Use quando a busca estiver lenta ou incompleta. O índice continua sendo refeito em segundo plano."), admin: true, duration: tr("segundos para iniciar"), script: '/usr/bin/mdutil -E /' },
+  { id: 'reset-permissions', name: tr("Reparar permissões do usuário"), description: tr("Restaura as permissões padrão da sua pasta pessoal. Use quando os apps reclamarem de acesso."), admin: true, duration: 'alguns minutos', script: `/usr/sbin/diskutil resetUserPermissions / ${UID}` },
 ];
 
 async function runTasks(ids: string[]) {
@@ -114,12 +115,12 @@ async function runTasks(ids: string[]) {
   const script = chosen.map((t) => `( ${t.script} ) >/dev/null 2>&1 && echo "OK ${t.id}" || echo "FAIL ${t.id}"`).join('; ');
   const r = await runAsAdmin(script);
   if (!r.ok && !r.out) {
-    const msg = /cancel/i.test(r.err) ? 'Senha de administrador cancelada' : r.err.slice(0, 200);
+    const msg = /cancel/i.test(r.err) ? tr("Senha de administrador cancelada") : r.err.slice(0, 200);
     return chosen.map((t) => ({ id: t.id, ok: false, message: msg }));
   }
   return chosen.map((t) => {
     const ok = new RegExp(`OK ${t.id}\\b`).test(r.out);
-    return { id: t.id, ok, message: ok ? 'Concluído' : 'O comando terminou com erro' };
+    return { id: t.id, ok, message: ok ? tr("Concluído") : tr("O comando terminou com erro") };
   });
 }
 

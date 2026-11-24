@@ -5,6 +5,7 @@ import { execFile } from 'child_process';
 import os from 'os';
 import * as Lhm from './lhm';
 import type { DiskDetail, MetricsApi, MemoryInfo, BatteryInfo, Temperatures, NetCounters, ConnectedDevice, MemoryDetail, BatteryHealth, NetworkInfo, HardwareInfo, HwLive } from '../types';
+import { t as tr, LOCALE } from '../../i18n';
 
 function run(cmd: string, args: string[], timeout = 15000): Promise<string> {
   return new Promise((resolve) => execFile(cmd, args, { encoding: 'utf8', timeout, windowsHide: true, maxBuffer: 8 * 1024 * 1024 }, (_e, out) => resolve(out || '')));
@@ -131,7 +132,7 @@ async function networkInfo(): Promise<NetworkInfo> {
 async function eject(root: string) {
   const letter = root.slice(0, 2);
   const out = await ps(`(New-Object -ComObject Shell.Application).Namespace(17).ParseName('${letter}').InvokeVerb('Eject'); Start-Sleep -Seconds 2; if (Test-Path '${letter}\\') { 'still' } else { 'ok' }`);
-  return /ok/.test(out) ? { ok: true, message: 'Ejetado com segurança' } : { ok: false, message: 'Não foi possível ejetar: feche os arquivos abertos nesse disco' };
+  return /ok/.test(out) ? { ok: true, message: tr("Ejetado com segurança") } : { ok: false, message: tr("Não foi possível ejetar. Feche os arquivos abertos nesse disco.") };
 }
 
 // ---------- hardware ----------
@@ -163,7 +164,7 @@ async function hardware(): Promise<HardwareInfo> {
     gpus: arr(j.gpu).map((g: any) => ({ name: g.name, driver: g.driver, vram: g.ram > 0 ? g.ram : undefined, vendor: g.vendor, api: 'DirectX 12' })),
     memory: { total: os.totalmem(), type: MEMTYPE[mem[0]?.SMBIOSMemoryType], speed: mem[0]?.ConfiguredClockSpeed || mem[0]?.Speed, manufacturer: String(mem[0]?.Manufacturer || '').trim() || undefined, slots: j.slots || undefined,
       modules: mem.map((m: any) => ({ size: Number(m.Capacity) || 0, speed: m.ConfiguredClockSpeed || m.Speed, manufacturer: String(m.Manufacturer || '').trim(), part: String(m.PartNumber || '').trim(), slot: m.DeviceLocator, formFactor: m.FormFactor === 12 ? 'sodimm' as const : m.FormFactor === 8 ? 'dimm' as const : /^LP/.test(MEMTYPE[m.SMBIOSMemoryType] || '') ? 'onboard' as const : undefined })) },
-    board: { system: [j.cs?.Manufacturer, j.cs?.Model].filter(Boolean).join(' '), manufacturer: j.board?.Manufacturer, model: j.board?.Product, version: j.board?.Version, firmware: j.bios?.SMBIOSBIOSVersion, firmwareDate: date ? new Date(+date).toLocaleDateString('pt-BR') : undefined, chassis: isLaptop(j) ? 'laptop' : 'desktop' },
+    board: { system: [j.cs?.Manufacturer, j.cs?.Model].filter(Boolean).join(' '), manufacturer: j.board?.Manufacturer, model: j.board?.Product, version: j.board?.Version, firmware: j.bios?.SMBIOSBIOSVersion, firmwareDate: date ? new Date(+date).toLocaleDateString(LOCALE) : undefined, chassis: isLaptop(j) ? 'laptop' : 'desktop' },
     displays: arr(j.gpu).filter((g: any) => g.w).map((g: any) => ({ name: g.name, resolution: `${g.w} x ${g.h}${g.hz ? ` @ ${g.hz}Hz` : ''}` })),
   };
   return hwCache;
@@ -219,7 +220,7 @@ async function hwLive(): Promise<HwLive> {
     const gpuTemp = gpus.find((g) => g.temp !== undefined)?.temp ?? (j.temp ? Number(j.temp) : undefined);
     const sensors: NonNullable<HwLive['sensors']> = [
       // zona térmica ACPI: sensor da placa (não é a temperatura da CPU)
-      ...zones.map((z, i) => ({ kind: 'board' as const, group: 'temp', name: zones.length > 1 ? `Zona térmica ACPI ${i + 1}` : 'Zona térmica ACPI', value: z.c })),
+      ...zones.map((z, i) => ({ kind: 'board' as const, group: 'temp', name: zones.length > 1 ? tr("Zona térmica ACPI {0}", i + 1) : tr("Zona térmica ACPI"), value: z.c })),
       ...gpus.filter((g) => g.temp !== undefined).map((g) => ({ kind: 'gpu' as const, name: g.name, value: g.temp! })),
       ...(!gpus.some((g) => g.temp !== undefined) && j.temp ? [{ kind: 'gpu' as const, name: hw?.gpus[0]?.name || 'GPU', value: Number(j.temp) }] : []),
       ...disks.filter((d) => d.temp !== undefined).map((d) => ({ kind: 'disk' as const, name: `${d.name}${d.bus ? ` (${d.bus})` : ''}`, value: d.temp! })),
@@ -235,11 +236,11 @@ async function hwLive(): Promise<HwLive> {
     const value: HwLive = {
       advanced: { available: !!Lhm.helperPath(), active: lhmActive, source: 'LibreHardwareMonitor' },
       sensors: flat.length ? flat.map((x) => ({ kind: x.kind as any, group: x.group, hw: x.hw, name: x.name, value: x.value, min: x.min, max: x.max, unit: x.unit })) : sensors,
-      needsAdmin: !lhmActive && !admin && disks.length > 0 && disks.every((d) => d.temp === undefined) && !flat.some((x) => x.kind === 'disk' && x.group === 'temp') ? `A temperatura de ${disks.length === 1 ? 'o disco' : `cada um dos ${disks.length} discos`} só é informada pelo Windows com o app aberto como administrador.` : undefined,
+      needsAdmin: !lhmActive && !admin && disks.length > 0 && disks.every((d) => d.temp === undefined) && !flat.some((x) => x.kind === 'disk' && x.group === 'temp') ? tr("A temperatura de {0} só é informada pelo Windows com o app aberto como administrador.", disks.length === 1 ? 'o disco' : `cada um dos ${disks.length} discos`) : undefined,
       gpu: { util: pick('gpu', 'load', /GPU Core|^D3D 3D/i)?.value !== undefined ? Math.round(pick('gpu', 'load', /GPU Core|^D3D 3D/i)!.value) : typeof j.util === 'number' ? Math.round(j.util) : undefined, memUsed: (pick('gpu', 'data', /Memory Used|GPU Memory Used/i)?.value ?? 0) * 1048576 || j.mem || undefined, memTotal: (pick('gpu', 'data', /Memory Total/i)?.value ?? 0) * 1048576 || hw?.gpus[0]?.vram, temp: pick('gpu', 'temp', /GPU Core|GPU Temperature|^GPU$/i)?.value ?? gpuTemp, procs: (Array.isArray(j.procs) ? j.procs : j.procs ? [j.procs] : []).map((p: any) => ({ name: p.name || `PID ${p.pid}`, pid: p.pid, util: p.util })) },
       power: { systemW: cpuPkgW !== undefined ? cpuPkgW + (gpuW || 0) : undefined, batteryW: rate ? rate / 1000 : undefined, voltage: b.Voltage ? b.Voltage / 1000 : undefined, plan: /\(([^)]+)\)\s*$/.exec(String(j.plan || '').trim())?.[1] },
       cpuMHz: cpuClocks.length ? Math.round(cpuClocks.reduce((a, b) => a + b, 0) / cpuClocks.length) : j.perf && hw?.cpu.baseMHz ? Math.round((j.perf / 100) * hw.cpu.baseMHz) : undefined,
-      fans: flat.some((x) => x.group === 'fan') ? flat.filter((x) => x.group === 'fan' && x.value > 0).map((x) => ({ name: `${x.name} · ${x.hw}`, rpm: Math.round(x.value) })) : gpus.filter((g) => g.fanRPM).map((g) => ({ name: `Ventoinha da ${g.name}`, rpm: g.fanRPM! })),
+      fans: flat.some((x) => x.group === 'fan') ? flat.filter((x) => x.group === 'fan' && x.value > 0).map((x) => ({ name: `${x.name} · ${x.hw}`, rpm: Math.round(x.value) })) : gpus.filter((g) => g.fanRPM).map((g) => ({ name: tr("Ventoinha da {0}", g.name), rpm: g.fanRPM! })),
     };
     liveCache = { at: Date.now(), value };
     return value;
@@ -275,8 +276,8 @@ async function disks(): Promise<DiskDetail[]> {
     const used = f(/Percentage Used/i, 'level');
     const lifeLeft = remaining ?? (used !== undefined ? Math.max(0, 100 - used) : undefined);
     return {
-      id: d.id, name: d.name || d.model || `Disco ${d.id}`, model: d.model, firmware: d.fw, bus: d.bus, media: d.media === 'Unspecified' ? undefined : d.media, size: d.size,
-      health: d.health === 'Healthy' ? 'Saudável' : d.health === 'Warning' ? 'Atenção' : d.health === 'Unhealthy' ? 'Falhando' : d.health || undefined,
+      id: d.id, name: d.name || d.model || tr("Disco {0}", d.id), model: d.model, firmware: d.fw, bus: d.bus, media: d.media === 'Unspecified' ? undefined : d.media, size: d.size,
+      health: d.health === 'Healthy' ? tr("Saudável") : d.health === 'Warning' ? tr("Atenção") : d.health === 'Unhealthy' ? tr("Falhando") : d.health || undefined,
       healthPct: lifeLeft !== undefined ? Math.round(lifeLeft) : typeof d.wear === 'number' ? 100 - d.wear : undefined,
       temp: temp ?? (d.temp > 0 ? d.temp : undefined), powerOnHours: f(/Power.?On Hours/i) ?? (d.hours || undefined), powerCycles: f(/Power Cycle/i) ?? (d.cycles || undefined),
       written: (f(/Data Written|Total Bytes Written|Host Writes/i, 'data') ?? 0) * 1073741824 || undefined, read: (f(/Data Read|Total Bytes Read|Host Reads/i, 'data') ?? 0) * 1073741824 || undefined,

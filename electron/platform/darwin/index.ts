@@ -13,6 +13,7 @@ import { repairs } from './repairs';
 import { game } from './game';
 import { protection } from './protection';
 import { listApps, uninstallApp, findLeftovers, installedAppKeys, describeInstalledApp, watchInstalls } from './apps';
+import { t } from '../../i18n';
 
 /** Arquivos que só abrem com "Acesso Total ao Disco" (TCC). */
 const TCC_PROBES = ['/Library/Application Support/com.apple.TCC/TCC.db', path.join(os.homedir(), 'Library', 'Safari'), path.join(os.homedir(), 'Library', 'Mail')];
@@ -102,7 +103,7 @@ const darwin: SystemApi = {
   listApps,
   appLeftovers: async (a) => findLeftovers(a),
   uninstallApp,
-  removeEntry: async () => ({ ok: false, message: 'Não se aplica no macOS' }),
+  removeEntry: async () => ({ ok: false, message: t("Não se aplica no macOS") }),
   driveHardware,
   installedAppKeys,
   describeInstalledApp,
@@ -132,22 +133,22 @@ const darwin: SystemApi = {
    * Atualização: o .zip do .app (já conferido por SHA-512) é extraído com ditto, perde a quarentena
    * e substitui o pacote atual por um script sh destacado, que espera o app fechar e o reabre.
    */
-  updateSteps: ['Extraindo a nova versão', 'Conferindo a assinatura', 'Substituindo o app', 'Concluindo'],
+  updateSteps: [t("Extraindo a nova versão"), t("Conferindo a assinatura"), t("Substituindo o app"), t("Concluindo")],
   // instala com o app aberto: extrai ao lado do app, confere, troca o pacote (com volta atrás se falhar) e só
   // depois o app reabre. O processo em execução continua usando o pacote antigo até reiniciar.
   async installUpdateLive(file, onStep) {
     const bundle = bundlePath();
-    if (!bundle) throw new Error('A atualização automática só funciona no app instalado (CleanCode.app)');
-    if (bundle.includes('/AppTranslocation/')) throw new Error('Mova o CleanCode para a pasta Aplicativos antes de atualizar (hoje ele está rodando direto do download ou da imagem .dmg)');
+    if (!bundle) throw new Error(t("A atualização automática só funciona no app instalado (CleanCode.app)."));
+    if (bundle.includes('/AppTranslocation/')) throw new Error(t("Mova o CleanCode para a pasta Aplicativos antes de atualizar. Agora ele está rodando direto do download ou da imagem .dmg."));
     try { fs.accessSync(path.dirname(bundle), fs.constants.W_OK); fs.accessSync(bundle, fs.constants.W_OK); }
-    catch { throw new Error(`Sem permissão para substituir ${bundle}. Baixe o .dmg novo e arraste o app para Aplicativos.`); }
+    catch { throw new Error(t("O CleanCode não tem permissão para substituir {0}. Baixe o .dmg novo e arraste o app para Aplicativos.", bundle)); }
     const run = (cmd: string, args: string[]) => new Promise<void>((res, rej) => execFile(cmd, args, { timeout: 180000 }, (e) => (e ? rej(e) : res())));
     onStep(0);
     const tmp = fs.mkdtempSync(path.join(path.dirname(bundle), '.cleancode-update-'));
     try {
       await run('/usr/bin/ditto', ['-x', '-k', file, tmp]);
       const name = fs.readdirSync(tmp).find((n) => n.endsWith('.app'));
-      if (!name) throw new Error('O pacote baixado não contém o app');
+      if (!name) throw new Error(t("O pacote baixado não contém o app"));
       const fresh = path.join(tmp, name);
       onStep(1);
       // o SHA-512 já foi conferido no download; a assinatura é uma segunda checagem (não bloqueia)
@@ -170,10 +171,10 @@ const darwin: SystemApi = {
   },
   installUpdate(file, quit, relaunch) {
     const bundle = bundlePath();
-    if (!bundle) throw new Error('A atualização automática só funciona no app instalado (CleanCode.app)');
-    if (bundle.includes('/AppTranslocation/')) throw new Error('Mova o CleanCode para a pasta Aplicativos antes de atualizar (hoje ele está rodando direto do download ou da imagem .dmg)');
+    if (!bundle) throw new Error(t("A atualização automática só funciona no app instalado (CleanCode.app)."));
+    if (bundle.includes('/AppTranslocation/')) throw new Error(t("Mova o CleanCode para a pasta Aplicativos antes de atualizar. Agora ele está rodando direto do download ou da imagem .dmg."));
     try { fs.accessSync(path.dirname(bundle), fs.constants.W_OK); fs.accessSync(bundle, fs.constants.W_OK); }
-    catch { throw new Error(`Sem permissão para substituir ${bundle}. Baixe o .dmg novo e arraste o app para Aplicativos.`); }
+    catch { throw new Error(t("O CleanCode não tem permissão para substituir {0}. Baixe o .dmg novo e arraste o app para Aplicativos.", bundle)); }
     const script = path.join(os.tmpdir(), `cleancode-update-${Date.now()}.sh`);
     fs.writeFileSync(script, UPDATE_SH, { mode: 0o755 });
     const child = spawn('/bin/sh', [script, String(process.pid), file, bundle, relaunch ? '1' : '0'], { detached: true, stdio: 'ignore' });

@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { shell } from 'electron';
 import type { RepairsApi, RepairItem, AppErrorEvent } from '../types';
+import { t as tr } from '../../i18n';
 
 function run(cmd: string, args: string[], timeout = 120000): Promise<{ ok: boolean; out: string; err: string }> {
   return new Promise((resolve) => execFile(cmd, args, { encoding: 'utf8', timeout, windowsHide: true, maxBuffer: 32 * 1024 * 1024 }, (e, out, err) => resolve({ ok: !e, out: out || '', err: String(err || e?.message || '') })));
@@ -107,32 +108,32 @@ async function fix(items: RepairItem[], backupDir: string) {
   const res: { id: string; ok: boolean; message: string }[] = [];
   let n = 0;
   for (const it of items) {
-    if (!it.fixable || !it.fix) { res.push({ id: it.id, ok: false, message: 'Só aviso: não é corrigido automaticamente' }); continue; }
+    if (!it.fixable || !it.fix) { res.push({ id: it.id, ok: false, message: tr("Apenas aviso, porque este item não é corrigido automaticamente") }); continue; }
     if (it.fix.kind === 'file') {
-      try { await shell.trashItem(it.fix.path); res.push({ id: it.id, ok: true, message: 'Atalho movido para a Lixeira' }); }
+      try { await shell.trashItem(it.fix.path); res.push({ id: it.id, ok: true, message: tr("Atalho movido para a Lixeira") }); }
       catch (e: any) { res.push({ id: it.id, ok: false, message: String(e?.message || e).slice(0, 140) }); }
       continue;
     }
     // backup: a chave (ou a chave do valor) inteira vai para um .reg antes da mudança
     const file = path.join(backupDir, `${String(++n).padStart(3, '0')}.reg`);
     const exp = await run('reg.exe', ['export', it.fix.path, file, '/y'], 30000);
-    if (!exp.ok) { res.push({ id: it.id, ok: false, message: 'Não foi possível fazer o backup; nada foi alterado' }); continue; }
+    if (!exp.ok) { res.push({ id: it.id, ok: false, message: tr("Não foi possível fazer a cópia de segurança, então nada foi alterado") }); continue; }
     const cmd = it.fix.kind === 'key'
       ? `Remove-Item -LiteralPath 'Registry::${regq(it.fix.path)}' -Recurse -Force -ErrorAction Stop`
       : `Remove-ItemProperty -LiteralPath 'Registry::${regq(it.fix.path)}' -Name '${regq(it.fix.name || '')}' -Force -ErrorAction Stop`;
     const r = await ps(cmd, 30000);
-    if (r.ok) res.push({ id: it.id, ok: true, message: 'Corrigido (backup salvo)' });
-    else { try { fs.unlinkSync(file); } catch { /* */ } res.push({ id: it.id, ok: false, message: /denied|negado|unauthorized/i.test(r.err) ? 'Precisa abrir o CleanCode como administrador' : r.err.split('\n')[0].slice(0, 140) }); }
+    if (r.ok) res.push({ id: it.id, ok: true, message: tr("Corrigido (backup salvo)") });
+    else { try { fs.unlinkSync(file); } catch { /* */ } res.push({ id: it.id, ok: false, message: /denied|negado|unauthorized/i.test(r.err) ? tr("O CleanCode precisa ser aberto como administrador") : r.err.split('\n')[0].slice(0, 140) }); }
   }
   return res;
 }
 
 async function restore(backupDir: string) {
   const files = fs.existsSync(backupDir) ? fs.readdirSync(backupDir).filter((f) => f.endsWith('.reg')).sort() : [];
-  if (!files.length) return { ok: false, message: 'Backup vazio' };
+  if (!files.length) return { ok: false, message: tr("A cópia de segurança está vazia") };
   let ok = 0;
   for (const f of files) if ((await run('reg.exe', ['import', path.join(backupDir, f)], 30000)).ok) ok++;
-  return { ok: ok === files.length, message: ok === files.length ? `${ok} chave(s) restaurada(s)` : `${ok} de ${files.length} restauradas (as do sistema pedem administrador)` };
+  return { ok: ok === files.length, message: ok === files.length ? tr("{0} chave(s) restaurada(s)", ok) : tr("{0} de {1} restauradas. As chaves do sistema precisam de permissão de administrador.", ok, files.length) };
 }
 
 /** Travamentos e encerramentos inesperados de apps nos últimos 3 dias (Visualizador de Eventos). */
@@ -141,7 +142,7 @@ async function recentErrors(): Promise<AppErrorEvent[]> {
 Get-WinEvent -FilterHashtable @{LogName='Application';Id=1000,1002;StartTime=(Get-Date).AddDays(-3)} -MaxEvents 40 | ForEach-Object { [pscustomobject]@{app=[string]$_.Properties[0].Value;id=$_.Id;at=[int64](($_.TimeCreated.ToUniversalTime()-[datetime]'1970-01-01').TotalMilliseconds)} } | ConvertTo-Json -Compress`, 30000);
   const raw = json(r.out);
   const list: any[] = Array.isArray(raw) ? raw : raw ? [raw] : [];
-  return list.filter((x) => x.app).map((x) => ({ app: x.app, message: x.id === 1002 ? 'Parou de responder e foi fechado' : 'Fechou inesperadamente (falha)', at: Number(x.at) || 0 }));
+  return list.filter((x) => x.app).map((x) => ({ app: x.app, message: x.id === 1002 ? tr("Parou de responder e foi fechado") : tr("Fechou inesperadamente (falha)"), at: Number(x.at) || 0 }));
 }
 
 export const repairs: RepairsApi = { scan, fix, restore, recentErrors };

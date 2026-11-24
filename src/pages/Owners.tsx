@@ -6,6 +6,7 @@ import { fmtSize, fmtNum, fmtPct, PALETTE } from '../lib/format';
 import { DataTable } from '../components/DataTable';
 import { Button, Card, Empty, PageHeader, ProgressBar } from '../components/ui';
 import { Donut, PageBody, ScopeBar } from './common';
+import { t } from '../lib/i18n';
 
 export default function Owners() {
   const { active, settings, findTask, startScanTask, cancelTask } = useApp();
@@ -22,33 +23,33 @@ export default function Owners() {
   const total = (data || []).reduce((s, o) => s + o.size, 0);
   return (
     <PageBody>
-      <PageHeader title="Proprietários" icon={<Users size={18} />} description="Mostra quanto espaço cada usuário ocupa, de acordo com o dono de cada arquivo no Windows. O CleanCode só lê os donos quando você pede, e apenas da pasta selecionada."
-        actions={<Button variant="primary" icon={<Play size={14} />} loading={busy} disabled={!active!.done} onClick={run}>{data ? 'Analisar de novo' : 'Analisar proprietários'}</Button>} />
+      <PageHeader title={t("Proprietários")} icon={<Users size={18} />} description={t("Mostra quanto espaço cada usuário ocupa, de acordo com o dono de cada arquivo no Windows. O CleanCode só lê os donos quando você pede, e apenas da pasta selecionada.")}
+        actions={<Button variant="primary" icon={<Play size={14} />} loading={busy} disabled={!active!.done} onClick={run}>{data ? t("Analisar de novo") : t("Analisar proprietários")}</Button>} />
       <ScopeBar />
       {busy && (
         <Card className="mb-4">
           <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted">
-            <span>O CleanCode está lendo o dono de cada arquivo. Enquanto isso, você pode usar as outras telas.</span>
-            <span className="flex items-center gap-3"><span className="tnum">{fmtNum(prog?.done)} / {fmtNum(prog?.total)}</span><Button size="sm" variant="ghost" onClick={() => task && cancelTask(task.key)}>Cancelar</Button></span>
+            <span>{t("O CleanCode está lendo o dono de cada arquivo. Enquanto isso, você pode usar as outras telas.")}</span>
+            <span className="flex items-center gap-3"><span className="tnum">{fmtNum(prog?.done)} / {fmtNum(prog?.total)}</span><Button size="sm" variant="ghost" onClick={() => task && cancelTask(task.key)}>{t("Cancelar")}</Button></span>
           </div>
           <ProgressBar value={prog ? prog.done / (prog.total || 1) : 0} indeterminate={!prog} />
         </Card>
       )}
       {!data && !busy ? (
-        <Card><Empty icon={<Users size={20} />} title={task?.status === 'cancelled' ? 'Análise cancelada' : task?.status === 'error' ? 'A análise falhou' : 'Clique em “Analisar proprietários”'} text={active!.done ? 'Em pastas muito grandes, a leitura pode levar alguns minutos. Depois, os donos também aparecem na coluna “Proprietário” do Explorador.' : 'Aguarde a varredura terminar.'} /></Card>
+        <Card><Empty icon={<Users size={20} />} title={task?.status === 'cancelled' ? t("Análise cancelada") : task?.status === 'error' ? t("A análise falhou") : t("Clique em “Analisar proprietários”")} text={active!.done ? t("Em pastas muito grandes, a leitura pode levar alguns minutos. Depois, os donos também aparecem na coluna “Proprietário” do Explorador.") : t("Aguarde a varredura terminar.")} /></Card>
       ) : data && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_1fr]">
           <Card className="flex items-center justify-center">
             <Donut data={data.slice(0, 10).map((o, i) => ({ label: o.owner, value: o.size, color: PALETTE[i % PALETTE.length] }))} size={240} thickness={40}
-              center={<><div className="text-xs text-muted">{data.length} donos</div><div className="text-base font-semibold">{fmtSize(total, units)}</div></>} />
+              center={<><div className="text-xs text-muted">{data.length} {t("donos")}</div><div className="text-base font-semibold">{fmtSize(total, units)}</div></>} />
           </Card>
-          <Card pad={false} title="Por proprietário">
+          <Card pad={false} title={t("Por proprietário")}>
             <div className="h-[380px]">
               <DataTable className="h-full" rows={data} rowKey={(r) => r.owner} sort={sort} onSort={setSort} columns={[
-                { key: 'owner', label: 'Proprietário', width: 260, flex: true, sortable: true, sortValue: (r) => r.owner, render: (r) => r.owner },
-                { key: 'size', label: 'Tamanho', width: 110, align: 'right', sortable: true, sortValue: (r) => r.size, render: (r) => fmtSize(r.size, units) },
-                { key: 'alloc', label: 'Alocado', width: 110, align: 'right', sortable: true, sortValue: (r) => r.alloc, render: (r) => fmtSize(r.alloc, units) },
-                { key: 'files', label: 'Arquivos', width: 100, align: 'right', sortable: true, sortValue: (r) => r.files, render: (r) => fmtNum(r.files) },
+                { key: 'owner', label: t("Proprietário"), width: 260, flex: true, sortable: true, sortValue: (r) => r.owner, render: (r) => r.owner },
+                { key: 'size', label: t("Tamanho"), width: 110, align: 'right', sortable: true, sortValue: (r) => r.size, render: (r) => fmtSize(r.size, units) },
+                { key: 'alloc', label: t("Alocado"), width: 110, align: 'right', sortable: true, sortValue: (r) => r.alloc, render: (r) => fmtSize(r.alloc, units) },
+                { key: 'files', label: t("Arquivos"), width: 100, align: 'right', sortable: true, sortValue: (r) => r.files, render: (r) => fmtNum(r.files) },
                 { key: 'pct', label: '%', width: 80, align: 'right', sortable: true, sortValue: (r) => r.size, render: (r) => fmtPct(r.size / (total || 1)) },
               ]} />
             </div>

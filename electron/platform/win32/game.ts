@@ -7,6 +7,7 @@ import os from 'os';
 import path from 'path';
 import { scanGameDirs } from '../gameDirs';
 import type { GameApi, GameInfo, GameStatus, GameSessionOptions } from '../types';
+import { t as tr } from '../../i18n';
 
 function run(cmd: string, args: string[], timeout = 60000): Promise<{ ok: boolean; out: string; err: string }> {
   return new Promise((resolve) => execFile(cmd, args, { encoding: 'utf8', timeout, windowsHide: true, maxBuffer: 16 * 1024 * 1024 }, (e, out, err) => resolve({ ok: !e, out: out || '', err: String(err || e?.message || '') })));
@@ -54,9 +55,9 @@ async function status(): Promise<GameStatus> {
     shaderCache: SHADER_DIRS.reduce((s, d) => s + dirSize(d), 0),
     memory: { total: os.totalmem(), free: os.freemem() },
     toggles: [
-      { id: 'gamemode', label: 'Modo de Jogo do Windows', detail: 'Dá prioridade de CPU e GPU ao jogo e segura atualizações do Windows durante a partida.', on: j.gm !== 0, recommended: true },
-      { id: 'gamedvr', label: 'Gravação em segundo plano (Xbox Game Bar)', detail: 'Grava os últimos minutos do jogo o tempo todo. Desligar libera CPU, GPU e disco.', on: dvrOn, recommended: false },
-      { id: 'hags', label: 'Agendamento de GPU acelerado por hardware', detail: 'A placa de vídeo gerencia a própria memória; reduz a latência na maioria das GPUs recentes. Pede reinício.', on: Number(j.hags) === 2, needsAdmin: true, needsRestart: true, recommended: true },
+      { id: 'gamemode', label: tr("Modo de Jogo do Windows"), detail: tr("Dá prioridade de CPU e GPU ao jogo e segura atualizações do Windows durante a partida."), on: j.gm !== 0, recommended: true },
+      { id: 'gamedvr', label: tr("Gravação em segundo plano (Xbox Game Bar)"), detail: tr("Grava os últimos minutos do jogo o tempo todo. Quando você desliga, o processador, a placa de vídeo e o disco ficam mais livres."), on: dvrOn, recommended: false },
+      { id: 'hags', label: tr("Agendamento de GPU acelerado por hardware"), detail: tr("A placa de vídeo passa a gerenciar a própria memória, o que reduz a latência na maioria das placas recentes. Essa mudança precisa de reinício."), on: Number(j.hags) === 2, needsAdmin: true, needsRestart: true, recommended: true },
     ],
   };
 }
@@ -64,18 +65,18 @@ async function status(): Promise<GameStatus> {
 async function setToggle(id: string, on: boolean) {
   if (id === 'gamemode') {
     const r = await ps(`New-Item -Path 'HKCU:\\Software\\Microsoft\\GameBar' -Force | Out-Null; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\GameBar' -Name AutoGameModeEnabled -Value ${on ? 1 : 0} -Type DWord`);
-    return { ok: r.ok, message: r.ok ? (on ? 'Modo de Jogo ligado' : 'Modo de Jogo desligado') : r.err.slice(0, 140) };
+    return { ok: r.ok, message: r.ok ? (on ? tr("Modo de Jogo ligado") : tr("Modo de Jogo desligado")) : r.err.slice(0, 140) };
   }
   if (id === 'gamedvr') {
     const v = on ? 1 : 0;
     const r = await ps(`New-Item -Path 'HKCU:\\System\\GameConfigStore' -Force | Out-Null; Set-ItemProperty -Path 'HKCU:\\System\\GameConfigStore' -Name GameDVR_Enabled -Value ${v} -Type DWord; New-Item -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\GameDVR' -Force | Out-Null; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\GameDVR' -Name AppCaptureEnabled -Value ${v} -Type DWord`);
-    return { ok: r.ok, message: r.ok ? (on ? 'Gravação ligada' : 'Gravação em segundo plano desligada') : r.err.slice(0, 140) };
+    return { ok: r.ok, message: r.ok ? (on ? tr("Gravação ligada") : tr("Gravação em segundo plano desligada")) : r.err.slice(0, 140) };
   }
   if (id === 'hags') {
     const r = await psAdmin(`Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers' -Name HwSchMode -Value ${on ? 2 : 1} -Type DWord`);
-    return { ok: r.ok, message: r.ok ? 'Alterado. Reinicie o computador para valer.' : 'Cancelado ou sem permissão de administrador' };
+    return { ok: r.ok, message: r.ok ? tr("Alterado. Reinicie o computador para a mudança valer.") : tr("Cancelado ou sem permissão de administrador") };
   }
-  return { ok: false, message: 'Ajuste desconhecido' };
+  return { ok: false, message: tr("Ajuste desconhecido") };
 }
 
 // ---------- jogos instalados ----------
@@ -148,7 +149,7 @@ async function start(o: GameSessionOptions) {
   for (const c of o.close) {
     // fechamento normal (como clicar no X), sem forçar: o app pode pedir para salvar
     const r = await run('taskkill.exe', c.pids.flatMap((p) => ['/PID', String(p)]), 15000);
-    steps.push({ label: `Fechar ${c.name}`, ok: r.ok, message: r.ok ? 'Fechado' : 'Não respondeu ao pedido de fechar' });
+    steps.push({ label: tr("Fechar {0}", c.name), ok: r.ok, message: r.ok ? tr("Fechado") : tr("Não respondeu ao pedido de fechar") });
   }
   if (o.power) {
     const cur = /([0-9a-f-]{36})/i.exec((await run('powercfg.exe', ['/getactivescheme'])).out)?.[1];
@@ -157,20 +158,20 @@ async function start(o: GameSessionOptions) {
     const target = list.includes(ULTIMATE) ? ULTIMATE : HIGH;
     let r = await run('powercfg.exe', ['/setactive', target]);
     if (!r.ok && target === HIGH) { await run('powercfg.exe', ['-duplicatescheme', HIGH]); r = await run('powercfg.exe', ['/setactive', HIGH]); }
-    steps.push({ label: 'Plano de energia de alto desempenho', ok: r.ok, message: r.ok ? (target === ULTIMATE ? 'Desempenho Máximo ativado' : 'Alto desempenho ativado') : 'O Windows não permitiu trocar o plano' });
+    steps.push({ label: tr("Plano de energia de alto desempenho"), ok: r.ok, message: r.ok ? (target === ULTIMATE ? tr("Desempenho Máximo ativado") : tr("Alto desempenho ativado")) : tr("O Windows não permitiu trocar o plano") });
   }
   if (o.freeMemory) {
     const before = os.freemem();
     const r = await psAdmin(FREE_MEM, 120000);
     const freed = Math.max(0, os.freemem() - before);
-    steps.push({ label: 'Liberar memória', ok: r.ok, message: r.ok ? `${Math.round(freed / 1048576)} MB liberados` : 'Cancelado (precisa de administrador)' });
+    steps.push({ label: tr("Liberar memória"), ok: r.ok, message: r.ok ? tr("{0} MB liberados", Math.round(freed / 1048576)) : tr("Cancelado. Esta ação precisa de permissão de administrador.") });
   }
   if (o.boostDir) {
     const dir = o.boostDir;
     const n = await boost(dir);
     if (boostTimer) clearInterval(boostTimer);
     boostTimer = setInterval(() => { boost(dir).catch(() => 0); }, 30000);
-    steps.push({ label: 'Prioridade alta para o jogo', ok: true, message: n ? `${n} processo(s) do jogo em prioridade alta` : 'Vai aplicar assim que o jogo abrir' });
+    steps.push({ label: tr("Prioridade alta para o jogo"), ok: true, message: n ? tr("{0} processo(s) do jogo em prioridade alta", n) : tr("Vai aplicar assim que o jogo abrir") });
   }
   return { steps };
 }
@@ -180,10 +181,10 @@ async function stop() {
   if (boostTimer) { clearInterval(boostTimer); boostTimer = null; }
   if (previousScheme) {
     const r = await run('powercfg.exe', ['/setactive', previousScheme]);
-    steps.push({ label: 'Plano de energia anterior', ok: r.ok, message: r.ok ? 'Restaurado' : 'Não foi possível restaurar' });
+    steps.push({ label: tr("Plano de energia anterior"), ok: r.ok, message: r.ok ? tr("Restaurado") : tr("Não foi possível restaurar") });
     previousScheme = null;
   }
-  steps.push({ label: 'Apps fechados', ok: true, message: 'Abra de novo os que precisar' });
+  steps.push({ label: tr("Apps fechados"), ok: true, message: tr("Abra de novo os apps que você precisar.") });
   return { steps };
 }
 
@@ -202,7 +203,7 @@ async function cleanShaders() {
       try { fs.rmSync(p, { recursive: true, force: true }); freed += size; } catch { /* em uso */ }
     }
   }
-  return { freed, message: 'Os jogos recompilam os shaders na próxima vez (a primeira partida pode engasgar um pouco).' };
+  return { freed, message: tr("Os jogos compilam os shaders de novo na próxima vez, então a primeira partida pode travar um pouco.") };
 }
 
 // liberar RAM sem administrador: esvazia o conjunto de trabalho dos processos do próprio usuário
@@ -218,8 +219,8 @@ async function freeMemory(deep: boolean) {
   const r = deep ? await psAdmin(FREE_MEM, 120000) : await ps(TRIM_MEM, 120000);
   await new Promise((res) => setTimeout(res, 800));
   const freed = Math.max(0, os.freemem() - before);
-  if (!r.ok && deep) return { ok: false, freed: 0, message: 'Cancelado (a limpeza completa precisa de administrador)' };
-  return { ok: true, freed, message: `${Math.round(freed / 1048576)} MB liberados` };
+  if (!r.ok && deep) return { ok: false, freed: 0, message: tr("Cancelado. A limpeza completa precisa de permissão de administrador.") };
+  return { ok: true, freed, message: tr("{0} MB liberados", Math.round(freed / 1048576)) };
 }
 
 export const game: GameApi = { status, setToggle, games, start, stop, boost, cleanShaders, freeMemory };

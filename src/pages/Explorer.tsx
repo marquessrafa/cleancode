@@ -10,18 +10,19 @@ import { fmtSize, fmtNum, fmtPct, fmtDate, fmtDuration, attrString, typeLabel, e
 import { useFileActions, Target } from '../lib/actions';
 import { DataTable, Column } from '../components/DataTable';
 import { Button, Checkbox, cx, Dropdown, IconButton, Input, Modal, openContextMenu, Segmented, Select, Spinner, Toggle } from '../components/ui';
+import { t as tr } from '../lib/i18n';
 
 const ROW_H = 28;
 
 export const ALL_COLUMNS: { key: string; label: string }[] = [
-  { key: 'name', label: 'Nome' }, { key: 'path', label: 'Caminho completo' }, { key: 'size', label: 'Tamanho' },
-  { key: 'alloc', label: 'Alocado' }, { key: 'wasted', label: 'Desperdiçado (alocado − tamanho)' }, { key: 'files', label: 'Arquivos' },
-  { key: 'dirs', label: 'Pastas' }, { key: 'pct', label: '% do pai' }, { key: 'mtime', label: 'Última modificação' },
-  { key: 'atime', label: 'Último acesso' }, { key: 'ctime', label: 'Data de criação' }, { key: 'attr', label: 'Atributos' },
-  { key: 'type', label: 'Tipo' }, { key: 'owner', label: 'Proprietário' }, { key: 'avg', label: 'Tamanho médio de arquivo' },
-  { key: 'compress', label: 'Compactação (%)' }, { key: 'optical', label: 'Tamanho em mídia óptica (ISO)' },
-  { key: 'pathLen', label: 'Comprimento do caminho' }, { key: 'level', label: 'Nível' }, { key: 'parentPath', label: 'Pasta' },
-  { key: 'prev', label: 'Tamanho anterior (comparação)' }, { key: 'delta', label: 'Variação (comparação)' },
+  { key: 'name', label: tr("Nome") }, { key: 'path', label: tr("Caminho completo") }, { key: 'size', label: tr("Tamanho") },
+  { key: 'alloc', label: tr("Alocado") }, { key: 'wasted', label: tr("Desperdiçado (alocado menos tamanho)") }, { key: 'files', label: tr("Arquivos") },
+  { key: 'dirs', label: tr("Pastas") }, { key: 'pct', label: tr("% do pai") }, { key: 'mtime', label: tr("Última modificação") },
+  { key: 'atime', label: tr("Último acesso") }, { key: 'ctime', label: tr("Data de criação") }, { key: 'attr', label: tr("Atributos") },
+  { key: 'type', label: tr("Tipo") }, { key: 'owner', label: tr("Proprietário") }, { key: 'avg', label: tr("Tamanho médio de arquivo") },
+  { key: 'compress', label: tr("Compactação (%)") }, { key: 'optical', label: tr("Tamanho em mídia óptica (ISO)") },
+  { key: 'pathLen', label: tr("Comprimento do caminho") }, { key: 'level', label: tr("Nível") }, { key: 'parentPath', label: tr("Pasta") },
+  { key: 'prev', label: tr("Tamanho anterior (comparação)") }, { key: 'delta', label: tr("Variação (comparação)") },
 ];
 
 /** histórico de pastas do Explorador por varredura (id) */
@@ -149,10 +150,10 @@ export default function Explorer() {
     const path = await treePath(r);
     openContextMenu(e, actions.menu([toTarget(r, path)], r.kind === 'dir' ? [
       { separator: true },
-      { label: 'Atualizar esta pasta', icon: <RefreshCw />, onClick: async () => { const ok = await cc.scanQuery(scanId, 'rescan', r.id); ok ? toast('Atualizando pasta…', 'info') : toast('Aguarde a varredura atual terminar', 'error'); } },
-      { label: 'Expandir tudo abaixo', icon: <ListTree />, onClick: () => expandBelow(r.id) },
-      { label: 'Nova pasta…', icon: <FolderPlus />, onClick: () => setNewFolderFor({ id: r.id, path }) },
-      { label: 'Analisar em nova aba', icon: <Plus />, onClick: () => startScan(path) },
+      { label: tr("Atualizar esta pasta"), icon: <RefreshCw />, onClick: async () => { const ok = await cc.scanQuery(scanId, 'rescan', r.id); ok ? toast(tr("Atualizando pasta…"), 'info') : toast(tr("Aguarde a varredura atual terminar"), 'error'); } },
+      { label: tr("Expandir tudo abaixo"), icon: <ListTree />, onClick: () => expandBelow(r.id) },
+      { label: tr("Nova pasta…"), icon: <FolderPlus />, onClick: () => setNewFolderFor({ id: r.id, path }) },
+      { label: tr("Analisar em nova aba"), icon: <Plus />, onClick: () => startScan(path) },
     ] : []));
   };
 
@@ -181,7 +182,7 @@ export default function Explorer() {
   // colunas dos detalhes
   const columns = useMemo<Column<Row>[]>(() => {
     const all: Record<string, Column<Row>> = {
-      name: { key: 'name', label: 'Nome', width: 260, flex: true, sortable: true, sortValue: (r) => r.name.toLowerCase(), title: (r) => r.name,
+      name: { key: 'name', label: tr("Nome"), width: 260, flex: true, sortable: true, sortValue: (r) => r.name.toLowerCase(), title: (r) => r.name,
         render: (r) => (
           <span className={cx('flex items-center gap-2', settings!.compressedBlue && r.attr & 0x800 && 'text-info', settings!.boldLarge && r.size > rootSize * 0.15 && 'font-semibold')}>
             {r.kind === 'dir' ? <Folder size={15} className="shrink-0 text-accent" /> : <File size={15} className="shrink-0 text-faint" />}
@@ -189,29 +190,29 @@ export default function Explorer() {
             {r.err ? <AlertTriangle size={12} className="text-warn" /> : null}
           </span>
         ) },
-      path: { key: 'path', label: 'Caminho completo', width: 320, sortable: true, sortValue: (r) => r.name, render: (r) => <span className="text-muted">{rowPath(r, selPath)}</span>, title: (r) => rowPath(r, selPath) },
-      parentPath: { key: 'parentPath', label: 'Pasta', width: 260, render: () => <span className="text-muted">{selPath}</span> },
-      size: { key: 'size', label: 'Tamanho', width: 110, align: 'right', sortable: true, sortValue: (r) => r.size, render: (r) => fmtSize(r.size, units, dec) },
-      alloc: { key: 'alloc', label: 'Alocado', width: 110, align: 'right', sortable: true, sortValue: (r) => r.alloc, render: (r) => fmtSize(r.alloc, units, dec) },
-      wasted: { key: 'wasted', label: 'Desperdiçado', width: 110, align: 'right', sortable: true, sortValue: (r) => r.alloc - r.size, render: (r) => fmtSize(Math.max(0, r.alloc - r.size), units, dec) },
-      files: { key: 'files', label: 'Arquivos', width: 90, align: 'right', sortable: true, sortValue: (r) => r.files, render: (r) => (r.kind === 'dir' ? fmtNum(r.files) : '') },
-      dirs: { key: 'dirs', label: 'Pastas', width: 80, align: 'right', sortable: true, sortValue: (r) => r.dirs, render: (r) => (r.kind === 'dir' ? fmtNum(r.dirs) : '') },
-      pct: { key: 'pct', label: '% do pai', width: 130, sortable: true, sortValue: (r) => r.pct, render: (r) => (
+      path: { key: 'path', label: tr("Caminho completo"), width: 320, sortable: true, sortValue: (r) => r.name, render: (r) => <span className="text-muted">{rowPath(r, selPath)}</span>, title: (r) => rowPath(r, selPath) },
+      parentPath: { key: 'parentPath', label: tr("Pasta"), width: 260, render: () => <span className="text-muted">{selPath}</span> },
+      size: { key: 'size', label: tr("Tamanho"), width: 110, align: 'right', sortable: true, sortValue: (r) => r.size, render: (r) => fmtSize(r.size, units, dec) },
+      alloc: { key: 'alloc', label: tr("Alocado"), width: 110, align: 'right', sortable: true, sortValue: (r) => r.alloc, render: (r) => fmtSize(r.alloc, units, dec) },
+      wasted: { key: 'wasted', label: tr("Desperdiçado"), width: 110, align: 'right', sortable: true, sortValue: (r) => r.alloc - r.size, render: (r) => fmtSize(Math.max(0, r.alloc - r.size), units, dec) },
+      files: { key: 'files', label: tr("Arquivos"), width: 90, align: 'right', sortable: true, sortValue: (r) => r.files, render: (r) => (r.kind === 'dir' ? fmtNum(r.files) : '') },
+      dirs: { key: 'dirs', label: tr("Pastas"), width: 80, align: 'right', sortable: true, sortValue: (r) => r.dirs, render: (r) => (r.kind === 'dir' ? fmtNum(r.dirs) : '') },
+      pct: { key: 'pct', label: tr("% do pai"), width: 130, sortable: true, sortValue: (r) => r.pct, render: (r) => (
         <span className="flex items-center gap-2"><span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2"><span className="block h-full rounded-full bg-accent transition-[width] duration-500" style={{ width: `${r.pct * 100}%` }} /></span><span className="w-11 text-right text-xs text-muted tnum">{fmtPct(r.pct)}</span></span>
       ) },
-      mtime: { key: 'mtime', label: 'Modificado', width: 130, sortable: true, sortValue: (r) => r.mtime, render: (r) => <span className="text-muted">{fmtDate(r.mtime, settings!.datesWithTime)}</span> },
-      atime: { key: 'atime', label: 'Último acesso', width: 130, sortable: true, sortValue: (r) => r.atime, render: (r) => <span className="text-muted">{fmtDate(r.atime, settings!.datesWithTime)}</span> },
-      ctime: { key: 'ctime', label: 'Criação', width: 130, sortable: true, sortValue: (r) => r.ctime, render: (r) => <span className="text-muted">{fmtDate(r.ctime, settings!.datesWithTime)}</span> },
-      attr: { key: 'attr', label: 'Atributos', width: 90, sortable: true, sortValue: (r) => attrString(r.attr), render: (r) => <span className="font-mono text-xs text-muted">{attrString(r.attr)}</span> },
-      type: { key: 'type', label: 'Tipo', width: 120, sortable: true, sortValue: (r) => (r.kind === 'dir' ? '' : extOf(r.name)), render: (r) => <span className="text-muted">{typeLabel(r.name, r.kind)}</span> },
-      owner: { key: 'owner', label: 'Proprietário', width: 160, sortable: true, sortValue: (r) => r.owner || '', render: (r) => <span className="text-muted">{r.owner || (r.kind === 'file' ? '—' : '')}</span> },
-      avg: { key: 'avg', label: 'Tam. médio', width: 100, align: 'right', sortable: true, sortValue: (r) => (r.files ? r.size / r.files : 0), render: (r) => (r.kind === 'dir' && r.files ? fmtSize(r.size / r.files, units, dec) : '') },
-      compress: { key: 'compress', label: 'Compactação', width: 100, align: 'right', sortable: true, sortValue: (r) => (r.size ? 1 - r.alloc / r.size : 0), render: (r) => (r.attr & 0x800 && r.size ? fmtPct(Math.max(0, 1 - r.alloc / r.size)) : '') },
-      optical: { key: 'optical', label: 'Mídia óptica', width: 110, align: 'right', sortable: true, sortValue: (r) => r.size, render: (r) => fmtSize(r.kind === 'file' ? Math.ceil(r.size / 2048) * 2048 : r.size + r.files * 1024, units, dec), title: () => 'Espaço que o arquivo ocuparia em um CD ou DVD, que guarda os dados em blocos de 2 KB' },
-      pathLen: { key: 'pathLen', label: 'Compr. caminho', width: 110, align: 'right', sortable: true, sortValue: (r) => r.name.length, render: (r) => rowPath(r, selPath).length },
-      level: { key: 'level', label: 'Nível', width: 60, align: 'right', sortable: true, sortValue: (r) => r.level, render: (r) => r.level },
-      prev: { key: 'prev', label: 'Anterior', width: 110, align: 'right', sortable: true, sortValue: (r) => r.prevSize ?? -1, render: (r) => (r.prevSize == null ? '' : r.prevSize < 0 ? <span className="text-accent text-xs">novo</span> : fmtSize(r.prevSize, units, dec)) },
-      delta: { key: 'delta', label: 'Variação', width: 110, align: 'right', sortable: true, sortValue: (r) => (r.prevSize == null ? 0 : r.size - Math.max(0, r.prevSize)), render: (r) => {
+      mtime: { key: 'mtime', label: tr("Modificado"), width: 130, sortable: true, sortValue: (r) => r.mtime, render: (r) => <span className="text-muted">{fmtDate(r.mtime, settings!.datesWithTime)}</span> },
+      atime: { key: 'atime', label: tr("Último acesso"), width: 130, sortable: true, sortValue: (r) => r.atime, render: (r) => <span className="text-muted">{fmtDate(r.atime, settings!.datesWithTime)}</span> },
+      ctime: { key: 'ctime', label: tr("Criação"), width: 130, sortable: true, sortValue: (r) => r.ctime, render: (r) => <span className="text-muted">{fmtDate(r.ctime, settings!.datesWithTime)}</span> },
+      attr: { key: 'attr', label: tr("Atributos"), width: 90, sortable: true, sortValue: (r) => attrString(r.attr), render: (r) => <span className="font-mono text-xs text-muted">{attrString(r.attr)}</span> },
+      type: { key: 'type', label: tr("Tipo"), width: 120, sortable: true, sortValue: (r) => (r.kind === 'dir' ? '' : extOf(r.name)), render: (r) => <span className="text-muted">{typeLabel(r.name, r.kind)}</span> },
+      owner: { key: 'owner', label: tr("Proprietário"), width: 160, sortable: true, sortValue: (r) => r.owner || '', render: (r) => <span className="text-muted">{r.owner || (r.kind === 'file' ? '—' : '')}</span> },
+      avg: { key: 'avg', label: tr("Tamanho médio"), width: 100, align: 'right', sortable: true, sortValue: (r) => (r.files ? r.size / r.files : 0), render: (r) => (r.kind === 'dir' && r.files ? fmtSize(r.size / r.files, units, dec) : '') },
+      compress: { key: 'compress', label: tr("Compactação"), width: 100, align: 'right', sortable: true, sortValue: (r) => (r.size ? 1 - r.alloc / r.size : 0), render: (r) => (r.attr & 0x800 && r.size ? fmtPct(Math.max(0, 1 - r.alloc / r.size)) : '') },
+      optical: { key: 'optical', label: tr("Mídia óptica"), width: 110, align: 'right', sortable: true, sortValue: (r) => r.size, render: (r) => fmtSize(r.kind === 'file' ? Math.ceil(r.size / 2048) * 2048 : r.size + r.files * 1024, units, dec), title: () => tr("Espaço que o arquivo ocuparia em um CD ou DVD, que guarda os dados em blocos de 2 KB") },
+      pathLen: { key: 'pathLen', label: tr("Tamanho do caminho"), width: 110, align: 'right', sortable: true, sortValue: (r) => r.name.length, render: (r) => rowPath(r, selPath).length },
+      level: { key: 'level', label: tr("Nível"), width: 60, align: 'right', sortable: true, sortValue: (r) => r.level, render: (r) => r.level },
+      prev: { key: 'prev', label: tr("Anterior"), width: 110, align: 'right', sortable: true, sortValue: (r) => r.prevSize ?? -1, render: (r) => (r.prevSize == null ? '' : r.prevSize < 0 ? <span className="text-accent text-xs">{tr("novo")}</span> : fmtSize(r.prevSize, units, dec)) },
+      delta: { key: 'delta', label: tr("Variação"), width: 110, align: 'right', sortable: true, sortValue: (r) => (r.prevSize == null ? 0 : r.size - Math.max(0, r.prevSize)), render: (r) => {
         if (r.prevSize == null) return '';
         const d = r.size - Math.max(0, r.prevSize);
         return <span className={d > 0 ? 'text-danger' : d < 0 ? 'text-accent' : 'text-muted'}>{d > 0 ? '+' : ''}{fmtSize(d, units, dec)}</span>;
@@ -228,8 +229,8 @@ export default function Explorer() {
     const targets = rows.map((x) => toTarget(x, rowPath(x, selPath)));
     openContextMenu(e, actions.menu(targets, r.kind === 'dir' && rows.length === 1 ? [
       { separator: true },
-      { label: 'Ir para esta pasta', icon: <FolderOpen />, onClick: () => goTo(r.id) },
-      { label: 'Analisar em nova aba', icon: <Plus />, onClick: () => startScan(rowPath(r, selPath)) },
+      { label: tr("Ir para esta pasta"), icon: <FolderOpen />, onClick: () => goTo(r.id) },
+      { label: tr("Analisar em nova aba"), icon: <Plus />, onClick: () => startScan(rowPath(r, selPath)) },
     ] : []));
   };
 
@@ -239,43 +240,43 @@ export default function Explorer() {
     <div className="mx-auto flex h-full max-w-[1400px] flex-col rounded-xl border border-line"><div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[inherit]">
       {/* barra de ferramentas */}
       <div className="flex flex-wrap items-center gap-1.5 border-b border-line px-3 py-2">
-        <IconButton title="Voltar" disabled={nav.pos === 0} onClick={navBackDir}><ArrowLeft size={16} /></IconButton>
-        <IconButton title="Avançar" disabled={nav.pos >= nav.stack.length - 1} onClick={navForwardDir}><ArrowRight size={16} /></IconButton>
-        <IconButton title="Pasta pai" disabled={selected <= 0} onClick={async () => { const n: any = await cc.scanQuery(scanId, 'nodeInfo', selected); if (n.parent >= 0) goTo(n.parent); }}><ArrowUp size={16} /></IconButton>
+        <IconButton title={tr("Voltar")} disabled={nav.pos === 0} onClick={navBackDir}><ArrowLeft size={16} /></IconButton>
+        <IconButton title={tr("Avançar")} disabled={nav.pos >= nav.stack.length - 1} onClick={navForwardDir}><ArrowRight size={16} /></IconButton>
+        <IconButton title={tr("Pasta pai")} disabled={selected <= 0} onClick={async () => { const n: any = await cc.scanQuery(scanId, 'nodeInfo', selected); if (n.parent >= 0) goTo(n.parent); }}><ArrowUp size={16} /></IconButton>
         <div className="mx-1 h-5 w-px bg-line" />
         {active!.done
-          ? <Button size="sm" variant="ghost" icon={<RefreshCw size={14} />} onClick={refreshScan}>Atualizar</Button>
-          : <Button size="sm" variant="ghost" icon={<Square size={13} />} onClick={stopScan} className="text-danger">Parar</Button>}
-        <Dropdown trigger={<Button size="sm" variant="ghost" icon={<ListTree size={14} />} title="Expandir árvore"><span className="hidden xl:inline">Expandir</span></Button>} items={[
-          { label: 'Recolher tudo', onClick: () => expandTo(0) },
-          { label: 'Nível 1', onClick: () => expandTo(1) }, { label: 'Nível 2', onClick: () => expandTo(2) },
-          { label: 'Nível 3', onClick: () => expandTo(3) }, { label: 'Nível 4', onClick: () => expandTo(4) },
-          { label: 'Nível 5', onClick: () => expandTo(5) }, { separator: true }, { label: 'Expansão total', onClick: () => expandTo(99) },
+          ? <Button size="sm" variant="ghost" icon={<RefreshCw size={14} />} onClick={refreshScan}>{tr("Atualizar")}</Button>
+          : <Button size="sm" variant="ghost" icon={<Square size={13} />} onClick={stopScan} className="text-danger">{tr("Parar")}</Button>}
+        <Dropdown trigger={<Button size="sm" variant="ghost" icon={<ListTree size={14} />} title={tr("Expandir árvore")}><span className="hidden xl:inline">{tr("Expandir")}</span></Button>} items={[
+          { label: tr("Recolher tudo"), onClick: () => expandTo(0) },
+          { label: tr("Nível 1"), onClick: () => expandTo(1) }, { label: tr("Nível 2"), onClick: () => expandTo(2) },
+          { label: tr("Nível 3"), onClick: () => expandTo(3) }, { label: tr("Nível 4"), onClick: () => expandTo(4) },
+          { label: tr("Nível 5"), onClick: () => expandTo(5) }, { separator: true }, { label: tr("Expansão total"), onClick: () => expandTo(99) },
         ]} />
         <div className="mx-1 h-5 w-px bg-line" />
         <Segmented size="sm" value={mode} onChange={(v) => setSettings({ displayMode: v })} options={[
-          { value: 'size', label: 'Tamanho' }, { value: 'alloc', label: 'Alocado', title: 'Espaço ocupado no disco' },
-          { value: 'files', label: 'Arquivos' }, { value: 'pct', label: '%' },
+          { value: 'size', label: tr("Tamanho") }, { value: 'alloc', label: tr("Alocado"), title: tr("Espaço ocupado no disco") },
+          { value: 'files', label: tr("Arquivos") }, { value: 'pct', label: '%' },
         ]} />
-        <Select className="w-[92px]" title="Unidade" value={units} onChange={(v) => setSettings({ units: v })} options={[
-          { value: 'auto', label: 'Auto' }, { value: 'TB', label: 'TB' }, { value: 'GB', label: 'GB' }, { value: 'MB', label: 'MB' }, { value: 'KB', label: 'KB' }, { value: 'B', label: 'Bytes' },
+        <Select className="w-[92px]" title={tr("Unidade")} value={units} onChange={(v) => setSettings({ units: v })} options={[
+          { value: 'auto', label: tr("Auto") }, { value: 'TB', label: 'TB' }, { value: 'GB', label: 'GB' }, { value: 'MB', label: 'MB' }, { value: 'KB', label: 'KB' }, { value: 'B', label: tr("Bytes") },
         ]} />
         <div className="mx-1 h-5 w-px bg-line" />
-        <Button size="sm" variant={summary?.filter ? 'default' : 'ghost'} icon={<Filter size={14} />} onClick={() => setFilterOpen(true)} className={summary?.filter ? 'text-accent' : ''}>Filtro{summary?.filter ? ' ativo' : ''}</Button>
-        {summary?.filter && <IconButton title="Limpar filtro" onClick={async () => { await cc.scanQuery(scanId, 'setFilter', null); bump(); }}><FilterX size={15} /></IconButton>}
+        <Button size="sm" variant={summary?.filter ? 'default' : 'ghost'} icon={<Filter size={14} />} onClick={() => setFilterOpen(true)} className={summary?.filter ? 'text-accent' : ''}>{tr("Filtro")}{summary?.filter ? ' ativo' : ''}</Button>
+        {summary?.filter && <IconButton title={tr("Limpar filtro")} onClick={async () => { await cc.scanQuery(scanId, 'setFilter', null); bump(); }}><FilterX size={15} /></IconButton>}
         <TreeSearch scanId={scanId} onPick={(id) => goTo(id)} />
         <div className="flex-1" />
-        <IconButton title="Colunas" onClick={() => setColsOpen(true)}><Columns3 size={16} /></IconButton>
-        <IconButton title={`Abrir no ${FILE_MANAGER}`} onClick={() => selPath && cc.open(selPath)}><ExternalLink size={15} /></IconButton>
-        <Dropdown align="right" trigger={<Button size="sm" icon={<Download size={14} />} title="Exportar / imprimir"><span className="hidden xl:inline">Exportar</span></Button>} items={[
-          { label: 'Excel (.xlsx)', icon: <FileSpreadsheet />, onClick: () => setExportOpen('xlsx') },
+        <IconButton title={tr("Colunas")} onClick={() => setColsOpen(true)}><Columns3 size={16} /></IconButton>
+        <IconButton title={tr("Abrir no {0}", FILE_MANAGER)} onClick={() => selPath && cc.open(selPath)}><ExternalLink size={15} /></IconButton>
+        <Dropdown align="right" trigger={<Button size="sm" icon={<Download size={14} />} title={tr("Exportar ou imprimir")}><span className="hidden xl:inline">{tr("Exportar")}</span></Button>} items={[
+          { label: tr("Excel (.xlsx)"), icon: <FileSpreadsheet />, onClick: () => setExportOpen('xlsx') },
           { label: 'CSV', icon: <FileText />, onClick: () => setExportOpen('csv') },
           { label: 'HTML', icon: <FileCode />, onClick: () => setExportOpen('html') },
           { label: 'PDF', icon: <FileDown />, onClick: () => setExportOpen('pdf') },
-          { label: 'Texto (.txt)', icon: <FileText />, onClick: () => setExportOpen('txt') },
-          { label: 'Imprimir relatório…', icon: <Printer />, onClick: () => setExportOpen('print') },
+          { label: tr("Texto (.txt)"), icon: <FileText />, onClick: () => setExportOpen('txt') },
+          { label: tr("Imprimir relatório…"), icon: <Printer />, onClick: () => setExportOpen('print') },
           { separator: true },
-          { label: 'Salvar varredura (.gz)…', icon: <Save />, onClick: async () => { const f = await cc.historyExport(scanId); if (f) toast('Varredura salva em ' + f); } },
+          { label: tr("Salvar varredura (.gz)…"), icon: <Save />, onClick: async () => { const f = await cc.historyExport(scanId); if (f) toast(tr("Varredura salva em ") + f); } },
         ]} />
       </div>
 
@@ -319,8 +320,8 @@ export default function Explorer() {
                     <span className={cx('relative z-[1] min-w-0 flex-1 truncate', large && 'font-semibold', settings!.compressedBlue && r.attr & 0x800 && 'text-info', r.link && 'italic text-muted')} title={r.name}>
                       {r.depth === 0 ? active!.root : r.name}
                     </span>
-                    {r.err ? <AlertTriangle size={12} className="relative z-[1] ml-1 shrink-0 text-warn"><title>Sem acesso a parte desta pasta</title></AlertTriangle> : null}
-                    {r.link ? <Link2 size={12} className="relative z-[1] ml-1 shrink-0 text-faint"><title>Atalho do sistema para outra pasta (o CleanCode não entra nele)</title></Link2> : null}
+                    {r.err ? <AlertTriangle size={12} className="relative z-[1] ml-1 shrink-0 text-warn"><title>{tr("Sem acesso a parte desta pasta")}</title></AlertTriangle> : null}
+                    {r.link ? <Link2 size={12} className="relative z-[1] ml-1 shrink-0 text-faint"><title>{tr("Atalho do sistema para outra pasta (o CleanCode não entra nele)")}</title></Link2> : null}
                     <span className="relative z-[1] ml-3 shrink-0 text-xs text-muted tnum">{valueOf(r)}</span>
                     {r.prevSize != null && r.prevSize >= 0 && r.size !== r.prevSize && (
                       <span className={cx('relative z-[1] ml-2 shrink-0 text-[11px] tnum', r.size > r.prevSize ? 'text-danger' : 'text-accent')}>{r.size > r.prevSize ? '+' : ''}{fmtSize(r.size - r.prevSize, 'auto', 0)}</span>
@@ -356,15 +357,15 @@ export default function Explorer() {
             onRowDoubleClick={(r) => (r.kind === 'dir' ? goTo(r.id) : cc.open(rowPath(r, selPath)))}
             onRowContext={detailMenu}
             onHeaderContext={(e) => { e.preventDefault(); setColsOpen(true); }}
-            empty={active!.done ? 'Pasta vazia' : 'Carregando…'}
+            empty={active!.done ? tr("Pasta vazia") : tr("Carregando…")}
           />
           {sel.size > 0 && (
             <div className="flex items-center gap-2 border-t border-line bg-[color-mix(in_srgb,var(--surface)_60%,transparent)] px-3 py-1.5 text-xs backdrop-blur anim-fade">
-              <span className="text-muted">{sel.size} selecionado(s) · {fmtSize(selectedRows.reduce((s, r) => s + r.size, 0), units, dec)}</span>
+              <span className="text-muted">{sel.size} {tr("selecionado(s) ·")} {fmtSize(selectedRows.reduce((s, r) => s + r.size, 0), units, dec)}</span>
               <div className="flex-1" />
-              <Button size="sm" variant="ghost" onClick={() => setSel(new Set())}>Limpar seleção</Button>
-              <Button size="sm" variant="outline" onClick={() => actions.move(selectedRows.map((r) => toTarget(r, rowPath(r, selPath))))}>Mover…</Button>
-              <Button size="sm" variant="danger" icon={<Trash2 size={13} />} onClick={async () => { await actions.del(selectedRows.map((r) => toTarget(r, rowPath(r, selPath)))); setSel(new Set()); }}>Excluir…</Button>
+              <Button size="sm" variant="ghost" onClick={() => setSel(new Set())}>{tr("Limpar seleção")}</Button>
+              <Button size="sm" variant="outline" onClick={() => actions.move(selectedRows.map((r) => toTarget(r, rowPath(r, selPath))))}>{tr("Mover…")}</Button>
+              <Button size="sm" variant="danger" icon={<Trash2 size={13} />} onClick={async () => { await actions.del(selectedRows.map((r) => toTarget(r, rowPath(r, selPath)))); setSel(new Set()); }}>{tr("Excluir…")}</Button>
             </div>
           )}
         </div>
@@ -373,15 +374,15 @@ export default function Explorer() {
       {/* barra de status */}
       <div className="flex h-7 shrink-0 items-center gap-4 overflow-hidden whitespace-nowrap border-t border-line px-3 text-xs text-muted">
         {!active!.done ? (
-          <span className="flex min-w-0 items-center gap-2 text-accent"><Loader2 size={12} className="animate-spin" /> Varrendo <span className="truncate text-muted">{p?.current}</span></span>
+          <span className="flex min-w-0 items-center gap-2 text-accent"><Loader2 size={12} className="animate-spin" /> {tr("Varrendo")} <span className="truncate text-muted">{p?.current}</span></span>
         ) : (
-          <span>{active!.stopped ? 'Varredura interrompida' : 'Varredura concluída'} em {fmtDuration(p?.elapsed || 0)}</span>
+          <span>{active!.stopped ? tr("Varredura interrompida") : tr("Varredura concluída")} {tr("em")} {fmtDuration(p?.elapsed || 0)}</span>
         )}
         <div className="flex-1" />
-        <span className="tnum">{fmtNum(p?.files)} arquivos · {fmtNum(p?.dirs)} pastas</span>
-        <span className="tnum">{fmtSize(p?.size, units, dec)} <span className="text-faint">({fmtSize(p?.alloc, units, dec)} alocados)</span></span>
-        {summary && <span className="text-faint">cluster {fmtSize(summary.cluster)}</span>}
-        {!!p?.errors && <button className="flex items-center gap-1 text-warn hover:underline" onClick={() => setErrorsOpen(true)}><AlertTriangle size={12} /> {fmtNum(p.errors)} erro(s)</button>}
+        <span className="tnum">{fmtNum(p?.files)} {tr("arquivos ·")} {fmtNum(p?.dirs)} {tr("pastas")}</span>
+        <span className="tnum">{fmtSize(p?.size, units, dec)} <span className="text-faint">({fmtSize(p?.alloc, units, dec)} {tr("alocados)")}</span></span>
+        {summary && <span className="text-faint">{tr("cluster")} {fmtSize(summary.cluster)}</span>}
+        {!!p?.errors && <button className="flex items-center gap-1 text-warn hover:underline" onClick={() => setErrorsOpen(true)}><AlertTriangle size={12} /> {fmtNum(p.errors)} {tr("erro(s)")}</button>}
       </div>
 
       <FilterModal open={filterOpen} onClose={() => setFilterOpen(false)} scanId={scanId} current={summary?.filter} />
@@ -399,14 +400,14 @@ export default function Explorer() {
 function SelectionSummary({ row, path, units, dec, datesWithTime }: { row?: Row; path: string; units: string; dec: number; datesWithTime: boolean }) {
   if (!row) return <div className="h-[62px] border-b border-line" />;
   const items = [
-    ['Tamanho', fmtSize(row.size, units, dec)], ['Alocado', fmtSize(row.alloc, units, dec)],
-    ['Arquivos', fmtNum(row.files)], ['Pastas', fmtNum(row.dirs)], ['Modificado', fmtDate(row.mtime, datesWithTime)],
+    [tr("Tamanho"), fmtSize(row.size, units, dec)], [tr("Alocado"), fmtSize(row.alloc, units, dec)],
+    [tr("Arquivos"), fmtNum(row.files)], [tr("Pastas"), fmtNum(row.dirs)], [tr("Modificado"), fmtDate(row.mtime, datesWithTime)],
   ];
   return (
     <div className="flex items-center gap-6 border-b border-line px-4 py-2.5">
       <div className="min-w-0 flex-1">
         <div className="truncate text-[13px] font-medium text-fg" title={path}>{path}</div>
-        <div className="text-xs text-muted">{fmtPct(row.pct)} da pasta pai</div>
+        <div className="text-xs text-muted">{fmtPct(row.pct)} {tr("da pasta pai")}</div>
       </div>
       {items.map(([k, v]) => (
         <div key={k} className="hidden text-right lg:block">
@@ -429,7 +430,7 @@ function TreeSearch({ scanId, onPick }: { scanId: number; onPick: (id: number) =
   }, [q, scanId]);
   return (
     <div className="relative">
-      <Input className="w-44 2xl:w-56" icon={<Search size={14} />} placeholder="Pesquisar na árvore" value={q} onChange={(e) => setQ(e.target.value)} onFocus={() => res.length && setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 200)} />
+      <Input className="w-44 2xl:w-56" icon={<Search size={14} />} placeholder={tr("Pesquisar na árvore")} value={q} onChange={(e) => setQ(e.target.value)} onFocus={() => res.length && setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 200)} />
       {open && res.length > 0 && (
         <div className="absolute left-0 top-9 z-40 max-h-80 w-[460px] overflow-auto rounded-lg border border-line bg-surface p-1 shadow-xl anim-pop">
           {res.map((r) => (
@@ -458,40 +459,40 @@ function FilterModal({ open, onClose, scanId, current }: { open: boolean; onClos
   }, [open, current]);
   const apply = async () => {
     const valid = rules.filter((r) => r.pattern.trim());
-    try { for (const r of valid) if (r.kind === 'regex') new RegExp(r.pattern); } catch { toast('Expressão regular inválida', 'error'); return; }
+    try { for (const r of valid) if (r.kind === 'regex') new RegExp(r.pattern); } catch { toast(tr("A expressão regular não é válida"), 'error'); return; }
     await cc.scanQuery(scanId, 'setFilter', { rules: valid, minSize: minMB ? +minMB * 1048576 : 0, maxSize: maxMB ? +maxMB * 1048576 : 0 });
     bump(); onClose();
   };
   return (
-    <Modal open={open} onClose={onClose} title="Filtro" width={720} footer={<>
-      <Button variant="outline" onClick={async () => { await cc.scanQuery(scanId, 'setFilter', null); bump(); onClose(); }}>Limpar filtro</Button>
-      <Button variant="primary" onClick={apply}>Aplicar</Button>
+    <Modal open={open} onClose={onClose} title={tr("Filtro")} width={720} footer={<>
+      <Button variant="outline" onClick={async () => { await cc.scanQuery(scanId, 'setFilter', null); bump(); onClose(); }}>{tr("Limpar filtro")}</Button>
+      <Button variant="primary" onClick={apply}>{tr("Aplicar")}</Button>
     </>}>
-      <p className="mb-3 text-xs text-muted">As regras de <b>inclusão</b> mostram apenas os itens que combinam com pelo menos uma delas. As regras de <b>exclusão</b> escondem os itens que combinam com elas. Os totais das pastas são recalculados na hora, sem precisar analisar o disco de novo.</p>
+      <p className="mb-3 text-xs text-muted">{tr("As regras de")} <b>{tr("inclusão")}</b> {tr("mostram apenas os itens que combinam com pelo menos uma delas. As regras de")} <b>{tr("exclusão")}</b> {tr("escondem os itens que combinam com elas. Os totais das pastas são recalculados na hora, sem precisar analisar o disco de novo.")}</p>
       <div className="space-y-2">
         {rules.map((r, i) => (
           <div key={i} className="flex items-center gap-2 anim-fade">
             <Select className="w-36" value={r.field} onChange={(v) => setRules(rules.map((x, j) => (j === i ? { ...x, field: v } : x)))} options={[
-              { value: 'name', label: 'Nome do arquivo' }, { value: 'ext', label: 'Extensão' }, { value: 'path', label: 'Caminho completo' }, { value: 'folder', label: 'Nome da pasta' },
+              { value: 'name', label: tr("Nome do arquivo") }, { value: 'ext', label: tr("Extensão") }, { value: 'path', label: tr("Caminho completo") }, { value: 'folder', label: tr("Nome da pasta") },
             ]} />
             <Select className="w-40" value={r.op} onChange={(v) => setRules(rules.map((x, j) => (j === i ? { ...x, op: v } : x)))} options={[
-              { value: 'match', label: 'Incluir se corresponde' }, { value: 'notmatch', label: 'Excluir se corresponde' },
+              { value: 'match', label: tr("Incluir se corresponde") }, { value: 'notmatch', label: tr("Excluir se corresponde") },
             ]} />
             <Select className="w-32" value={r.kind} onChange={(v) => setRules(rules.map((x, j) => (j === i ? { ...x, kind: v } : x)))} options={[
-              { value: 'wildcard', label: 'Curinga' }, { value: 'regex', label: 'Regex' }, { value: 'exact', label: 'Nome exato' },
+              { value: 'wildcard', label: tr("Curinga") }, { value: 'regex', label: tr("Regex") }, { value: 'exact', label: tr("Nome exato") },
             ]} />
-            <Input className="flex-1" value={r.pattern} placeholder={r.kind === 'regex' ? '.+\\.exe$' : r.field === 'ext' ? 'mp4' : '*.exe'} onChange={(e) => setRules(rules.map((x, j) => (j === i ? { ...x, pattern: e.target.value } : x)))} />
-            <IconButton title="Remover regra" onClick={() => setRules(rules.filter((_, j) => j !== i))}><X size={15} /></IconButton>
+            <Input className="flex-1" value={r.pattern} placeholder={r.kind === 'regex' ? '.+\\.exe$' : r.field === 'ext' ? 'mp4' : tr("*.exe")} onChange={(e) => setRules(rules.map((x, j) => (j === i ? { ...x, pattern: e.target.value } : x)))} />
+            <IconButton title={tr("Remover regra")} onClick={() => setRules(rules.filter((_, j) => j !== i))}><X size={15} /></IconButton>
           </div>
         ))}
-        <Button size="sm" variant="outline" icon={<Plus size={13} />} onClick={() => setRules([...rules, { field: 'name', op: 'match', kind: 'wildcard', pattern: '' }])}>Adicionar regra</Button>
+        <Button size="sm" variant="outline" icon={<Plus size={13} />} onClick={() => setRules([...rules, { field: 'name', op: 'match', kind: 'wildcard', pattern: '' }])}>{tr("Adicionar regra")}</Button>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <label className="text-xs text-muted">Tamanho mínimo do arquivo (MB)<Input className="mt-1" type="number" min="0" value={minMB} onChange={(e) => setMin(e.target.value)} /></label>
-        <label className="text-xs text-muted">Tamanho máximo do arquivo (MB)<Input className="mt-1" type="number" min="0" value={maxMB} onChange={(e) => setMax(e.target.value)} /></label>
+        <label className="text-xs text-muted">{tr("Tamanho mínimo do arquivo (MB)")}<Input className="mt-1" type="number" min="0" value={minMB} onChange={(e) => setMin(e.target.value)} /></label>
+        <label className="text-xs text-muted">{tr("Tamanho máximo do arquivo (MB)")}<Input className="mt-1" type="number" min="0" value={maxMB} onChange={(e) => setMax(e.target.value)} /></label>
       </div>
       <div className="mt-3 border-t border-line pt-2">
-        <Toggle checked={settings!.hideEmpty} onChange={(v) => setSettings({ hideEmpty: v })} label="Ocultar pastas vazias" hint="Depois de aplicar o filtro, esconde as pastas que ficaram sem nenhum arquivo." />
+        <Toggle checked={settings!.hideEmpty} onChange={(v) => setSettings({ hideEmpty: v })} label={tr("Ocultar pastas vazias")} hint={tr("Depois de aplicar o filtro, esconde as pastas que ficaram sem nenhum arquivo.")} />
       </div>
     </Modal>
   );
@@ -507,9 +508,9 @@ function ColumnsModal({ open, onClose }: { open: boolean; onClose: () => void })
     const c = [...cols]; [c[i], c[j]] = [c[j], c[i]]; setSettings({ columns: c });
   };
   return (
-    <Modal open={open} onClose={onClose} title="Colunas da visão de detalhes" width={520} footer={<>
-      <Button variant="outline" onClick={() => setSettings({ columns: ['name', 'size', 'alloc', 'files', 'pct', 'mtime'] })}>Restaurar padrão</Button>
-      <Button variant="primary" onClick={onClose}>Concluir</Button>
+    <Modal open={open} onClose={onClose} title={tr("Colunas da visão de detalhes")} width={520} footer={<>
+      <Button variant="outline" onClick={() => setSettings({ columns: ['name', 'size', 'alloc', 'files', 'pct', 'mtime'] })}>{tr("Restaurar padrão")}</Button>
+      <Button variant="primary" onClick={onClose}>{tr("Concluir")}</Button>
     </>}>
       <div className="grid grid-cols-1 gap-0.5">
         {ALL_COLUMNS.map((c) => (
@@ -517,8 +518,8 @@ function ColumnsModal({ open, onClose }: { open: boolean; onClose: () => void })
             <Checkbox checked={cols.includes(c.key)} onChange={() => toggle(c.key)} />
             <span className="flex-1 text-[13px]">{c.label}</span>
             {cols.includes(c.key) && (<>
-              <IconButton title="Mover para cima" className="h-6 w-6" onClick={() => move(c.key, -1)}><ArrowUp size={13} /></IconButton>
-              <IconButton title="Mover para baixo" className="h-6 w-6" onClick={() => move(c.key, 1)}><ArrowUp size={13} className="rotate-180" /></IconButton>
+              <IconButton title={tr("Mover para cima")} className="h-6 w-6" onClick={() => move(c.key, -1)}><ArrowUp size={13} /></IconButton>
+              <IconButton title={tr("Mover para baixo")} className="h-6 w-6" onClick={() => move(c.key, 1)}><ArrowUp size={13} className="rotate-180" /></IconButton>
             </>)}
           </div>
         ))}
@@ -530,13 +531,13 @@ function ColumnsModal({ open, onClose }: { open: boolean; onClose: () => void })
 function ErrorsModal({ open, onClose, scanId }: { open: boolean; onClose: () => void; scanId: number }) {
   const [errs, setErrs] = useState<any[] | null>(null);
   useEffect(() => { if (open) cc.scanQuery(scanId, 'errors').then(setErrs); }, [open, scanId]);
-  const msg = (c: number) => (c === 5 ? 'Acesso negado' : c === 3 ? 'Caminho não encontrado' : c === 32 ? 'Em uso por outro processo' : `Erro ${c}`);
+  const msg = (c: number) => (c === 5 ? tr("Acesso negado") : c === 3 ? tr("Caminho não encontrado") : c === 32 ? tr("Em uso por outro processo") : `Erro ${c}`);
   return (
-    <Modal open={open} onClose={onClose} title={`Erros da varredura (${errs?.length ?? 0})`} width={760}>
+    <Modal open={open} onClose={onClose} title={tr("Erros da varredura ({0})", errs?.length ?? 0)} width={760}>
       <p className="mb-2 text-xs text-muted">
         {isMac
-          ? <>O CleanCode não conseguiu ler estas pastas. Na maioria dos casos, isso se resolve quando você ativa o CleanCode em Ajustes do Sistema, depois em Privacidade e Segurança, e depois em Acesso Total ao Disco. <button className="text-accent hover:underline" onClick={() => cc.openFullDiskAccess()}>Abrir Ajustes</button></>
-          : 'O CleanCode não conseguiu ler estas pastas. Na maioria dos casos, isso se resolve quando você abre o CleanCode como administrador.'}
+          ? <>{tr("O CleanCode não conseguiu ler estas pastas. Na maioria dos casos, isso se resolve quando você ativa o CleanCode em Ajustes do Sistema, depois em Privacidade e Segurança, e depois em Acesso Total ao Disco.")} <button className="text-accent hover:underline" onClick={() => cc.openFullDiskAccess()}>{tr("Abrir Ajustes")}</button></>
+          : tr("O CleanCode não conseguiu ler estas pastas. Na maioria dos casos, isso se resolve quando você abre o CleanCode como administrador.")}
       </p>
       {!errs ? <Spinner /> : (
         <div className="max-h-[50vh] overflow-auto rounded-md border border-line">
@@ -561,21 +562,21 @@ function ExportModal({ format, onClose, scanId, nodeId }: { format: string | nul
     setBusy(true);
     try {
       const r = await cc.exportRun(scanId, nodeId, format!, { depth: +depth, files });
-      if (r && r !== 'print') toast('Exportado: ' + r);
-    } catch (e: any) { toast('Falha na exportação: ' + e.message, 'error'); }
+      if (r && r !== 'print') toast(tr("Exportado: ") + r);
+    } catch (e: any) { toast(tr("A exportação falhou: ") + e.message, 'error'); }
     setBusy(false); onClose();
   };
-  const label: Record<string, string> = { xlsx: 'Excel', csv: 'CSV', html: 'HTML', pdf: 'PDF', txt: 'texto', print: 'impressão' };
+  const label: Record<string, string> = { xlsx: 'Excel', csv: 'CSV', html: 'HTML', pdf: 'PDF', txt: 'texto', print: tr("impressão") };
   return (
-    <Modal open={!!format} onClose={onClose} title={`Exportar para ${label[format || ''] || ''}`} width={460} footer={<>
-      <Button variant="outline" onClick={onClose}>Cancelar</Button>
-      <Button variant="primary" loading={busy} onClick={run}>{format === 'print' ? 'Imprimir…' : 'Salvar…'}</Button>
+    <Modal open={!!format} onClose={onClose} title={tr("Exportar para {0}", label[format || ''] || '')} width={460} footer={<>
+      <Button variant="outline" onClick={onClose}>{tr("Cancelar")}</Button>
+      <Button variant="primary" loading={busy} onClick={run}>{format === 'print' ? tr("Imprimir…") : tr("Salvar…")}</Button>
     </>}>
-      <p className="mb-3 text-xs text-muted">Exporta a pasta que está selecionada no Explorador, junto com as subpastas dela.</p>
-      <label className="block text-xs text-muted">Profundidade de subpastas
-        <Select className="mt-1" value={depth} onChange={setDepth} options={[1, 2, 3, 4, 5, 8, 10, 20, 99].map((d) => ({ value: String(d), label: d === 99 ? 'Todas' : `${d} nível(is)` }))} />
+      <p className="mb-3 text-xs text-muted">{tr("Exporta a pasta que está selecionada no Explorador, junto com as subpastas dela.")}</p>
+      <label className="block text-xs text-muted">{tr("Profundidade de subpastas")}
+        <Select className="mt-1" value={depth} onChange={setDepth} options={[1, 2, 3, 4, 5, 8, 10, 20, 99].map((d) => ({ value: String(d), label: d === 99 ? tr("Todas") : tr("{0} nível(is)", d) }))} />
       </label>
-      <div className="mt-2"><Toggle checked={files} onChange={setFiles} label="Incluir os arquivos da pasta selecionada" /></div>
+      <div className="mt-2"><Toggle checked={files} onChange={setFiles} label={tr("Incluir os arquivos da pasta selecionada")} /></div>
     </Modal>
   );
 }
@@ -588,13 +589,13 @@ function NewFolderModal({ target, onClose, scanId }: { target: { id: number; pat
     try {
       await cc.newFolder(target!.path, name);
       await cc.scanQuery(scanId, 'rescan', target!.id);
-      toast('Pasta criada');
+      toast(tr("Pasta criada"));
       onClose();
-    } catch (e: any) { toast('Não foi possível criar: ' + e.message, 'error'); }
+    } catch (e: any) { toast(tr("Não foi possível criar: ") + e.message, 'error'); }
   };
   return (
-    <Modal open={!!target} onClose={onClose} title="Nova pasta" width={440} footer={<><Button variant="outline" onClick={onClose}>Cancelar</Button><Button variant="primary" onClick={create}>Criar</Button></>}>
-      <div className="mb-2 truncate text-xs text-muted">Em: {target?.path}</div>
+    <Modal open={!!target} onClose={onClose} title={tr("Nova pasta")} width={440} footer={<><Button variant="outline" onClick={onClose}>{tr("Cancelar")}</Button><Button variant="primary" onClick={create}>{tr("Criar")}</Button></>}>
+      <div className="mb-2 truncate text-xs text-muted">{tr("Em:")} {target?.path}</div>
       <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && create()} />
     </Modal>
   );

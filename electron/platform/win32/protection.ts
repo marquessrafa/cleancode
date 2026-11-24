@@ -6,6 +6,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import type { ProtectionApi, SecurityCheck, SignatureInfo, StartupItem, PersistenceExtra } from '../types';
+import { t as tr } from '../../i18n';
 
 function ps(script: string, timeout = 60000): Promise<{ out: string; ok: boolean; err: string }> {
   return new Promise((resolve) => execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script],
@@ -32,23 +33,23 @@ async function status(): Promise<SecurityCheck[]> {
   const fwOff = fw.filter((p) => p.Enabled === false || p.Enabled === 0).map((p) => p.Name);
   const age = Number(d?.AntivirusSignatureAge);
   return [
-    { id: 'antivirus', name: 'Antivírus', critical: true, settingsUrl: 'windowsdefender://threat',
+    { id: 'antivirus', name: tr("Antivírus"), critical: true, settingsUrl: 'windowsdefender://threat',
       ok: d ? !!d.AntivirusEnabled || others.length > 0 : others.length ? true : null,
-      detail: d?.AntivirusEnabled ? 'Microsoft Defender ativo' : others.length ? `Protegido por ${others.join(', ')}` : 'Nenhum antivírus ativo encontrado' },
-    { id: 'realtime', name: 'Proteção em tempo real', critical: true, settingsUrl: 'windowsdefender://threatsettings',
+      detail: d?.AntivirusEnabled ? tr("O Microsoft Defender está ativo") : others.length ? tr("Protegido por {0}", others.join(', ')) : tr("Nenhum antivírus ativo encontrado") },
+    { id: 'realtime', name: tr("Proteção em tempo real"), critical: true, settingsUrl: 'windowsdefender://threatsettings',
       ok: d ? !!d.RealTimeProtectionEnabled || others.length > 0 : null,
-      detail: d?.RealTimeProtectionEnabled ? 'Arquivos verificados ao abrir e baixar' : others.length ? 'Gerenciada pelo outro antivírus' : 'Desligada' },
-    { id: 'signatures', name: 'Definições de vírus', settingsUrl: 'windowsdefender://threat',
+      detail: d?.RealTimeProtectionEnabled ? tr("Os arquivos são verificados quando você abre e baixa") : others.length ? tr("Gerenciada pelo outro antivírus") : tr("Desligada") },
+    { id: 'signatures', name: tr("Definições de vírus"), settingsUrl: 'windowsdefender://threat',
       ok: Number.isFinite(age) ? age <= 3 : null,
-      detail: Number.isFinite(age) ? (age === 0 ? 'Atualizadas hoje' : `Atualizadas há ${age} dia(s)`) : 'Não informado' },
-    { id: 'firewall', name: 'Firewall', critical: true, settingsUrl: 'windowsdefender://network',
+      detail: Number.isFinite(age) ? (age === 0 ? tr("Atualizadas hoje") : tr("Atualizadas há {0} dia(s)", age)) : tr("Não informado") },
+    { id: 'firewall', name: tr("Firewall"), critical: true, settingsUrl: 'windowsdefender://network',
       ok: fw.length ? fwOff.length === 0 : null,
-      detail: !fw.length ? 'Não informado' : fwOff.length ? `Desligado nos perfis: ${fwOff.join(', ')}` : 'Ligado em todos os perfis de rede' },
-    { id: 'uac', name: 'Controle de Conta de Usuário', ok: j.uac === undefined || j.uac === null ? null : Number(j.uac) === 1,
-      detail: Number(j.uac) === 1 ? 'Mudanças no sistema pedem confirmação' : 'Desligado: programas mudam o sistema sem perguntar' },
-    { id: 'smartscreen', name: 'SmartScreen', settingsUrl: 'windowsdefender://appbrowser',
+      detail: !fw.length ? tr("Não informado") : fwOff.length ? tr("Desligado nos perfis: {0}", fwOff.join(', ')) : tr("Ligado em todos os perfis de rede") },
+    { id: 'uac', name: tr("Controle de Conta de Usuário"), ok: j.uac === undefined || j.uac === null ? null : Number(j.uac) === 1,
+      detail: Number(j.uac) === 1 ? tr("Mudanças no sistema pedem confirmação") : tr("Desligado. Assim, os programas mudam o sistema sem perguntar") },
+    { id: 'smartscreen', name: tr("SmartScreen"), settingsUrl: 'windowsdefender://appbrowser',
       ok: j.smartscreen ? !/off/i.test(j.smartscreen) : true,
-      detail: j.smartscreen && /off/i.test(j.smartscreen) ? 'Desligado' : 'Avisa antes de abrir programas desconhecidos' },
+      detail: j.smartscreen && /off/i.test(j.smartscreen) ? tr("Desligado") : tr("Avisa antes de abrir programas desconhecidos") },
   ];
 }
 
@@ -99,11 +100,11 @@ export const protection: ProtectionApi = {
     { browser: 'Opera', root: path.join(ROAMING, 'Opera Software'), type: 'chromium' },
     { browser: 'Firefox', root: path.join(ROAMING, 'Mozilla', 'Firefox', 'Profiles'), type: 'firefox' },
   ],
-  quickScanName: 'Verificação rápida do Microsoft Defender',
+  quickScanName: tr("Verificação rápida do Microsoft Defender"),
   async quickScan() {
     const r = await ps('Start-MpScan -ScanType QuickScan; $t = Get-MpThreatDetection | Where-Object { $_.InitialDetectionTime -gt (Get-Date).AddHours(-1) }; @($t).Count', 60 * 60000);
-    if (!r.ok) return { ok: false, message: /not recognized|não é reconhecido/i.test(r.err) ? 'O Microsoft Defender não está disponível (outro antivírus em uso?)' : r.err.slice(0, 200) };
+    if (!r.ok) return { ok: false, message: /not recognized|não é reconhecido/i.test(r.err) ? tr("O Microsoft Defender não está disponível. Talvez outro antivírus esteja em uso.") : r.err.slice(0, 200) };
     const n = Number(r.out.trim().split(/\s+/).pop());
-    return { ok: true, message: n > 0 ? `${n} ameaça(s) encontrada(s): veja em Segurança do Windows › Proteção contra vírus` : 'Nenhuma ameaça encontrada' };
+    return { ok: true, message: n > 0 ? tr("{0} ameaça(s) encontrada(s). Para ver, abra Segurança do Windows › Proteção contra vírus e ameaças.", n) : tr("Nenhuma ameaça encontrada") };
   },
 };

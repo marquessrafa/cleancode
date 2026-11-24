@@ -7,6 +7,7 @@ import os from 'os';
 import path from 'path';
 import { scanGameDirs } from '../gameDirs';
 import type { GameApi, GameInfo, GameStatus, GameSessionOptions } from '../types';
+import { t as tr } from '../../i18n';
 
 function run(cmd: string, args: string[], timeout = 30000): Promise<{ ok: boolean; out: string; err: string }> {
   return new Promise((resolve) => execFile(cmd, args, { encoding: 'utf8', timeout, maxBuffer: 16 * 1024 * 1024 }, (e, out, err) => resolve({ ok: !e, out: out || '', err: String(err || e?.message || '') })));
@@ -39,15 +40,15 @@ async function status(): Promise<GameStatus> {
     shaderCache: metal.reduce((s, d) => s + dirSize(d), 0),
     memory: { total: os.totalmem(), free: os.freemem() },
     toggles: [
-      { id: 'lowpower', label: 'Modo Pouca Energia', detail: 'Reduz a velocidade do processador para economizar bateria. Durante a sessão de jogo ele é desligado.', on: await lowPower(), needsAdmin: true, recommended: false },
+      { id: 'lowpower', label: tr("Modo Pouca Energia"), detail: tr("Reduz a velocidade do processador para economizar bateria. Durante a sessão de jogo, esse modo fica desligado."), on: await lowPower(), needsAdmin: true, recommended: false },
     ],
   };
 }
 
 async function setToggle(id: string, on: boolean) {
-  if (id !== 'lowpower') return { ok: false, message: 'Ajuste desconhecido' };
+  if (id !== 'lowpower') return { ok: false, message: tr("Ajuste desconhecido") };
   const r = await runAsAdmin(`/usr/bin/pmset -a lowpowermode ${on ? 1 : 0}`);
-  return { ok: r.ok, message: r.ok ? (on ? 'Modo Pouca Energia ligado' : 'Modo Pouca Energia desligado') : 'Cancelado' };
+  return { ok: r.ok, message: r.ok ? (on ? tr("Modo Pouca Energia ligado") : tr("Modo Pouca Energia desligado")) : tr("Cancelado") };
 }
 
 function acf(text: string, key: string) { return new RegExp(`"${key}"\\s+"([^"]*)"`, 'i').exec(text)?.[1]; }
@@ -85,7 +86,7 @@ async function start(o: GameSessionOptions) {
   for (const c of o.close) {
     // pede para o app fechar normalmente (ele pode perguntar se quer salvar)
     const r = await run('/usr/bin/osascript', ['-e', `tell application ${asq(c.name)} to quit`], 15000);
-    steps.push({ label: `Fechar ${c.name}`, ok: r.ok, message: r.ok ? 'Fechado' : 'Não respondeu ao pedido de fechar' });
+    steps.push({ label: tr("Fechar {0}", c.name), ok: r.ok, message: r.ok ? tr("Fechado") : tr("Não respondeu ao pedido de fechar") });
   }
   const admin: string[] = [];
   const wasLow = await lowPower();
@@ -94,10 +95,10 @@ async function start(o: GameSessionOptions) {
   if (admin.length) {
     const before = os.freemem();
     const r = await runAsAdmin(admin.join(' && '));
-    if (o.power && wasLow) { restoreLowPower = r.ok; steps.push({ label: 'Desligar Modo Pouca Energia', ok: r.ok, message: r.ok ? 'Desligado durante a sessão' : 'Cancelado' }); }
-    if (o.freeMemory) steps.push({ label: 'Liberar memória', ok: r.ok, message: r.ok ? `${Math.max(0, Math.round((os.freemem() - before) / 1048576))} MB liberados` : 'Cancelado' });
-  } else if (o.power) steps.push({ label: 'Energia', ok: true, message: 'O Modo Pouca Energia já está desligado' });
-  if (o.boostDir) steps.push({ label: 'Prioridade do jogo', ok: true, message: 'O macOS dá prioridade sozinho ao jogo em tela cheia (Modo Jogo)' });
+    if (o.power && wasLow) { restoreLowPower = r.ok; steps.push({ label: tr("Desligar Modo Pouca Energia"), ok: r.ok, message: r.ok ? tr("Desligado durante a sessão") : tr("Cancelado") }); }
+    if (o.freeMemory) steps.push({ label: tr("Liberar memória"), ok: r.ok, message: r.ok ? tr("{0} MB liberados", Math.max(0, Math.round((os.freemem() - before) / 1048576))) : tr("Cancelado") });
+  } else if (o.power) steps.push({ label: tr("Energia"), ok: true, message: tr("O Modo Pouca Energia já está desligado") });
+  if (o.boostDir) steps.push({ label: tr("Prioridade do jogo"), ok: true, message: tr("O macOS dá prioridade sozinho ao jogo em tela cheia (Modo Jogo)") });
   return { steps };
 }
 
@@ -105,10 +106,10 @@ async function stop() {
   const steps: { label: string; ok: boolean; message: string }[] = [];
   if (restoreLowPower) {
     const r = await runAsAdmin('/usr/bin/pmset -a lowpowermode 1');
-    steps.push({ label: 'Religar Modo Pouca Energia', ok: r.ok, message: r.ok ? 'Religado' : 'Cancelado' });
+    steps.push({ label: tr("Religar Modo Pouca Energia"), ok: r.ok, message: r.ok ? tr("Religado") : tr("Cancelado") });
     restoreLowPower = false;
   }
-  steps.push({ label: 'Apps fechados', ok: true, message: 'Abra de novo os que precisar' });
+  steps.push({ label: tr("Apps fechados"), ok: true, message: tr("Abra de novo os apps que você precisar.") });
   return { steps };
 }
 
@@ -117,14 +118,14 @@ async function boost() { return 0; }
 async function cleanShaders() {
   let freed = 0;
   for (const d of await metalDirs()) { const size = dirSize(d); try { fs.rmSync(d, { recursive: true, force: true }); freed += size; } catch { /* em uso */ } }
-  return { freed, message: 'Os jogos recompilam os shaders na próxima vez (a primeira partida pode engasgar um pouco).' };
+  return { freed, message: tr("Os jogos compilam os shaders de novo na próxima vez, então a primeira partida pode travar um pouco.") };
 }
 
 async function freeMemory() {
   const before = os.freemem();
   const r = await runAsAdmin('/usr/sbin/purge');
   const freed = Math.max(0, os.freemem() - before);
-  return r.ok ? { ok: true, freed, message: `${Math.round(freed / 1048576)} MB liberados` } : { ok: false, freed: 0, message: 'Cancelado' };
+  return r.ok ? { ok: true, freed, message: tr("{0} MB liberados", Math.round(freed / 1048576)) } : { ok: false, freed: 0, message: tr("Cancelado") };
 }
 
 export const game: GameApi = { status, setToggle, games, start, stop, boost, cleanShaders, freeMemory };

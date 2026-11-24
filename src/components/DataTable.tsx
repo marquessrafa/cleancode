@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { Checkbox, cx } from './ui';
+import { t, LOCALE } from '../lib/i18n';
 
 export interface Column<T> {
   key: string; label: string; width?: number; align?: 'left' | 'right'; sortable?: boolean; flex?: boolean;
@@ -38,7 +39,7 @@ export function DataTable<T>({
     const copy = [...rows];
     copy.sort((a, b) => {
       const x = sv(a), y = sv(b);
-      const r = typeof x === 'string' ? x.localeCompare(y, 'pt-BR', { numeric: true }) : (x ?? 0) - (y ?? 0);
+      const r = typeof x === 'string' ? x.localeCompare(y, LOCALE, { numeric: true }) : (x ?? 0) - (y ?? 0);
       return sort.asc ? r : -r;
     });
     return copy;
@@ -94,7 +95,7 @@ export function DataTable<T>({
             ))}
           </div>
           {sorted.length === 0 ? (
-            <div className="sticky left-0 py-10 text-center text-xs text-muted">{empty || 'Nada para mostrar'}</div>
+            <div className="sticky left-0 py-10 text-center text-xs text-muted">{empty || t("Nada para mostrar")}</div>
           ) : (
             <div style={{ height: sorted.length * rowHeight, position: 'relative' }}>
               {sorted.slice(start, end).map((r, k) => {

@@ -4,6 +4,7 @@ import { execFile } from 'child_process';
 import type { DriveHardware } from '../types';
 import { brandOf } from '../brands';
 import { drives } from './native';
+import { t as tr } from '../../i18n';
 
 function run(cmd: string, args: string[], input?: string, timeout = 20000): Promise<string> {
   return new Promise((resolve) => {
@@ -99,7 +100,7 @@ export async function driveHardware(force = false): Promise<DriveHardware[]> {
     const wholeId = /^(disk\d+)/.exec(store)?.[1] || store;
     const whole = (wholeId && (await diskInfo(wholeId))) || vol;
     const bus = busOf(String(whole.BusProtocol || vol.BusProtocol || ''));
-    const model = String(whole.MediaName || vol.MediaName || '').replace(/\s+Media$/i, '').replace(/\s+/g, ' ').trim() || d.label || 'Dispositivo sem nome';
+    const model = String(whole.MediaName || vol.MediaName || '').replace(/\s+Media$/i, '').replace(/\s+/g, ' ').trim() || d.label || tr("Dispositivo sem nome");
     const ssd = whole.SolidState ?? vol.SolidState;
     const media: DriveHardware['media'] = ssd === true ? 'SSD' : ssd === false && bus !== 'USB' && bus !== 'Virtual' ? 'HD' : 'Desconhecido';
     const smart = String(whole.SMARTStatus || vol.SMARTStatus || '');

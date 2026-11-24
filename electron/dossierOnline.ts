@@ -5,6 +5,7 @@ import { app, net } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import type { DossierFact, DossierOnline, DossierQuery } from './platform/types';
+import { t as tr, LOCALE } from './i18n';
 
 const TTL = 14 * 86400000;
 const cacheFile = () => path.join(app.getPath('userData'), 'dossier-cache.json');
@@ -26,17 +27,17 @@ async function getJson(url: string): Promise<any> {
   } catch { return null; } finally { clearTimeout(t); }
 }
 
-const MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 /** Data da Wikidata respeitando a precisão (ano, mês ou dia). */
 function wdDate(v: any): string | undefined {
   const m = /^\+?(-?\d{1,4})-(\d{2})-(\d{2})/.exec(v?.time || '');
   if (!m) return;
   const [y, mo, d] = [+m[1], +m[2], +m[3]];
   if (v.precision <= 9 || !mo) return String(y);
-  if (v.precision === 10 || !d) return `${MONTHS[mo - 1]} de ${y}`;
-  return `${d} de ${MONTHS[mo - 1]} de ${y}`;
+  // mês e dia no idioma do app (ex.: "março de 2021", "March 2021", "marzo de 2021")
+  if (v.precision === 10 || !d) return new Date(Date.UTC(y, mo - 1, 1)).toLocaleDateString(LOCALE, { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  return new Date(Date.UTC(y, mo - 1, d)).toLocaleDateString(LOCALE, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 }
-const brDate = (s?: string) => { if (!s) return; const t = Date.parse(s); return isNaN(t) ? undefined : new Date(t).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' }); };
+const brDate = (s?: string) => { if (!s) return; const t = Date.parse(s); return isNaN(t) ? undefined : new Date(t).toLocaleDateString(LOCALE, { day: 'numeric', month: 'long', year: 'numeric' }); };
 const strip = (s?: string) => (s || '').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ').trim();
 const normName = (s: string) => s.toLowerCase()
   .replace(/\((x64|x86|64-bit|32-bit|64 bits|32 bits|user|machine)\)/g, '')
@@ -87,7 +88,7 @@ async function fromWikidata(q: DossierQuery, res: DossierOnline) {
   const claims = e.claims || {};
   const vals = (p: string) => (claims[p] || []).filter((c: any) => c.rank !== 'deprecated' && c.mainsnak?.datavalue);
   const ids = (p: string) => vals(p).map((c: any) => c.mainsnak.datavalue.value?.id).filter(Boolean) as string[];
-  const PROPS: [string, string][] = [['P178', 'Desenvolvedor'], ['P170', 'Criado por'], ['P123', 'Distribuidora'], ['P275', 'Licença'], ['P277', 'Linguagem de programação'], ['P136', 'Gênero'], ['P408', 'Motor gráfico'], ['P57', 'Direção'], ['P495', 'País de origem'], ['P306', 'Sistemas'], ['P400', 'Plataformas']];
+  const PROPS: [string, string][] = [['P178', tr("Desenvolvedor")], ['P170', tr("Criado por")], ['P123', tr("Distribuidora")], ['P275', tr("Licença")], ['P277', tr("Linguagem de programação")], ['P136', tr("Gênero")], ['P408', tr("Motor gráfico")], ['P57', tr("Direção")], ['P495', tr("País de origem")], ['P306', tr("Sistemas")], ['P400', tr("Plataformas")]];
   const all = [...new Set(PROPS.flatMap(([p]) => ids(p).slice(0, 8)))];
   // rótulos e resumo da Wikipedia ao mesmo tempo
   const wikiP = (async () => {
@@ -100,27 +101,27 @@ async function fromWikidata(q: DossierQuery, res: DossierOnline) {
     return null;
   })();
   const L = all.length ? await labels(all) : {};
-  const f = (label: string, value?: string, kind: DossierFact['kind'] = 'text', hint?: string) => { if (value) res.facts.push({ group: 'about', label, value, kind, hint: hint ?? 'Wikidata' }); };
+  const f = (label: string, value?: string, kind: DossierFact['kind'] = 'text', hint?: string) => { if (value) res.facts.push({ group: 'about', label, value, kind, hint: hint ?? tr("Wikidata") }); };
   for (const [p, label] of PROPS) { const l = ids(p).slice(0, 8).map((x) => L[x]).filter(Boolean); f(label, l.join(', ')); }
   const dates = [...vals('P577'), ...vals('P571')].map((c: any) => c.mainsnak.datavalue.value).filter((v: any) => v?.time).sort((a: any, b: any) => a.time.localeCompare(b.time));
-  f('Lançamento inicial', wdDate(dates[0]));
+  f(tr("Lançamento inicial"), wdDate(dates[0]));
   // versão estável mais recente: a preferida, senão a de data mais nova
   const vers = vals('P348').map((c: any) => ({ v: String(c.mainsnak.datavalue.value), pref: c.rank === 'preferred', date: c.qualifiers?.P577?.[0]?.datavalue?.value, beta: !!c.qualifiers?.P548?.some((x: any) => x.datavalue?.value?.id && x.datavalue.value.id !== 'Q2804309') }));
   const stable = vers.filter((x: any) => !x.beta);
   const pick = stable.find((x: any) => x.pref) || stable.sort((a: any, b: any) => String(b.date?.time || '').localeCompare(String(a.date?.time || '')))[0];
-  if (pick) { res.latest = pick.v; f('Versão estável mais recente', pick.v + (pick.date ? ` (${wdDate(pick.date)})` : '')); }
+  if (pick) { res.latest = pick.v; f(tr("Versão estável mais recente"), pick.v + (pick.date ? ` (${wdDate(pick.date)})` : '')); }
   const site = vals('P856')[0]?.mainsnak.datavalue.value;
   f('Site oficial', site, 'url');
   const repo = vals('P1324')[0]?.mainsnak.datavalue.value;
   f('Código-fonte', repo, 'url');
   const desc = e.descriptions?.['pt-br']?.value || e.descriptions?.pt?.value || e.descriptions?.en?.value;
-  if (desc) res.facts.unshift({ group: 'about', label: 'O que é', value: desc, hint: 'Wikidata' });
-  res.sources.push({ label: 'Wikidata', url: `https://www.wikidata.org/wiki/${hit.id}` });
+  if (desc) res.facts.unshift({ group: 'about', label: tr("O que é"), value: desc, hint: tr("Wikidata") });
+  res.sources.push({ label: tr("Wikidata"), url: `https://www.wikidata.org/wiki/${hit.id}` });
   const wk = await wikiP;
   if (wk) {
     const url = wk.w.content_urls?.desktop?.page || `https://${wk.host}.wikipedia.org/wiki/${encodeURIComponent(wk.title)}`;
-    res.summary = wk.w.extract; res.summarySource = { label: `Wikipedia (${wk.host})`, url };
-    res.sources.push({ label: `Wikipedia (${wk.host})`, url });
+    res.summary = wk.w.extract; res.summarySource = { label: tr("Wikipedia ({0})", wk.host), url };
+    res.sources.push({ label: tr("Wikipedia ({0})", wk.host), url });
   }
 }
 
@@ -130,21 +131,21 @@ async function fromAppStore(q: DossierQuery, res: DossierOnline) {
   let it: any = null;
   for (const c of ['br', 'us']) { const r = await getJson(`https://itunes.apple.com/lookup?${qs}&country=${c}`); if (r?.results?.[0]) { it = r.results[0]; break; } }
   if (!it) return;
-  const f = (label: string, value: any, kind: DossierFact['kind'] = 'text') => { if (value) res.facts.push({ group: 'about', label, value, kind, hint: 'App Store' }); };
+  const f = (label: string, value: any, kind: DossierFact['kind'] = 'text') => { if (value) res.facts.push({ group: 'about', label, value, kind, hint: tr("App Store") }); };
   f('Desenvolvedor (App Store)', it.artistName);
   if (it.sellerName && it.sellerName !== it.artistName) f('Vendedor', it.sellerName);
-  f('Lançado na App Store em', brDate(it.releaseDate));
-  f('Versão atual', it.version ? `${it.version}${it.currentVersionReleaseDate ? ` (${brDate(it.currentVersionReleaseDate)})` : ''}` : undefined);
+  f(tr("Lançado na App Store em"), brDate(it.releaseDate));
+  f(tr("Versão atual"), it.version ? `${it.version}${it.currentVersionReleaseDate ? ` (${brDate(it.currentVersionReleaseDate)})` : ''}` : undefined);
   f('Categoria (App Store)', (it.genres || []).join(', ') || it.primaryGenreName);
   f('Preço', it.formattedPrice);
-  if (it.averageUserRating) f('Avaliação', `${it.averageUserRating.toFixed(1)} de 5 (${Number(it.userRatingCount || 0).toLocaleString('pt-BR')} avaliações)`);
-  f('Classificação indicativa', it.contentAdvisoryRating);
+  if (it.averageUserRating) f('Avaliação', tr("{0} de 5 ({1} avaliações)", it.averageUserRating.toFixed(1), Number(it.userRatingCount || 0).toLocaleString(LOCALE)));
+  f(tr("Classificação indicativa"), it.contentAdvisoryRating);
   f('Idiomas', (it.languageCodesISO2A || []).length ? `${it.languageCodesISO2A.length} (${it.languageCodesISO2A.slice(0, 8).join(', ')}${it.languageCodesISO2A.length > 8 ? '…' : ''})` : undefined);
-  f('Site do desenvolvedor', it.sellerUrl, 'url');
-  if (q.mas) f('Licença', 'Contrato de licença da App Store (EULA padrão da Apple ou do desenvolvedor)');
+  f(tr("Site do desenvolvedor"), it.sellerUrl, 'url');
+  if (q.mas) f('Licença', tr("Contrato de licença da App Store (EULA padrão da Apple ou do desenvolvedor)"));
   if (it.version && !res.latest) res.latest = it.version;
-  if (!res.summary && it.description) { res.summary = strip(it.description).slice(0, 900) + (it.description.length > 900 ? '…' : ''); res.summarySource = { label: 'App Store', url: it.trackViewUrl }; }
-  if (it.trackViewUrl) res.sources.push({ label: 'App Store', url: it.trackViewUrl });
+  if (!res.summary && it.description) { res.summary = strip(it.description).slice(0, 900) + (it.description.length > 900 ? '…' : ''); res.summarySource = { label: tr("App Store"), url: it.trackViewUrl }; }
+  if (it.trackViewUrl) res.sources.push({ label: tr("App Store"), url: it.trackViewUrl });
 }
 
 async function fromSteam(q: DossierQuery, res: DossierOnline) {
@@ -152,20 +153,20 @@ async function fromSteam(q: DossierQuery, res: DossierOnline) {
   const r = await getJson(`https://store.steampowered.com/api/appdetails?appids=${encodeURIComponent(q.steamId)}&l=brazilian&cc=br`);
   const d = r?.[q.steamId]?.success ? r[q.steamId].data : null;
   if (!d) return;
-  const f = (label: string, value: any, kind: DossierFact['kind'] = 'text') => { if (value) res.facts.push({ group: 'about', label, value, kind, hint: 'Steam' }); };
+  const f = (label: string, value: any, kind: DossierFact['kind'] = 'text') => { if (value) res.facts.push({ group: 'about', label, value, kind, hint: tr("Steam") }); };
   f('Desenvolvedor', (d.developers || []).join(', '));
   f('Distribuidora', (d.publishers || []).join(', '));
-  f('Lançamento', d.release_date?.coming_soon ? `Em breve (${d.release_date.date})` : d.release_date?.date);
+  f('Lançamento', d.release_date?.coming_soon ? tr("Em breve ({0})", d.release_date.date) : d.release_date?.date);
   f('Gênero', (d.genres || []).map((g: any) => g.description).join(', '));
-  f('Preço', d.is_free ? 'Gratuito' : d.price_overview?.final_formatted);
+  f('Preço', d.is_free ? tr("Gratuito") : d.price_overview?.final_formatted);
   if (d.metacritic?.score) f('Metacritic', `${d.metacritic.score} / 100`);
-  if (d.recommendations?.total) f('Recomendações na Steam', Number(d.recommendations.total).toLocaleString('pt-BR'));
-  if (d.required_age && +d.required_age > 0) f('Idade mínima', `${d.required_age} anos`);
+  if (d.recommendations?.total) f(tr("Recomendações na Steam"), Number(d.recommendations.total).toLocaleString(LOCALE));
+  if (d.required_age && +d.required_age > 0) f(tr("Idade mínima"), `${d.required_age} anos`);
   f('Recursos', (d.categories || []).map((c: any) => c.description).slice(0, 10).join(', '));
   f('Site oficial', d.website, 'url');
-  if (d.pc_requirements?.minimum) f('Requisitos mínimos (PC)', strip(d.pc_requirements.minimum).replace(/^M[íi]nimos?:\s*/i, '').replace(/\n+/g, ' · ').slice(0, 500));
-  if (!res.summary && d.short_description) { res.summary = strip(d.short_description); res.summarySource = { label: 'Steam', url: `https://store.steampowered.com/app/${q.steamId}` }; }
-  res.sources.push({ label: 'Steam', url: `https://store.steampowered.com/app/${q.steamId}` });
+  if (d.pc_requirements?.minimum) f(tr("Requisitos mínimos (PC)"), strip(d.pc_requirements.minimum).replace(/^M[íi]nimos?:\s*/i, '').replace(/\n+/g, ' · ').slice(0, 500));
+  if (!res.summary && d.short_description) { res.summary = strip(d.short_description); res.summarySource = { label: tr("Steam"), url: `https://store.steampowered.com/app/${q.steamId}` }; }
+  res.sources.push({ label: tr("Steam"), url: `https://store.steampowered.com/app/${q.steamId}` });
 }
 
 export async function onlineDossier(q: DossierQuery, refresh = false): Promise<DossierOnline> {
@@ -182,7 +183,7 @@ export async function onlineDossier(q: DossierQuery, refresh = false): Promise<D
     summary: wiki.summary || store.summary, summarySource: wiki.summary ? wiki.summarySource : store.summarySource,
     latest: store.latest || wiki.latest,
   };
-  if (!res.facts.length && !res.summary) res.error = 'Nenhuma informação pública encontrada para este programa.';
+  if (!res.facts.length && !res.summary) res.error = tr("Nenhuma informação pública encontrada para este programa.");
   // só guarda quando alguma fonte respondeu (sem internet, tenta de novo na próxima)
   if (res.facts.length || res.summary) { c[key] = { at: Date.now(), v: res }; saveCache(); }
   return res;

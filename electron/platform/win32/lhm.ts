@@ -10,6 +10,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { t } from '../../i18n';
 
 export interface LhmSensor { name: string; type: string; value: number | null; min: number | null; max: number | null }
 export interface LhmHardware { name: string; type: string; id: string; sensors: LhmSensor[]; sub: LhmHardware[] }
@@ -93,7 +94,7 @@ export async function pawnioInstalled(): Promise<boolean> {
 }
 export async function activate(): Promise<{ ok: boolean; message: string }> {
   const exe = helperPath();
-  if (!exe) return { ok: false, message: 'Componente de sensores não encontrado nesta instalação' };
+  if (!exe) return { ok: false, message: t("O componente dos sensores não foi encontrado nesta instalação") };
   const dir = path.join(os.tmpdir(), 'cleancode-pawnio'); fs.mkdirSync(dir, { recursive: true });
   const setup = path.join(dir, 'PawnIO_setup.exe');
   const needPawn = !(await pawnioInstalled());
@@ -101,7 +102,7 @@ export async function activate(): Promise<{ ok: boolean; message: string }> {
     // download do endereço oficial e conferência da assinatura digital antes de executar
     const dl = await ps(`$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -Uri ${psq(PAWNIO_URL)} -OutFile ${psq(setup)}; $s=Get-AuthenticodeSignature ${psq(setup)}; "$($s.Status)|$($s.SignerCertificate.Subject)"`, 180000);
     const [status, subject] = dl.out.trim().split('|');
-    if (!dl.ok || status !== 'Valid') { try { fs.unlinkSync(setup); } catch { /* */ } return { ok: false, message: `O instalador do driver não passou na verificação de assinatura (${status || dl.err.slice(0, 80)})` }; }
+    if (!dl.ok || status !== 'Valid') { try { fs.unlinkSync(setup); } catch { /* */ } return { ok: false, message: t("O instalador do driver não passou na verificação de assinatura ({0})", status || dl.err.slice(0, 80)) }; }
     void subject;
   }
   const taskXmlAction = `New-ScheduledTaskAction -Execute ${psq(path.join(SENSORS_DIR, 'cc-lhm.exe'))} -Argument ${psq(`--loop --out "${DATA}"`)}`;
@@ -126,23 +127,23 @@ export async function activate(): Promise<{ ok: boolean; message: string }> {
   const r = await psAdmin(script);
   taskInstalled = null;
   try { fs.unlinkSync(setup); } catch { /* */ }
-  if (!r.ok) return { ok: false, message: /cancel/i.test(r.err) ? 'Cancelado' : needPawn && !(await pawnioInstalled()) ? 'O driver PawnIO não pôde ser instalado' : 'Sem permissão de administrador' };
+  if (!r.ok) return { ok: false, message: /cancel/i.test(r.err) ? t("Cancelado") : needPawn && !(await pawnioInstalled()) ? t("O driver PawnIO não pôde ser instalado") : t("Sem permissão de administrador") };
   child?.kill(); child = null;
   const reboot = fs.existsSync(path.join(path.dirname(DATA), 'reboot'));
-  return { ok: true, message: needPawn ? (reboot ? 'Driver instalado: reinicie o Windows para ler todos os sensores' : 'Driver instalado e monitoramento avançado ativo') : 'Monitoramento avançado ativo' };
+  return { ok: true, message: needPawn ? (reboot ? t("Driver instalado. Reinicie o Windows para ler todos os sensores.") : t("Driver instalado e monitoramento avançado ativo")) : t("Monitoramento avançado ativo") };
 }
 export async function deactivate() {
   const r = await psAdmin(`Stop-ScheduledTask -TaskName ${psq(TASK)} -ErrorAction SilentlyContinue; Get-Process cc-lhm -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Unregister-ScheduledTask -TaskName ${psq(TASK)} -Confirm:$false; Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path ${psq(SENSORS_DIR)}`);
   taskInstalled = null;
-  return { ok: r.ok, message: r.ok ? 'Monitoramento avançado desativado (o driver PawnIO pode ser removido em Aplicativos instalados)' : 'Cancelado' };
+  return { ok: r.ok, message: r.ok ? t("O monitoramento avançado foi desligado. Você pode remover o driver PawnIO em Aplicativos instalados.") : t("Cancelado") };
 }
 
 // ---------- conversão para a lista de sensores do app ----------
 const COMPONENT: Record<string, string> = { Cpu: 'cpu', GpuNvidia: 'gpu', GpuAmd: 'gpu', GpuIntel: 'gpu', Memory: 'ram', Motherboard: 'board', SuperIO: 'board', EmbeddedController: 'board', Cooler: 'board', Storage: 'disk', Battery: 'battery', Psu: 'psu' };
 const GROUP: Record<string, { g: string; unit: string }> = {
-  Temperature: { g: 'temp', unit: '°C' }, Voltage: { g: 'volt', unit: 'V' }, Current: { g: 'current', unit: 'A' }, Power: { g: 'power', unit: 'W' }, Clock: { g: 'clock', unit: 'MHz' },
+  Temperature: { g: 'temp', unit: '°C' }, Voltage: { g: 'volt', unit: 'V' }, Current: { g: 'current', unit: 'A' }, Power: { g: 'power', unit: 'W' }, Clock: { g: 'clock', unit: t("MHz") },
   Load: { g: 'load', unit: '%' }, Fan: { g: 'fan', unit: 'RPM' }, Control: { g: 'control', unit: '%' }, Level: { g: 'level', unit: '%' }, Data: { g: 'data', unit: 'GB' }, SmallData: { g: 'data', unit: 'MB' },
-  Throughput: { g: 'throughput', unit: 'B/s' }, Energy: { g: 'energy', unit: 'mWh' }, Frequency: { g: 'clock', unit: 'Hz' }, Factor: { g: 'factor', unit: '' }, TimeSpan: { g: 'time', unit: 's' },
+  Throughput: { g: 'throughput', unit: 'B/s' }, Energy: { g: 'energy', unit: t("mWh") }, Frequency: { g: 'clock', unit: t("Hz") }, Factor: { g: 'factor', unit: '' }, TimeSpan: { g: 'time', unit: 's' },
 };
 export interface FlatSensor { kind: string; group: string; hw: string; hwId: string; name: string; value: number; min?: number; max?: number; unit: string }
 export function flatten(s: LhmSnapshot | null): FlatSensor[] {

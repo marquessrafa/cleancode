@@ -4,6 +4,7 @@ import os from 'os';
 import path from 'path';
 import { execFile } from 'child_process';
 import type { JunkApi, JunkCategory } from '../types';
+import { t } from '../../i18n';
 
 const H = os.homedir();
 const LOCAL = process.env.LOCALAPPDATA || path.join(H, 'AppData', 'Local');
@@ -27,26 +28,26 @@ const browserRoots = [
 
 const categories: JunkCategory[] = [
   {
-    id: 'user-temp', name: 'Temporários do usuário', group: 'Sistema', selected: true, risk: 'safe',
-    description: 'Arquivos que programas criam e esquecem em %TEMP%, com mais de 1 dia (no modo agressivo, mais de 1 hora). Pastas em uso são abertas e só o que está parado entra.',
+    id: 'user-temp', name: t("Temporários do usuário"), group: 'Sistema', selected: true, risk: 'safe',
+    description: t("São arquivos que os programas criam e esquecem em %TEMP%, com mais de 1 dia (ou mais de 1 hora, no modo agressivo). O CleanCode também olha dentro das pastas em uso, mas só inclui os arquivos que estão parados."),
     targets: [{ path: os.tmpdir(), mode: 'children', minAgeDays: 1, aggressiveMinAgeDays: 0.04 }],
   },
   {
-    id: 'win-temp', name: 'Temporários do Windows', group: 'Sistema', selected: true, risk: 'safe',
+    id: 'win-temp', name: t("Temporários do Windows"), group: 'Sistema', selected: true, risk: 'safe',
     description: 'Pasta Windows\\Temp (exige executar como administrador).',
     targets: [{ path: path.join(WIN, 'Temp'), mode: 'children', minAgeDays: 1, aggressiveMinAgeDays: 0.04 }],
   },
   {
-    id: 'browser-caches', name: 'Caches de navegadores', group: 'Sistema', selected: true, risk: 'safe',
-    description: 'Páginas e imagens guardadas pelo Chrome, Edge, Brave, Opera e Firefox. Senhas e histórico não são tocados.',
+    id: 'browser-caches', name: t("Caches de navegadores"), group: 'Sistema', selected: true, risk: 'safe',
+    description: t("São páginas e imagens guardadas pelo Chrome, pelo Edge, pelo Brave, pelo Opera e pelo Firefox. O CleanCode não mexe nas senhas nem no histórico."),
     targets: [
       ...browserRoots.map((r) => ({ path: r, mode: 'children' as const, findDirs: CHROMIUM_CACHE_DIRS, maxDepth: 2 })),
       { path: path.join(LOCAL, 'Mozilla', 'Firefox', 'Profiles'), mode: 'children', findDirs: ['cache2'], maxDepth: 2 },
     ],
   },
   {
-    id: 'error-reports', name: 'Relatórios de erro', group: 'Sistema', selected: true, risk: 'safe',
-    description: 'Relatórios do Windows Error Reporting e despejos de memória de programas que travaram.',
+    id: 'error-reports', name: t("Relatórios de erro"), group: 'Sistema', selected: true, risk: 'safe',
+    description: t("São relatórios do Windows Error Reporting e cópias da memória de programas que travaram."),
     targets: [
       { path: path.join(LOCAL, 'Microsoft', 'Windows', 'WER'), mode: 'children' },
       { path: path.join(PDATA, 'Microsoft', 'Windows', 'WER'), mode: 'children' },
@@ -54,23 +55,23 @@ const categories: JunkCategory[] = [
     ],
   },
   {
-    id: 'thumbnails', name: 'Cache de miniaturas', group: 'Sistema', selected: false, risk: 'safe',
-    description: 'Miniaturas do Explorer. São refeitas ao abrir as pastas (alguns arquivos ficam em uso).',
+    id: 'thumbnails', name: t("Cache de miniaturas"), group: 'Sistema', selected: false, risk: 'safe',
+    description: t("São as miniaturas do Explorador. O Windows faz essas miniaturas de novo quando você abre as pastas, e alguns arquivos ficam em uso."),
     targets: [{ path: path.join(LOCAL, 'Microsoft', 'Windows', 'Explorer'), mode: 'children', exts: ['db'] }],
   },
   {
-    id: 'update-cache', name: 'Downloads do Windows Update', group: 'Sistema', selected: false, risk: 'review',
+    id: 'update-cache', name: t("Downloads do Windows Update"), group: 'Sistema', selected: false, risk: 'review',
     description: 'Atualizações já instaladas em SoftwareDistribution\\Download (exige administrador).',
     targets: [{ path: path.join(WIN, 'SoftwareDistribution', 'Download'), mode: 'children' }],
   },
   {
-    id: 'recycle-bin', name: 'Lixeira', group: 'Sistema', selected: true, risk: 'safe', removal: 'delete', special: true,
-    description: 'Itens já enviados para a Lixeira de todas as unidades. São apagados definitivamente.',
+    id: 'recycle-bin', name: t("Lixeira"), group: 'Sistema', selected: true, risk: 'safe', removal: 'delete', special: true,
+    description: t("São os itens que já foram para a Lixeira de todos os discos. Eles são apagados de vez."),
     targets: [],
   },
   {
-    id: 'dev-caches', name: 'Caches de pacotes (npm, Gradle, pip…)', group: 'Desenvolvimento', selected: false, risk: 'review',
-    description: 'Pacotes baixados por gerenciadores. São baixados de novo quando um projeto precisar.',
+    id: 'dev-caches', name: t("Caches de pacotes (npm, Gradle e pip)"), group: 'Desenvolvimento', selected: false, risk: 'review',
+    description: t("São pacotes baixados por gerenciadores de pacotes. Eles são baixados de novo quando um projeto precisar."),
     targets: [
       { path: path.join(LOCAL, 'npm-cache'), mode: 'self' },
       { path: path.join(H, '.gradle', 'caches'), mode: 'self' },
@@ -80,13 +81,13 @@ const categories: JunkCategory[] = [
     ],
   },
   {
-    id: 'installers', name: 'Instaladores em Downloads', group: 'Arquivos', selected: false, risk: 'review',
-    description: 'Arquivos .exe, .msi e .iso baixados há mais de 7 dias.',
+    id: 'installers', name: t("Instaladores em Downloads"), group: 'Arquivos', selected: false, risk: 'review',
+    description: t("São arquivos .exe, .msi e .iso baixados há mais de 7 dias."),
     targets: [{ path: path.join(H, 'Downloads'), mode: 'children', exts: ['exe', 'msi', 'iso', 'msix'], minAgeDays: 7 }],
   },
   {
-    id: 'old-downloads', name: 'Downloads antigos', group: 'Arquivos', selected: false, risk: 'review',
-    description: 'Tudo em Downloads sem modificação há mais de 90 dias.',
+    id: 'old-downloads', name: t("Downloads antigos"), group: 'Arquivos', selected: false, risk: 'review',
+    description: t("É tudo o que está em Downloads sem mudança há mais de 90 dias."),
     targets: [{ path: path.join(H, 'Downloads'), mode: 'children', minAgeDays: 90 }],
   },
 ];

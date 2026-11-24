@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import * as W from './native';
 import type { AppEntry } from '../types';
+import { t as tr, LOCALE } from '../../i18n';
 
 export type { AppEntry };
 
@@ -185,11 +186,11 @@ export async function listApps(): Promise<AppEntry[]> {
         const ln = norm(path.basename(u.name, '.lnk'));
         if (ln.length >= 4 && (ln === nn || nn.startsWith(ln) || ln.startsWith(nn))) hit = true;
       } else if (exes.some((x) => x.toLowerCase() === u.lower)) hit = true;
-      if (hit) { count += u.count; if (u.time > best) { best = u.time; src = 'Histórico do Explorer (UserAssist)'; } }
+      if (hit) { count += u.count; if (u.time > best) { best = u.time; src = tr("Histórico do Explorer (UserAssist)"); } }
     }
     for (const x of exes) {
       const t = pf.get(path.basename(x).toLowerCase());
-      if (t && t > best) { best = t; src = 'Prefetch do Windows'; }
+      if (t && t > best) { best = t; src = tr("Prefetch do Windows"); }
     }
     // Obs.: o "último acesso" do .exe não é usado: antivírus, indexador e leitura de ícones
     // atualizam essa data e geram falsos "usado hoje".
@@ -217,10 +218,10 @@ export async function listApps(): Promise<AppEntry[]> {
     };
     let best = 0, count = 0;
     for (const u of ua) if (u.lower.startsWith(fam + '!')) { count += u.count; if (u.time > best) best = u.time; }
-    if (best) { e.lastUsed = best; e.lastUsedSource = 'Histórico do Explorer (UserAssist)'; e.runCount = count || undefined; }
+    if (best) { e.lastUsed = best; e.lastUsedSource = tr("Histórico do Explorer (UserAssist)"); e.runCount = count || undefined; }
     out.push(e);
   }
-  return out.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  return out.sort((a, b) => a.name.localeCompare(b.name, LOCALE));
 }
 
 function prettifyPkg(n: string) {
@@ -246,34 +247,34 @@ const psq = (s: string) => "'" + s.replace(/'/g, "''") + "'";
 /** Desinstala um app. Retorna o código de saída. */
 export async function uninstallApp(a: AppEntry, silent: boolean): Promise<{ ok: boolean; code: number; message: string }> {
   if (a.source === 'store') {
-    if (!a.packageFullName) return { ok: false, code: -1, message: 'Pacote sem nome completo' };
+    if (!a.packageFullName) return { ok: false, code: -1, message: tr("Pacote sem nome completo") };
     try {
       await runPowerShell(`$ErrorActionPreference='Stop'; Remove-AppxPackage -Package ${psq(a.packageFullName)}`, 600000);
-      return { ok: true, code: 0, message: 'Pacote removido' };
+      return { ok: true, code: 0, message: tr("Pacote removido") };
     } catch (e: any) {
       return { ok: false, code: -1, message: String(e.message || e).slice(0, 400) };
     }
   }
   const cmd = (silent && a.quiet) || a.uninstall || a.quiet;
-  if (!cmd) return { ok: false, code: -1, message: 'Sem comando de desinstalação' };
+  if (!cmd) return { ok: false, code: -1, message: tr("Sem comando de desinstalação") };
   let { file, args } = splitCommand(expandEnv(cmd));
   if (/msiexec(\.exe)?$/i.test(file)) {
     args = args.replace(/\/I\s*\{/i, '/X{');
     if (silent && !/\/q/i.test(args)) args += ' /qb';
   }
   if (!/msiexec(\.exe)?$/i.test(file) && path.isAbsolute(file) && !fs.existsSync(file)) {
-    if (a.orphan) return { ok: false, code: -1, message: `O desinstalador não existe mais (${file}). Os arquivos já foram removidos: use "Remover da lista" para apagar a entrada que sobrou.` };
-    return { ok: false, code: -1, message: `O desinstalador do programa sumiu (${path.basename(file)} não está em ${path.dirname(file)}), mas a pasta continua no disco. Reinstale ou repare o programa para recuperar o desinstalador.` };
+    if (a.orphan) return { ok: false, code: -1, message: tr("O desinstalador não existe mais ({0}). Os arquivos já foram removidos. Para apagar a entrada que sobrou, use \"Remover da lista\".", file) };
+    return { ok: false, code: -1, message: tr("O desinstalador do programa sumiu ({0} não está em {1}), mas a pasta continua no disco. Reinstale ou repare o programa para recuperar o desinstalador.", path.basename(file), path.dirname(file)) };
   }
 
   // ShellExecuteEx direto (sem PowerShell): pede o UAC quando o desinstalador exige administrador
   const dir = path.isAbsolute(file) ? path.dirname(file) : undefined;
   const r = await W.shellExecWait(file, args, dir);
   if (r.error) {
-    const msg = r.error === 1223 ? 'Permissão de administrador negada no aviso do Windows (UAC). Tente de novo e clique em "Sim".'
-      : r.error === 2 || r.error === 3 ? `Desinstalador não encontrado: ${file}`
-      : r.error === 740 ? 'Este desinstalador exige administrador. Reinicie o CleanCode como administrador e tente de novo.'
-      : `O Windows não conseguiu iniciar o desinstalador (erro ${r.error}).`;
+    const msg = r.error === 1223 ? tr("Permissão de administrador negada no aviso do Windows (UAC). Tente de novo e clique em \"Sim\".")
+      : r.error === 2 || r.error === 3 ? tr("Desinstalador não encontrado: {0}", file)
+      : r.error === 740 ? tr("Este desinstalador precisa de permissão de administrador. Abra o CleanCode de novo como administrador e tente outra vez.")
+      : tr("O Windows não conseguiu iniciar o desinstalador (erro {0}).", r.error);
     return { ok: false, code: -1, message: msg };
   }
 
@@ -290,23 +291,23 @@ export async function uninstallApp(a: AppEntry, silent: boolean): Promise<{ ok: 
   }
   const c = r.code;
   let message: string;
-  if (gone) message = c === 3010 || c === 1641 ? 'Removido (reinicie o Windows para concluir)' : 'Removido';
-  else if (c === 1602 || c === 1223) message = 'Cancelado no assistente do desinstalador';
-  else if (c === 0) message = 'O desinstalador terminou, mas o programa continua registrado. Ele pode ter sido cancelado ou pedir para reiniciar o Windows.';
-  else message = `O desinstalador terminou com erro (código ${c})`;
+  if (gone) message = c === 3010 || c === 1641 ? tr("Removido. Reinicie o Windows para terminar.") : tr("Removido");
+  else if (c === 1602 || c === 1223) message = tr("Cancelado no assistente do desinstalador");
+  else if (c === 0) message = tr("O desinstalador terminou, mas o programa continua registrado. Ele pode ter sido cancelado ou pedir para reiniciar o Windows.");
+  else message = tr("O desinstalador terminou com erro (código {0})", c);
   return { ok: gone, code: c, message };
 }
 
 /** Remove a entrada do registro de um programa órfão (pede administrador quando está em HKLM). */
 export async function removeEntry(a: AppEntry): Promise<{ ok: boolean; message: string }> {
-  if (a.source !== 'win32' || !a.regPath) return { ok: false, message: 'Só entradas do registro podem ser removidas assim' };
-  if (!/\\Uninstall\\[^\\]+$/i.test(a.regPath)) return { ok: false, message: 'Caminho de registro inesperado' };
+  if (a.source !== 'win32' || !a.regPath) return { ok: false, message: tr("Só entradas do registro podem ser removidas assim") };
+  if (!/\\Uninstall\\[^\\]+$/i.test(a.regPath)) return { ok: false, message: tr("Caminho de registro inesperado") };
   const machine = /^HKEY_LOCAL_MACHINE\\/i.test(a.regPath);
   const r = await W.shellExecWait('reg.exe', `delete "${a.regPath}" /f`, undefined, machine ? 'runas' : undefined, true);
-  if (r.error === 1223) return { ok: false, message: 'Permissão de administrador negada no aviso do Windows (UAC)' };
-  if (r.error) return { ok: false, message: `Não foi possível remover (erro ${r.error})` };
+  if (r.error === 1223) return { ok: false, message: tr("Permissão de administrador negada no aviso do Windows (UAC)") };
+  if (r.error) return { ok: false, message: tr("Não foi possível remover (erro {0})", r.error) };
   const gone = !(await regExists(a.regPath));
-  return { ok: gone, message: gone ? 'Entrada removida da lista de programas' : `Não foi possível remover (código ${r.code})` };
+  return { ok: gone, message: gone ? tr("Entrada removida da lista de programas") : tr("Não foi possível remover (código {0})", r.code) };
 }
 
 function expandEnv(s: string) {

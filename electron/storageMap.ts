@@ -6,6 +6,7 @@ import { Worker } from 'worker_threads';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { t } from './i18n';
 
 const isMac = process.platform === 'darwin';
 const H = os.homedir();
@@ -17,26 +18,26 @@ export interface StorageMap { root: string; at: number; done: boolean; cats: Sto
 function defs(): { id: string; label: string; paths: string[] }[] {
   if (isMac) {
     return [
-      { id: 'docs', label: 'Documentos', paths: [j('Documents'), j('Desktop')] },
-      { id: 'downloads', label: 'Downloads', paths: [j('Downloads')] },
-      { id: 'media', label: 'Fotos, vídeos e música', paths: [j('Pictures'), j('Movies'), j('Music')] },
-      { id: 'dev', label: 'Desenvolvimento', paths: [j('Library', 'Developer'), j('.npm'), j('.gradle'), j('.cargo'), j('.m2'), j('.rustup'), j('.docker'), j('Library', 'Containers', 'com.docker.docker'), j('Library', 'Android'), j('.android'), j('.pub-cache'), j('.cocoapods')] },
-      { id: 'caches', label: 'Caches e logs', paths: [j('Library', 'Caches'), j('Library', 'Logs')] },
-      { id: 'appdata', label: 'Dados de apps', paths: [j('Library', 'Application Support'), j('Library', 'Containers'), j('Library', 'Group Containers')] },
-      { id: 'mail', label: 'Mail e Mensagens', paths: [j('Library', 'Mail'), j('Library', 'Messages')] },
-      { id: 'trash', label: 'Lixeira', paths: [j('.Trash')] },
+      { id: 'docs', label: t("Documentos"), paths: [j('Documents'), j('Desktop')] },
+      { id: 'downloads', label: t("Downloads"), paths: [j('Downloads')] },
+      { id: 'media', label: t("Fotos, vídeos e música"), paths: [j('Pictures'), j('Movies'), j('Music')] },
+      { id: 'dev', label: t("Desenvolvimento"), paths: [j('Library', 'Developer'), j('.npm'), j('.gradle'), j('.cargo'), j('.m2'), j('.rustup'), j('.docker'), j('Library', 'Containers', 'com.docker.docker'), j('Library', 'Android'), j('.android'), j('.pub-cache'), j('.cocoapods')] },
+      { id: 'caches', label: t("Caches e logs"), paths: [j('Library', 'Caches'), j('Library', 'Logs')] },
+      { id: 'appdata', label: t("Dados de apps"), paths: [j('Library', 'Application Support'), j('Library', 'Containers'), j('Library', 'Group Containers')] },
+      { id: 'mail', label: t("Mail e Mensagens"), paths: [j('Library', 'Mail'), j('Library', 'Messages')] },
+      { id: 'trash', label: t("Lixeira"), paths: [j('.Trash')] },
     ];
   }
   const local = process.env.LOCALAPPDATA || j('AppData', 'Local');
   const roaming = process.env.APPDATA || j('AppData', 'Roaming');
   const temp = process.env.TEMP || path.join(local, 'Temp');
   return [
-    { id: 'docs', label: 'Documentos', paths: [j('Documents'), j('Desktop')] },
-    { id: 'downloads', label: 'Downloads', paths: [j('Downloads')] },
-    { id: 'media', label: 'Fotos, vídeos e música', paths: [j('Pictures'), j('Videos'), j('Music')] },
-    { id: 'dev', label: 'Desenvolvimento', paths: [j('.npm'), j('.gradle'), j('.cargo'), j('.m2'), j('.rustup'), j('.nuget'), j('.android'), path.join(local, 'Android'), path.join(local, 'npm-cache'), path.join(local, 'pip'), path.join(local, 'Docker'), j('source', 'repos')] },
-    { id: 'caches', label: 'Temporários e caches', paths: [temp, path.join(local, 'Microsoft', 'Windows', 'INetCache'), path.join(local, 'CrashDumps')] },
-    { id: 'appdata', label: 'Dados de apps (AppData)', paths: [roaming, local, j('AppData', 'LocalLow')] },
+    { id: 'docs', label: t("Documentos"), paths: [j('Documents'), j('Desktop')] },
+    { id: 'downloads', label: t("Downloads"), paths: [j('Downloads')] },
+    { id: 'media', label: t("Fotos, vídeos e música"), paths: [j('Pictures'), j('Videos'), j('Music')] },
+    { id: 'dev', label: t("Desenvolvimento"), paths: [j('.npm'), j('.gradle'), j('.cargo'), j('.m2'), j('.rustup'), j('.nuget'), j('.android'), path.join(local, 'Android'), path.join(local, 'npm-cache'), path.join(local, 'pip'), path.join(local, 'Docker'), j('source', 'repos')] },
+    { id: 'caches', label: t("Temporários e caches"), paths: [temp, path.join(local, 'Microsoft', 'Windows', 'INetCache'), path.join(local, 'CrashDumps')] },
+    { id: 'appdata', label: t("Dados de apps (AppData)"), paths: [roaming, local, j('AppData', 'LocalLow')] },
   ];
 }
 
@@ -60,7 +61,7 @@ export function storageMap(onProgress: (m: StorageMap) => void, refresh = false)
   const cur: StorageMap = {
     root, at: prev?.at || Date.now(), done: false,
     // enquanto mede de novo, os valores anteriores continuam na tela
-    cats: [{ id: 'apps', label: 'Aplicativos', paths: [], size: 0, done: false }, ...d.map((x) => {
+    cats: [{ id: 'apps', label: t("Aplicativos"), paths: [], size: 0, done: false }, ...d.map((x) => {
       const old = prev?.cats.find((c) => c.id === x.id);
       return { ...x, size: old?.size || 0, done: !!old?.done, partial: old?.partial };
     })],

@@ -1,6 +1,7 @@
 // Monitor em segundo plano: crescimento do uso dos discos e novos programas instalados.
 import { drives, system } from './platform';
 import type { MonitorEvent } from './platform';
+import { t, LOCALE } from './i18n';
 
 export type { MonitorEvent };
 
@@ -49,7 +50,7 @@ export class Monitor {
         const delta = d.used - base;
         if (delta >= threshold) {
           this.baseline.set(d.root, d.used);
-          this.emit({ kind: 'disk', title: 'Uso de disco aumentou', drive: /^[a-zA-Z]:/.test(d.root) ? d.root.slice(0, 2) : d.root, driveLabel: d.label, amount: delta, detail: `Agora com ${fmt(d.free)} livres de ${fmt(d.total)}` });
+          this.emit({ kind: 'disk', title: t("O uso do disco aumentou"), drive: /^[a-zA-Z]:/.test(d.root) ? d.root.slice(0, 2) : d.root, driveLabel: d.label, amount: delta, detail: t("Agora com {0} livres de {1}", fmt(d.free), fmt(d.total)) });
         }
       }
     }
@@ -82,5 +83,5 @@ function fmt(n: number) {
   const u = ['B', 'KB', 'MB', 'GB', 'TB'];
   let i = 0, v = n;
   while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
-  return v.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' ' + u[i];
+  return v.toLocaleString(LOCALE, { maximumFractionDigits: 1 }) + ' ' + u[i];
 }

@@ -7,6 +7,7 @@
 // - armazenamento integrado (chips NAND soldados, como nos Macs).
 // As regiões do chip acendem conforme o uso real: cada núcleo da CPU pela sua carga, a GPU pelo uso.
 import { THREE, Model, Live, mat, rbox, box, cyl, slab, canvasTex, pcbTexture, labelTexture, fan } from './core';
+import { t as tr } from '../lib/i18n';
 
 const accentHex = (l: Live) => '#' + l.accent.getHexString();
 type Highlight = 'cpu' | 'gpu' | 'mem' | 'npu' | 'none';
@@ -210,7 +211,7 @@ function soDimm(label: string) {
     const top = new THREE.Mesh(new THREE.PlaneGeometry(0.048, 0.048), epoxy(chipTex)); top.position.set(x, H * 0.55, 0.0062); g.add(top);
     const m = glowAdd(); const halo = new THREE.Mesh(new THREE.PlaneGeometry(0.056, 0.056), m); halo.position.set(x, H * 0.55, 0.0022); g.add(halo); glow.push(m);
   }
-  const lbl = new THREE.Mesh(new THREE.PlaneGeometry(0.11, 0.03), new THREE.MeshStandardMaterial({ map: labelTexture([{ text: label.toUpperCase().slice(0, 20), size: 120 }, { text: 'SO-DIMM', size: 100, alpha: 0.6 }], 1024, 300, '#d9dde2', '#2d3137'), roughness: 0.6 }));
+  const lbl = new THREE.Mesh(new THREE.PlaneGeometry(0.11, 0.03), new THREE.MeshStandardMaterial({ map: labelTexture([{ text: label.toUpperCase().slice(0, 20), size: 120 }, { text: tr("SO-DIMM"), size: 100, alpha: 0.6 }], 1024, 300, '#d9dde2', '#2d3137'), roughness: 0.6 }));
   lbl.position.set(L * 0.05, H * 0.18, -0.0022); lbl.rotation.y = Math.PI; g.add(lbl);
   const spd = box(0.008, 0.006, 0.002, epoxy()); spd.position.set(L * 0.38, H * 0.25, 0.003); g.add(spd);
   for (let i = 0; i < 14; i++) { const c = box(0.004, 0.002, 0.002, mat.metal(0x8b9097, 0.4)); c.position.set(-L * 0.42 + i * L * 0.062, H * 0.22, 0.003); g.add(c); }

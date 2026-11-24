@@ -6,6 +6,7 @@ import path from 'path';
 import type { AppEntry, DossierFact, DossierLocal } from '../types';
 import { binaryInfo, detectTech, findLicenses } from '../dossierCommon';
 import { runPowerShell } from './apps';
+import { t as tr } from '../../i18n';
 
 const PS = String.raw`
 $ErrorActionPreference='SilentlyContinue'
@@ -51,10 +52,10 @@ function appxManifest(dir?: string): { name?: string; publisher?: string; desc?:
   return { name: tag('DisplayName'), publisher: tag('PublisherDisplayName'), desc: tag('Description'), caps: [...new Set(caps)] };
 }
 const CAPS: Record<string, string> = {
-  internetClient: 'Internet', internetClientServer: 'Internet (cliente e servidor)', privateNetworkClientServer: 'Rede local', webcam: 'Câmera',
-  microphone: 'Microfone', location: 'Localização', picturesLibrary: 'Imagens', videosLibrary: 'Vídeos', musicLibrary: 'Músicas',
-  documentsLibrary: 'Documentos', removableStorage: 'Discos removíveis', bluetooth: 'Bluetooth', contacts: 'Contatos', appointments: 'Calendário',
-  runFullTrust: 'Acesso total (programa clássico empacotado)', broadFileSystemAccess: 'Todos os arquivos', userAccountInformation: 'Dados da conta',
+  internetClient: 'Internet', internetClientServer: tr("Internet (cliente e servidor)"), privateNetworkClientServer: tr("Rede local"), webcam: tr("Câmera"),
+  microphone: tr("Microfone"), location: tr("Localização"), picturesLibrary: tr("Imagens"), videosLibrary: tr("Vídeos"), musicLibrary: tr("Músicas"),
+  documentsLibrary: 'Documentos', removableStorage: tr("Discos removíveis"), bluetooth: 'Bluetooth', contacts: tr("Contatos"), appointments: tr("Calendário"),
+  runFullTrust: tr("Acesso total (programa clássico empacotado)"), broadFileSystemAccess: tr("Todos os arquivos"), userAccountInformation: tr("Dados da conta"),
 };
 
 export async function winDossier(a: AppEntry, dataFolders: (a: AppEntry, aliases: string[]) => { path: string; size: number; kind: string }[]): Promise<DossierLocal> {
@@ -75,58 +76,58 @@ export async function winDossier(a: AppEntry, dataFolders: (a: AppEntry, aliases
   const mx = a.source === 'store' ? appxManifest(a.location) : null;
 
   // sobre
-  f('about', 'Nome', a.name);
-  f('about', 'Descrição', tidy(mx?.desc) || (tidy(vi.desc) !== a.name ? tidy(vi.desc) : undefined));
-  f('about', 'Fabricante', a.publisher || mx?.publisher || tidy(vi.company));
-  if (tidy(vi.company) && tidy(vi.company) !== a.publisher) f('about', 'Empresa (executável)', tidy(vi.company));
-  f('about', 'Direitos autorais', tidy(vi.copyright));
-  f('about', 'Marcas', tidy(vi.trademarks));
-  f('about', 'Comentários', tidy(reg.Comments) || tidy(vi.comments));
-  f('about', 'Site', tidy(reg.URLInfoAbout), 'url');
-  f('about', 'Suporte', tidy(reg.HelpLink), 'url');
-  f('about', 'Telefone de suporte', tidy(reg.HelpTelephone));
-  f('about', 'Contato', tidy(reg.Contact));
+  f('about', tr("Nome"), a.name);
+  f('about', tr("Descrição"), tidy(mx?.desc) || (tidy(vi.desc) !== a.name ? tidy(vi.desc) : undefined));
+  f('about', tr("Fabricante"), a.publisher || mx?.publisher || tidy(vi.company));
+  if (tidy(vi.company) && tidy(vi.company) !== a.publisher) f('about', tr("Empresa (executável)"), tidy(vi.company));
+  f('about', tr("Direitos autorais"), tidy(vi.copyright));
+  f('about', tr("Marcas"), tidy(vi.trademarks));
+  f('about', tr("Comentários"), tidy(reg.Comments) || tidy(vi.comments));
+  f('about', tr("Site"), tidy(reg.URLInfoAbout), 'url');
+  f('about', tr("Suporte"), tidy(reg.HelpLink), 'url');
+  f('about', tr("Telefone de suporte"), tidy(reg.HelpTelephone));
+  f('about', tr("Contato"), tidy(reg.Contact));
 
   // instalação
-  f('install', 'Instalado em', a.installDate, 'date');
-  f('install', 'Pasta', dir, 'path');
-  f('install', 'Tamanho', a.size, 'size', { hint: a.sizeSource === 'calculado' ? 'Calculado pela pasta' : 'Informado pelo instalador' });
-  f('install', 'Origem', a.source === 'store' ? 'Microsoft Store / MSIX' : `${a.msi ? 'Windows Installer (MSI)' : 'Instalador próprio'} · ${a.hive === 'HKCU' ? 'só este usuário' : 'todos os usuários'}`);
-  f('install', 'Instalado a partir de', tidy(reg.InstallSource), 'path');
-  f('install', 'Atualizações', tidy(reg.URLUpdateInfo), 'url');
-  f('install', 'Desinstalação', a.uninstall || (a.packageFullName ? `Remove-AppxPackage ${a.packageFullName}` : undefined), 'mono');
-  if (reg.NoModify === '1' && reg.NoRepair === '1') f('install', 'Reparar / modificar', 'Não oferece');
-  f('install', 'Registro', a.regPath, 'mono');
-  f('install', 'Pacote', a.packageFullName, 'mono');
+  f('install', tr("Instalado em"), a.installDate, 'date');
+  f('install', tr("Pasta"), dir, 'path');
+  f('install', tr("Tamanho"), a.size, 'size', { hint: a.sizeSource === 'calculado' ? tr("Calculado pela pasta") : tr("Informado pelo instalador") });
+  f('install', tr("Origem"), a.source === 'store' ? 'Microsoft Store / MSIX' : `${a.msi ? 'Windows Installer (MSI)' : tr("Instalador próprio")} · ${a.hive === 'HKCU' ? tr("só este usuário") : 'todos os usuários'}`);
+  f('install', tr("Instalado a partir de"), tidy(reg.InstallSource), 'path');
+  f('install', tr("Atualizações"), tidy(reg.URLUpdateInfo), 'url');
+  f('install', tr("Desinstalação"), a.uninstall || (a.packageFullName ? `Remove-AppxPackage ${a.packageFullName}` : undefined), 'mono');
+  if (reg.NoModify === '1' && reg.NoRepair === '1') f('install', 'Reparar / modificar', tr("Não oferece"));
+  f('install', tr("Registro"), a.regPath, 'mono');
+  f('install', tr("Pacote"), a.packageFullName, 'mono');
 
   // uso
-  f('usage', 'Último uso', a.lastUsed, 'date', { hint: a.lastUsedSource ? `Fonte: ${a.lastUsedSource}` : undefined });
-  f('usage', 'Aberto', a.runCount ? `${a.runCount} vezes` : undefined);
-  f('usage', 'Agora', r.run ? 'Em execução' : 'Fechado', 'text', { tone: r.run ? 'ok' : undefined });
+  f('usage', tr("Último uso"), a.lastUsed, 'date', { hint: a.lastUsedSource ? tr("Fonte: {0}", a.lastUsedSource) : undefined });
+  f('usage', tr("Aberto"), a.runCount ? `${a.runCount} vezes` : undefined);
+  f('usage', tr("Agora"), r.run ? tr("Em execução") : tr("Fechado"), 'text', { tone: r.run ? 'ok' : undefined });
 
   // técnico
-  f('tech', 'Versão', a.version || tidy(vi.pver));
-  if (tidy(vi.fver) && tidy(vi.fver) !== a.version) f('tech', 'Versão do arquivo', tidy(vi.fver), 'mono');
-  f('tech', 'Executável', exe, 'path');
-  f('tech', 'Nome original', tidy(vi.original), 'mono');
-  f('tech', 'Idioma', tidy(vi.lang));
+  f('tech', tr("Versão"), a.version || tidy(vi.pver));
+  if (tidy(vi.fver) && tidy(vi.fver) !== a.version) f('tech', tr("Versão do arquivo"), tidy(vi.fver), 'mono');
+  f('tech', tr("Executável"), exe, 'path');
+  f('tech', tr("Nome original"), tidy(vi.original), 'mono');
+  f('tech', tr("Idioma"), tidy(vi.lang));
   const bin = exe ? binaryInfo(exe) : { archs: [] as string[] };
-  if (bin.archs[0]) f('tech', 'Arquitetura', bin.archs[0]);
-  if (bin.archs[0]?.startsWith('x86')) badges.push({ label: '32 bits', tone: 'warn', hint: 'Programa de 32 bits (limite de 4 GB de memória)' });
-  f('tech', 'Compilado em', bin.built, 'date', { hint: 'Data gravada no cabeçalho do executável (PE)' });
+  if (bin.archs[0]) f('tech', tr("Arquitetura"), bin.archs[0]);
+  if (bin.archs[0]?.startsWith('x86')) badges.push({ label: tr("32 bits"), tone: 'warn', hint: tr("Programa de 32 bits (limite de 4 GB de memória)") });
+  f('tech', tr("Compilado em"), bin.built, 'date', { hint: tr("Data gravada no cabeçalho do executável (PE)") });
 
   // segurança
   if (sig) {
     const ok = sig.status === 'Valid';
     const who = cn(sig.subject);
-    if (ok) { f('security', 'Assinado por', who, 'text', { tone: 'ok', hint: sig.issuer ? `Emitido por ${cn(sig.issuer)}` : undefined }); badges.push({ label: 'Assinado', tone: 'ok', hint: who }); }
-    else if (sig.status === 'NotSigned') { f('security', 'Assinatura', 'Sem assinatura digital', 'text', { tone: 'warn' }); badges.push({ label: 'Sem assinatura', tone: 'warn' }); }
-    else { f('security', 'Assinatura', `${sig.status}${who ? ` · ${who}` : ''}`, 'text', { tone: 'danger', hint: sig.msg }); badges.push({ label: 'Assinatura inválida', tone: 'danger' }); }
-    f('security', 'Certificado válido até', sig.notAfter ? Date.parse(sig.notAfter) : undefined, 'date');
-    f('security', 'Carimbo de tempo', cn(sig.ts), 'text', { hint: 'Com carimbo, a assinatura continua válida mesmo depois que o certificado vence' });
-    if (sig.type === 'Catalog') f('security', 'Tipo de assinatura', 'Catálogo do Windows');
+    if (ok) { f('security', tr("Assinado por"), who, 'text', { tone: 'ok', hint: sig.issuer ? tr("Emitido por {0}", cn(sig.issuer)) : undefined }); badges.push({ label: tr("Assinado"), tone: 'ok', hint: who }); }
+    else if (sig.status === 'NotSigned') { f('security', tr("Assinatura"), tr("Sem assinatura digital"), 'text', { tone: 'warn' }); badges.push({ label: tr("Sem assinatura"), tone: 'warn' }); }
+    else { f('security', tr("Assinatura"), `${sig.status}${who ? ` · ${who}` : ''}`, 'text', { tone: 'danger', hint: sig.msg }); badges.push({ label: tr("Assinatura inválida"), tone: 'danger' }); }
+    f('security', tr("Certificado válido até"), sig.notAfter ? Date.parse(sig.notAfter) : undefined, 'date');
+    f('security', tr("Carimbo de tempo"), cn(sig.ts), 'text', { hint: tr("Com carimbo, a assinatura continua válida mesmo depois que o certificado vence") });
+    if (sig.type === 'Catalog') f('security', tr("Tipo de assinatura"), tr("Catálogo do Windows"));
   }
-  if (mx?.caps.length) f('security', 'Pode acessar', mx.caps.map((c) => CAPS[c] || c).join(', '));
+  if (mx?.caps.length) f('security', tr("Pode acessar"), mx.caps.map((c) => CAPS[c] || c).join(', '));
 
   const tech = dir ? detectTech(dir) : [];
   if (a.source === 'store') tech.unshift('MSIX / UWP');

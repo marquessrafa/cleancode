@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { CheckCircle2, FolderLock, Hand, Loader2, Lock, MousePointer2, ShieldCheck, X } from 'lucide-react';
 import { cc, isMac } from '../lib/api';
 import { Button, Modal, cx } from './ui';
+import { t } from '../lib/i18n';
 
 const OPEN_EVENT = 'cc:fda-assistant';
 /** Abre o assistente de qualquer tela. */
@@ -45,49 +46,49 @@ export function FdaAssistantHost() {
   if (!isMac) return null;
 
   return (
-    <Modal open={open} onClose={close} width={560} title="Acesso Total ao Disco"
+    <Modal open={open} onClose={close} width={560} title={t("Acesso Total ao Disco")}
       footer={phase === 'intro' ? <>
-        <Button onClick={close}>Agora não</Button>
-        <Button variant="primary" icon={<ShieldCheck size={14} />} onClick={start}>Abrir Ajustes e liberar</Button>
+        <Button onClick={close}>{t("Agora não")}</Button>
+        <Button variant="primary" icon={<ShieldCheck size={14} />} onClick={start}>{t("Abrir Ajustes e liberar")}</Button>
       </> : phase === 'waiting' ? <>
-        <Button onClick={close}>Cancelar</Button>
-        <Button onClick={() => cc.fdaStart()}>Abrir Ajustes de novo</Button>
+        <Button onClick={close}>{t("Cancelar")}</Button>
+        <Button onClick={() => cc.fdaStart()}>{t("Abrir Ajustes de novo")}</Button>
       </> : <>
-        <Button onClick={() => cc.fdaRelaunch()}>Reabrir o CleanCode</Button>
-        <Button variant="primary" onClick={() => setOpen(false)}>Concluir</Button>
+        <Button onClick={() => cc.fdaRelaunch()}>{t("Reabrir o CleanCode")}</Button>
+        <Button variant="primary" onClick={() => setOpen(false)}>{t("Concluir")}</Button>
       </>}>
       {phase === 'done' ? (
         <div className="flex flex-col items-center py-4 text-center">
           <CheckCircle2 size={44} className="text-accent" />
-          <div className="mt-3 text-[15px] font-semibold">Acesso liberado</div>
-          <p className="mt-1 max-w-[400px] text-[13px] text-muted">Agora o CleanCode consegue analisar e limpar caches, registros de atividade, anexos e dados de navegadores. Se alguma pasta continuar como “Acesso negado”, feche o app e abra de novo.</p>
+          <div className="mt-3 text-[15px] font-semibold">{t("Acesso liberado")}</div>
+          <p className="mt-1 max-w-[400px] text-[13px] text-muted">{t("Agora o CleanCode consegue analisar e limpar caches, registros de atividade, anexos e dados de navegadores. Se alguma pasta continuar como “Acesso negado”, feche o app e abra de novo.")}</p>
         </div>
       ) : (
         <div className="space-y-4">
           <div className="flex gap-3 rounded-lg bg-surface-2 p-3.5">
             <FolderLock size={20} className="mt-0.5 shrink-0 text-accent" />
             <div className="text-[12.5px] leading-relaxed text-muted">
-              <span className="font-medium text-fg">Para que serve:</span> o macOS protege algumas pastas, como os caches e os registros de atividade de outros apps, os anexos do Mail e do Mensagens, os dados do Safari e a Lixeira. Sem esse acesso, essas pastas ficam fora da análise e da limpeza.
-              <div className="mt-1.5"><span className="font-medium text-fg">O que o CleanCode faz com ele:</span> o CleanCode só lê as pastas para medir o espaço e só apaga o que você confirmar. Nenhum arquivo sai do seu Mac, e você pode desligar o acesso quando quiser nos Ajustes.</div>
+              <span className="font-medium text-fg">{t("Para que serve:")}</span> {t("o macOS protege algumas pastas, como os caches e os registros de atividade de outros apps, os anexos do Mail e do Mensagens, os dados do Safari e a Lixeira. Sem esse acesso, essas pastas ficam fora da análise e da limpeza.")}
+              <div className="mt-1.5"><span className="font-medium text-fg">{t("O que o CleanCode faz com ele:")}</span> {t("o CleanCode só lê as pastas para medir o espaço e só apaga o que você confirmar. Nenhum arquivo sai do seu Mac, e você pode desligar o acesso quando quiser nos Ajustes.")}</div>
             </div>
           </div>
-          <div className="text-[12px] font-semibold uppercase tracking-wider text-muted">Como liberar</div>
+          <div className="text-[12px] font-semibold uppercase tracking-wider text-muted">{t("Como liberar")}</div>
           <div className="space-y-3.5">
-            <Step n={1} title="Adicione o CleanCode pelo +" icon={<Hand size={13} className="text-accent" />}>
-              Os Ajustes abrem em Privacidade e Segurança. Nessa tela, clique em <b className="font-medium text-fg">Acesso Total ao Disco</b>. Ao lado, aparece uma janela pequena com o caminho do app já copiado. Então, clique no <Key>+</Key> embaixo da lista, aperte <Key>⌘⇧G</Key>, cole o caminho e clique em <Key>Abrir</Key>. Depois, ligue a chave do CleanCode.
+            <Step n={1} title={t("Adicione o CleanCode pelo +")} icon={<Hand size={13} className="text-accent" />}>
+              {t("Os Ajustes abrem em Privacidade e Segurança. Nessa tela, clique em")} <b className="font-medium text-fg">{t("Acesso Total ao Disco")}</b>{t(". Ao lado, aparece uma janela pequena com o caminho do app já copiado. Então, clique no")} <Key>+</Key> {t("embaixo da lista, aperte")} <Key>⌘⇧G</Key>{t(", cole o caminho e clique em")} <Key>{t("Abrir")}</Key>{t(". Depois, ligue a chave do CleanCode.")}
             </Step>
-            <Step n={2} title="Confirme os avisos do macOS" icon={<MousePointer2 size={13} className="text-accent" />}>
-              Em “Choose Folders”, clique em <Key>Ignorar Proteções do Sistema</Key>. No alerta vermelho, clique nos três <Key tone="danger">OK</Key> (cada um muda para “Desfazer”). Depois, clique em <Key tone="danger">Ativar Acesso Total ao Disco</Key>. Esses avisos são os textos padrão da Apple e aparecem para qualquer app que pede esse acesso, como antivírus e programas de backup.
+            <Step n={2} title={t("Confirme os avisos do macOS")} icon={<MousePointer2 size={13} className="text-accent" />}>
+              {t("Em “Choose Folders”, clique em")} <Key>{t("Ignorar Proteções do Sistema")}</Key>{t(". No alerta vermelho, clique nos três")} <Key tone="danger">{t("OK")}</Key> {t("(cada um muda para “Desfazer”). Depois, clique em")} <Key tone="danger">{t("Ativar Acesso Total ao Disco")}</Key>{t(". Esses avisos são os textos padrão da Apple e aparecem para qualquer app que pede esse acesso, como antivírus e programas de backup.")}
             </Step>
-            <Step n={3} title="Digite sua senha ou use o Touch ID" icon={<Lock size={13} className="text-accent" />}>
-              Pronto. O CleanCode percebe a mudança sozinho e volta para a frente da tela. Você só precisa fazer isso uma vez.
+            <Step n={3} title={t("Digite sua senha ou use o Touch ID")} icon={<Lock size={13} className="text-accent" />}>
+              {t("Pronto. O CleanCode percebe a mudança sozinho e volta para a frente da tela. Você só precisa fazer isso uma vez.")}
             </Step>
           </div>
           {phase === 'waiting' && (
             <div className="flex items-center gap-2.5 rounded-lg border border-line px-3.5 py-2.5 text-[13px]">
               <Loader2 size={15} className="animate-spin text-accent" />
-              <span className="flex-1">Aguardando você liberar nos Ajustes do Sistema…</span>
-              <button className="text-muted hover:text-fg" title="Cancelar" onClick={close}><X size={14} /></button>
+              <span className="flex-1">{t("Aguardando você liberar nos Ajustes do Sistema…")}</span>
+              <button className="text-muted hover:text-fg" title={t("Cancelar")} onClick={close}><X size={14} /></button>
             </div>
           )}
         </div>

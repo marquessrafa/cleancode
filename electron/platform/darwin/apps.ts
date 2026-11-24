@@ -8,6 +8,7 @@ import os from 'os';
 import path from 'path';
 import type { AppEntry, UninstallResult, Leftover, MonitorEvent } from '../types';
 import { listDir, ATTR, drives } from './native';
+import { t as tr, LOCALE } from '../../i18n';
 
 const HOME = os.homedir();
 const LIB = path.join(HOME, 'Library');
@@ -22,9 +23,9 @@ function run(cmd: string, args: string[], input?: string, timeout = 30000): Prom
 // ---------- descoberta dos pacotes ----------
 interface Found { path: string; origin: string; system: boolean }
 const ROOTS: { dir: string; origin: string; system: boolean }[] = [
-  { dir: '/Applications', origin: 'Aplicativos', system: false },
-  { dir: path.join(HOME, 'Applications'), origin: 'Aplicativos do usuário', system: false },
-  { dir: '/System/Applications', origin: 'Sistema', system: true },
+  { dir: '/Applications', origin: tr("Aplicativos"), system: false },
+  { dir: path.join(HOME, 'Applications'), origin: tr("Aplicativos do usuário"), system: false },
+  { dir: '/System/Applications', origin: tr("Sistema"), system: true },
 ];
 /** .app até 2 níveis abaixo da raiz (ex.: /Applications/Utilities, /Applications/Adobe X/). */
 function findApps(): Found[] {
@@ -41,7 +42,7 @@ function findApps(): Found[] {
         if (e.isSymbolicLink()) {
           try {
             const real = fs.realpathSync(p);
-            if (fs.statSync(real).isDirectory()) out.push({ path: p, origin: real.startsWith('/System/') ? 'Sistema' : r.origin, system: r.system || real.startsWith('/System/') });
+            if (fs.statSync(real).isDirectory()) out.push({ path: p, origin: real.startsWith('/System/') ? tr("Sistema") : r.origin, system: r.system || real.startsWith('/System/') });
           } catch { /* link quebrado */ }
         }
         continue;
@@ -120,10 +121,10 @@ export async function listApps(): Promise<AppEntry[]> {
       // agentes sem ícone no Dock (LSUIElement/LSBackgroundOnly): componentes, não "apps sem uso"
       background: !!(info.LSUIElement === true || info.LSUIElement === '1' || info.LSBackgroundOnly === true),
     };
-    if (lu) { e.lastUsed = lu; e.lastUsedSource = 'Spotlight (última abertura)'; e.runCount = Number(useCount[i]) || undefined; }
+    if (lu) { e.lastUsed = lu; e.lastUsedSource = tr("Spotlight (última abertura)"); e.runCount = Number(useCount[i]) || undefined; }
     out.push(e);
   });
-  return out.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  return out.sort((a, b) => a.name.localeCompare(b.name, LOCALE));
 }
 
 // ---------- restos ----------
@@ -153,14 +154,14 @@ export function findLeftovers(a: AppEntry, sizeOf: (p: string) => number = (p) =
   const add = (kind: string, ...parts: string[]) => cands.push([path.join(LIB, ...parts), kind]);
   const keys = [id, name.length >= 3 ? name : ''].filter(Boolean);
   for (const k of keys) {
-    add('Suporte do app', 'Application Support', k);
+    add(tr("Suporte do app"), 'Application Support', k);
     add('Cache', 'Caches', k);
     add('Logs', 'Logs', k);
   }
   if (id) {
     add('Preferências', 'Preferences', id + '.plist');
-    add('Contêiner (sandbox)', 'Containers', id);
-    add('Estado salvo das janelas', 'Saved Application State', id + '.savedState');
+    add(tr("Contêiner (sandbox)"), 'Containers', id);
+    add(tr("Estado salvo das janelas"), 'Saved Application State', id + '.savedState');
     add('Dados web', 'HTTPStorages', id);
     add('Dados web', 'WebKit', id);
     add('Cookies', 'Cookies', id + '.binarycookies');
@@ -168,9 +169,9 @@ export function findLeftovers(a: AppEntry, sizeOf: (p: string) => number = (p) =
     const scan = (sub: string, kind: string, test: (n: string) => boolean) => {
       try { for (const n of fs.readdirSync(path.join(LIB, sub))) if (test(n)) cands.push([path.join(LIB, sub, n), kind]); } catch { /* sem acesso */ }
     };
-    scan('Preferences', 'Preferências', (n) => n.startsWith(id + '.') && n.endsWith('.plist') && n !== id + '.plist');
-    scan('LaunchAgents', 'Agente de inicialização', (n) => n.startsWith(id) && n.endsWith('.plist'));
-    scan('Group Containers', 'Contêiner de grupo', (n) => n === 'group.' + id || new RegExp('^[A-Z0-9]{10}\\.' + id.replace(/\./g, '\\.') + '$').test(n));
+    scan('Preferences', tr("Preferências"), (n) => n.startsWith(id + '.') && n.endsWith('.plist') && n !== id + '.plist');
+    scan('LaunchAgents', tr("Agente de inicialização"), (n) => n.startsWith(id) && n.endsWith('.plist'));
+    scan('Group Containers', tr("Contêiner de grupo"), (n) => n === 'group.' + id || new RegExp('^[A-Z0-9]{10}\\.' + id.replace(/\./g, '\\.') + '$').test(n));
   }
   const out: Leftover[] = [];
   const seen = new Set<string>();
@@ -193,25 +194,25 @@ async function isRunning(appPath: string): Promise<boolean> {
 const fmt = (n: number) => {
   const u = ['B', 'KB', 'MB', 'GB', 'TB']; let i = 0, v = n;
   while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
-  return v.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' ' + u[i];
+  return v.toLocaleString(LOCALE, { maximumFractionDigits: 1 }) + ' ' + u[i];
 };
 
 /** Move o .app para a Lixeira; com withLeftovers, também os restos em ~/Library. Nada é apagado de vez. */
 export async function uninstallApp(a: AppEntry, withLeftovers: boolean): Promise<UninstallResult> {
   const p = a.location;
-  if (!p || !p.endsWith('.app')) return { ok: false, code: -1, message: 'Pacote do app não encontrado' };
+  if (!p || !p.endsWith('.app')) return { ok: false, code: -1, message: tr("Pacote do app não encontrado") };
   let real = p;
   try { real = fs.realpathSync(p); } catch { /* */ }
-  if (!a.canUninstall || p.startsWith('/System/') || real.startsWith('/System/')) return { ok: false, code: -1, message: 'Apps do sistema não podem ser removidos' };
-  if (!fs.existsSync(p)) return { ok: true, code: 0, message: 'O app já não estava mais no disco' };
-  if (await isRunning(p)) return { ok: false, code: -1, message: `${a.name} está aberto. Feche o app e tente de novo.` };
+  if (!a.canUninstall || p.startsWith('/System/') || real.startsWith('/System/')) return { ok: false, code: -1, message: tr("Apps do sistema não podem ser removidos") };
+  if (!fs.existsSync(p)) return { ok: true, code: 0, message: tr("O app já não estava mais no disco") };
+  if (await isRunning(p)) return { ok: false, code: -1, message: tr("{0} está aberto. Feche o app e tente de novo.", a.name) };
   const leftovers = withLeftovers ? findLeftovers(a) : [];
   try { await shell.trashItem(p); }
   catch (err: any) {
     const msg = String(err?.message || err);
     return { ok: false, code: -1, message: /permission|not permitted|denied/i.test(msg)
-      ? 'Sem permissão para mover este app (instalado para todos os usuários). Arraste-o para a Lixeira no Finder, que pede a senha de administrador.'
-      : `Não foi possível mover para a Lixeira: ${msg}` };
+      ? tr("O CleanCode não tem permissão para mover este app, porque ele foi instalado para todos os usuários. Arraste o app para a Lixeira no Finder, que pede a senha de administrador.")
+      : tr("Não foi possível mover para a Lixeira: {0}", msg) };
   }
   let moved = 0, freed = 0;
   const failed: string[] = [];
@@ -219,9 +220,9 @@ export async function uninstallApp(a: AppEntry, withLeftovers: boolean): Promise
     try { await shell.trashItem(l.path); moved++; freed += l.size; } catch { failed.push(path.basename(l.path)); }
   }
   const gone = !fs.existsSync(p);
-  let message = gone ? 'Movido para a Lixeira' : 'O app continua no disco';
-  if (moved) message += ` com ${moved} resto(s) (${fmt(freed)})`;
-  if (failed.length) message += `; ${failed.length} resto(s) não puderam ser movidos`;
+  let message = gone ? tr("Movido para a Lixeira") : tr("O app continua no disco");
+  if (moved) message += tr(" com {0} resto(s) ({1})", moved, fmt(freed));
+  if (failed.length) message += tr("; {0} resto(s) não puderam ser movidos", failed.length);
   return { ok: gone, code: gone ? 0 : -1, message };
 }
 
@@ -236,7 +237,7 @@ export async function describeInstalledApp(key: string): Promise<MonitorEvent> {
   const version = info?.CFBundleShortVersionString ? ` ${info.CFBundleShortVersionString}` : '';
   const root = key.startsWith('/Volumes/') ? key.split('/').slice(0, 3).join('/') : '/';
   const label = drives().find((d) => d.root === root)?.label;
-  return { kind: 'app', title: 'Novo app instalado', drive: root, driveLabel: label, amount: duSize(key, 5000), detail: name + version, app: { key, name: path.basename(key, '.app') } };
+  return { kind: 'app', title: tr("Novo app instalado"), drive: root, driveLabel: label, amount: duSize(key, 5000), detail: name + version, app: { key, name: path.basename(key, '.app') } };
 }
 /** fs.watch nas pastas de apps; espera a cópia terminar (arrastar um .app grande leva alguns segundos). */
 export function watchInstalls(onChange: () => void): () => void {
