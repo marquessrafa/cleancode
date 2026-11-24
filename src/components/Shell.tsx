@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   LayoutDashboard, FolderTree, LayoutGrid, FileType2, CalendarClock, Users, ArrowDownWideNarrow, Copy, Search, History,
   Radar, PackageX, Settings as Cog, PanelLeftClose, PanelLeftOpen, Sun, Moon, Monitor, X, HardDrive, ShieldCheck, ShieldAlert,
@@ -58,63 +58,136 @@ const NAV: { group: string; items: { page: Page; label: string; icon: React.Reac
 export function Sidebar() {
   const { page, go, settings, setSettings, active, tasks, scans, running } = useApp();
   const collapsed = !!settings?.sidebarCollapsed;
+  // Menu recolhido: enquanto o mouse estiver sobre ele, o menu abre por cima do conteúdo, sem empurrar a tela.
+  // Quando o mouse sai, ele fecha. O botão "Expandir menu" deixa o menu aberto de vez.
+  const [peek, setPeek] = useState(false);
+  const peekTimer = useRef<number | undefined>(undefined);
+  const open = !collapsed || peek;
+  const enter = () => { window.clearTimeout(peekTimer.current); if (collapsed) peekTimer.current = window.setTimeout(() => setPeek(true), 60); };
+  const leave = () => { window.clearTimeout(peekTimer.current); peekTimer.current = window.setTimeout(() => setPeek(false), 180); };
+  useEffect(() => { if (!collapsed) setPeek(false); }, [collapsed]);
+  useEffect(() => () => window.clearTimeout(peekTimer.current), []);
+
+  // Barra de rolagem fora do painel: a do sistema fica escondida dentro do menu, e esta, fina, acompanha o lado direito.
+  const asideRef = useRef<HTMLElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+  const [bar, setBar] = useState({ can: false, top: 0, size: 0, trackTop: 0, trackH: 0 });
+  const [barOn, setBarOn] = useState(false);
+  const measure = useCallback(() => {
+    const a = asideRef.current, n = navRef.current; if (!a || !n) return;
+    const { scrollTop, scrollHeight, clientHeight } = n;
+    const trackTop = a.offsetTop + n.offsetTop + 10, trackH = Math.max(0, clientHeight - 20);
+    const can = scrollHeight > clientHeight + 1;
+    const size = can ? Math.max(28, (trackH * clientHeight) / scrollHeight) : 0;
+    const top = can ? (scrollTop / (scrollHeight - clientHeight)) * (trackH - size) : 0;
+    setBar({ can, top, size, trackTop, trackH });
+  }, []);
+  useEffect(() => {
+    measure();
+    const n = navRef.current; if (!n) return;
+    const ro = new ResizeObserver(measure); ro.observe(n); if (n.firstElementChild) ro.observe(n.firstElementChild);
+    window.addEventListener('resize', measure);
+    return () => { ro.disconnect(); window.removeEventListener('resize', measure); };
+  }, [measure]);
+  const onScroll = () => measure();
+  const drag = (e: React.PointerEvent<HTMLDivElement>) => {
+    const n = navRef.current; if (!n || !bar.can) return;
+    e.preventDefault(); e.stopPropagation();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    const y0 = e.clientY, s0 = n.scrollTop, ratio = (n.scrollHeight - n.clientHeight) / Math.max(1, bar.trackH - bar.size);
+    const move = (ev: PointerEvent) => { n.scrollTop = s0 + (ev.clientY - y0) * ratio; };
+    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+  };
+  const jump = (e: React.MouseEvent<HTMLDivElement>) => {
+    const n = navRef.current; if (!n) return;
+    const y = e.clientY - (e.currentTarget.getBoundingClientRect().top);
+    n.scrollBy({ top: y < bar.top ? -n.clientHeight * 0.85 : n.clientHeight * 0.85, behavior: 'smooth' });
+  };
+
   // páginas com trabalho em andamento ganham um indicador no menu
   const busyPages = new Set<string>(tasks.filter((t) => t.status === 'running').map((t) => t.page));
   Object.keys(running).forEach((p) => busyPages.add(p));
   if (scans.some((s) => !s.done)) busyPages.add('explorer');
+  const width = open ? 232 : 60;
   return (
-    <aside className={cx('side-panel absolute bottom-2.5 left-2.5 top-1.5 z-20 flex flex-col overflow-hidden transition-[width] duration-300 ease-[cubic-bezier(.2,.8,.2,1)]', collapsed ? 'w-[60px]' : 'w-[232px]')}>
-      <nav className="relative flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
+    <>
+      <aside
+        ref={asideRef}
+        onMouseEnter={() => { enter(); setBarOn(true); }}
+        onMouseLeave={() => { leave(); setBarOn(false); }}
+        className={cx('side-panel absolute bottom-2.5 left-2.5 top-1.5 flex flex-col overflow-hidden transition-[width,box-shadow] duration-300 ease-[cubic-bezier(.2,.8,.2,1)]', peek && collapsed ? 'side-peek z-40' : 'z-20', !open && 'side-collapsed')}
+        style={{ width }}
+        onTransitionEnd={measure}
+      >
+        <nav ref={navRef} onScroll={onScroll} className="side-nav relative flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
+          <div>
         {NAV.map((g, gi) => (
           <div key={gi} className={gi ? 'mt-4' : ''}>
             {g.group && (
-              <div className={cx('mb-1 h-5 px-2.5 text-[11px] font-medium uppercase tracking-wide text-faint transition-opacity duration-200 whitespace-nowrap', collapsed && 'opacity-0')}>{tr(g.group)}</div>
+              open
+                ? <div className="mb-1 h-5 px-2.5 text-[11px] font-medium uppercase tracking-wide text-faint whitespace-nowrap">{tr(g.group)}</div>
+                : <div className="mb-1 flex h-5 items-center justify-center" aria-label={tr(g.group)}><span className="h-px w-6 rounded-full bg-[var(--line-strong)]" /></div>
             )}
             {g.items.map((it) => {
               const on = page === it.page;
               return (
                 <button
                   key={it.page}
-                  title={collapsed ? it.label : undefined}
+                  title={!open ? it.label : undefined}
                   onClick={() => go(it.page)}
                   className={cx(
-                    'side-item group mb-0.5 flex h-9 w-full items-center gap-2.5 overflow-hidden rounded-[10px] px-2.5 text-[13px]',
+                    'side-item group mb-0.5 flex h-9 items-center overflow-hidden rounded-[10px] text-[13px]',
+                    open ? 'w-full gap-2.5 px-2.5' : 'mx-auto w-10 justify-center gap-0 px-0',
                     on ? 'on text-fg font-medium' : 'text-muted hover:bg-[var(--hover)] hover:text-fg',
                   )}
                 >
                   <span className="side-icon relative shrink-0 transition-[color,filter] duration-200">
                     {it.icon}
-                    {busyPages.has(it.page) && collapsed && <span className="absolute -right-1 -top-1 h-2 w-2 animate-pulse rounded-full bg-accent ring-2 ring-surface" />}
+                    {busyPages.has(it.page) && !open && <span className="absolute -right-1 -top-1 h-2 w-2 animate-pulse rounded-full bg-accent ring-2 ring-surface" />}
                   </span>
-                  <span className={cx('truncate whitespace-nowrap transition-opacity duration-200', collapsed && 'opacity-0')}>{it.label}</span>
-                  {busyPages.has(it.page) && !collapsed
+                  {open && <span className="truncate whitespace-nowrap">{it.label}</span>}
+                  {busyPages.has(it.page) && open
                     ? <span className="ml-auto flex shrink-0 items-center" title={running[it.page]?.label || tr("Em andamento")}><span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent" /></span></span>
-                    : it.needsScan && !active && !collapsed && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-line-strong" title={tr("Requer uma varredura")} />}
+                    : it.needsScan && !active && open && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-line-strong" title={tr("Requer uma varredura")} />}
                 </button>
               );
             })}
           </div>
         ))}
-      </nav>
-      <div className="relative overflow-hidden border-t border-[color-mix(in_srgb,var(--line)_80%,transparent)] px-2 py-2">
-        <button
-          onClick={() => go('settings')}
-          title={collapsed ? tr("Configurações") : undefined}
-          className={cx('side-item mb-0.5 flex h-9 w-full items-center gap-2.5 overflow-hidden rounded-[10px] px-2.5 text-[13px]', page === 'settings' ? 'on text-fg font-medium' : 'text-muted hover:bg-[var(--hover)] hover:text-fg')}
+          </div>
+        </nav>
+        <div className="relative overflow-hidden border-t border-[color-mix(in_srgb,var(--line)_80%,transparent)] px-2 py-2">
+          <button
+            onClick={() => go('settings')}
+            title={!open ? tr("Configurações") : undefined}
+            className={cx('side-item mb-0.5 flex h-9 items-center overflow-hidden rounded-[10px] text-[13px]', open ? 'w-full gap-2.5 px-2.5' : 'mx-auto w-10 justify-center gap-0 px-0', page === 'settings' ? 'on text-fg font-medium' : 'text-muted hover:bg-[var(--hover)] hover:text-fg')}
+          >
+            <Cog size={17} className="side-icon shrink-0" />
+            {open && <span className="truncate whitespace-nowrap">{tr("Configurações")}</span>}
+          </button>
+          <button
+            onClick={() => { setPeek(false); setSettings({ sidebarCollapsed: !collapsed }); }}
+            title={collapsed ? tr("Expandir menu") : tr("Recolher menu")}
+            className={cx('side-item flex h-9 items-center overflow-hidden rounded-[10px] text-[13px] text-muted hover:bg-[var(--hover)] hover:text-fg', open ? 'w-full gap-2.5 px-2.5' : 'mx-auto w-10 justify-center gap-0 px-0')}
+          >
+            {collapsed ? <PanelLeftOpen size={17} className="shrink-0" /> : <PanelLeftClose size={17} className="shrink-0" />}
+            {open && <span className="truncate whitespace-nowrap">{collapsed ? tr("Expandir menu") : tr("Recolher menu")}</span>}
+          </button>
+        </div>
+      </aside>
+      {bar.can && (
+        <div
+          className={cx('side-scrollbar absolute transition-[left] duration-300 ease-[cubic-bezier(.2,.8,.2,1)]', peek && collapsed ? 'z-40' : 'z-20', barOn ? 'visible' : 'invisible')}
+          style={{ left: 10 + width + 4, top: bar.trackTop, height: bar.trackH }}
+          onMouseEnter={() => { enter(); setBarOn(true); }}
+          onMouseLeave={() => { leave(); setBarOn(false); }}
+          onMouseDown={jump}
         >
-          <Cog size={17} className="side-icon shrink-0" />
-          <span className={cx('truncate whitespace-nowrap transition-opacity duration-200', collapsed && 'opacity-0')}>{tr("Configurações")}</span>
-        </button>
-        <button
-          onClick={() => setSettings({ sidebarCollapsed: !collapsed })}
-          title={collapsed ? tr("Expandir menu") : tr("Recolher menu")}
-          className="side-item flex h-9 w-full items-center gap-2.5 overflow-hidden rounded-[10px] px-2.5 text-[13px] text-muted hover:bg-[var(--hover)] hover:text-fg"
-        >
-          {collapsed ? <PanelLeftOpen size={17} className="shrink-0" /> : <PanelLeftClose size={17} className="shrink-0" />}
-          <span className={cx('truncate whitespace-nowrap transition-opacity duration-200', collapsed && 'opacity-0')}>{tr("Recolher menu")}</span>
-        </button>
-      </div>
-    </aside>
+          <div className="side-thumb" style={{ top: bar.top, height: bar.size }} onPointerDown={drag} onMouseDown={(e) => e.stopPropagation()} />
+        </div>
+      )}
+    </>
   );
 }
 

@@ -280,11 +280,17 @@ body.panel-body, body.panel-body #root { background: transparent !important; hei
 .side-item.on .side-icon { color: var(--accent); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 55%, transparent)); }
 @keyframes side-bar-in { from { transform: scaleY(.2); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
 /* rolagem do menu discreta: só aparece ao passar o mouse */
-.side-panel nav { scrollbar-width: thin; scrollbar-color: transparent transparent; }
-.side-panel nav:hover { scrollbar-color: color-mix(in srgb, var(--fg) 18%, transparent) transparent; }
-.side-panel nav::-webkit-scrollbar { width: 6px; }
-.side-panel nav::-webkit-scrollbar-thumb { background: transparent; border-radius: 6px; }
-.side-panel nav:hover::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--fg) 18%, transparent); }
+/* a barra de rolagem do sistema fica escondida dentro do menu; a .side-scrollbar fica do lado de fora, à direita */
+.side-panel nav { scrollbar-width: none; }
+.side-panel nav::-webkit-scrollbar { display: none; }
+.side-scrollbar { width: 6px; border-radius: 6px; cursor: default; }
+.side-thumb { position: absolute; left: 0; right: 0; border-radius: 6px; background: color-mix(in srgb, var(--fg) 26%, transparent); }
+.side-thumb:hover, .side-thumb:active { background: color-mix(in srgb, var(--fg) 40%, transparent); }
+/* menu recolhido: sem o deslocamento do hover, para o ícone ficar no centro do fundo */
+.side-panel.side-collapsed .side-item:hover, .side-panel.side-collapsed .side-item:active { transform: none; }
+/* menu recolhido aberto pelo mouse: fica por cima do conteúdo, com sombra mais forte */
+.side-panel.side-peek { background: var(--surface); backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: 0 1px 0 0 color-mix(in srgb, #fff 6%, transparent) inset, 0 24px 60px -16px rgb(0 0 0 / .45), 0 8px 24px -8px rgb(0 0 0 / .3); }
+.dark .side-panel.side-peek { background: linear-gradient(180deg, #1d1d1f, #151515); box-shadow: 0 1px 0 0 rgb(255 255 255 / .06) inset, 0 28px 64px -18px rgb(0 0 0 / .85), 0 8px 24px -8px rgb(0 0 0 / .6); }
 
 /* ---------- reflexo da luz do topo na borda superior dos painéis ----------
    O gradiente fica preso à janela (background fixo): só a borda que está "embaixo" do brilho radial do topo

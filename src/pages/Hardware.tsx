@@ -26,7 +26,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 ];
 const GROUP_LABEL: Record<string, string> = { temp: tr("Temperaturas"), volt: tr("Tensões"), current: tr("Correntes"), power: tr("Consumo"), clock: tr("Frequências"), load: tr("Uso"), fan: tr("Ventoinhas"), control: tr("Controle das ventoinhas"), level: 'Níveis', data: tr("Dados"), throughput: tr("Transferência"), energy: tr("Energia"), factor: tr("Fatores"), time: tr("Tempo"), limit: tr("Limites (de fábrica)") };
 const GROUP_ORDER = ['temp', 'power', 'volt', 'current', 'clock', 'load', 'fan', 'control', 'level', 'data', 'throughput', 'energy', 'factor', 'time', 'limit'];
-const KIND_LABEL: Record<string, string> = { cpu: tr("Processador"), gpu: isMac ? 'GPU' : tr("Placa de vídeo"), ram: tr("Memória"), board: isMac ? tr("Placa lógica") : 'Placa-mãe', disk: tr("Armazenamento"), battery: tr("Bateria"), psu: tr("Energia") };
+const KIND_LABEL: Record<string, string> = { cpu: tr("Processador"), gpu: isMac ? 'GPU' : tr("Placa de vídeo"), ram: tr("Memória"), board: isMac ? tr("Placa lógica") : tr("Placa-mãe"), disk: tr("Armazenamento"), battery: tr("Bateria"), psu: tr("Energia") };
 const n = (v?: number, d = 1) => (v === undefined || v === null || isNaN(v) ? '—' : v.toLocaleString(LOCALE, { maximumFractionDigits: d }));
 const fmtVal = (v: number | undefined, unit = '') => {
   if (v === undefined) return '—';
@@ -148,13 +148,24 @@ function AdvancedBanner({ live }: { live: HardwareLive | null }) {
   const { toast } = useApp();
   const [busy, setBusy] = useState(false);
   const adv = live?.live?.advanced;
-  if (isMac || !adv || adv.active) return null;
+  if (isMac || !adv) return null;
+  const blocked = adv.cpuBlocked;
+  if (adv.active && !blocked) return null;
+  // texto do aviso de acordo com o motivo (issue #1: processador AMD com 0 °C ou sem sensores)
+  const title = blocked === 'crash' ? tr("A leitura do processador travou neste PC") : blocked === 'admin' ? tr("Atualize o monitoramento avançado") : tr("Ative o monitoramento avançado");
+  const text = blocked === 'crash'
+    ? tr("Para não travar as outras leituras, o CleanCode deixou os sensores do processador de fora e vai tentar de novo amanhã. As outras peças continuam com leitura normal.")
+    : blocked === 'admin'
+      ? tr("O driver PawnIO já está instalado, mas a tarefa que lê os sensores como administrador não está ativa. Ative de novo para que o CleanCode volte a ler o processador.")
+      : blocked === 'driver'
+        ? tr("O Windows só deixa ler a temperatura e o consumo deste processador com o driver PawnIO. Quando você ativa o monitoramento avançado, o CleanCode instala o driver, que é assinado, e o Windows pede a sua permissão uma única vez.")
+        : tr("Com o monitoramento avançado, o CleanCode lê a temperatura e a frequência de cada núcleo, as tensões, as ventoinhas da placa-mãe, o consumo e a saúde dos discos (SMART). Para isso, ele usa o LibreHardwareMonitor e o driver assinado PawnIO. O Windows pede a sua permissão uma única vez.");
   return (
     <div className="flex items-center gap-3 rounded-xl border border-[color-mix(in_srgb,var(--accent)_40%,transparent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] p-4">
       <ShieldCheck size={22} className="shrink-0 text-[var(--accent)]" />
-      <div className="min-w-0 flex-1 text-[13px]"><div className="font-semibold">{tr("Ative o monitoramento avançado")}</div><div className="text-muted">{tr("Com o monitoramento avançado, o CleanCode lê a temperatura e a frequência de cada núcleo, as tensões, as ventoinhas da placa-mãe, o consumo e a saúde dos discos (SMART). Para isso, ele usa o LibreHardwareMonitor e o driver assinado PawnIO. O Windows pede a sua permissão uma única vez.")}</div></div>
-      <button disabled={busy || !adv.available} onClick={async () => { setBusy(true); const r = await cc.hardwareAdvanced(true); toast(r.message, r.ok ? 'ok' : 'error'); setBusy(false); }}
-        className="flex shrink-0 items-center gap-2 rounded-lg bg-[var(--accent)] px-3.5 py-2 text-[13px] font-semibold text-white disabled:opacity-60">{busy && <Loader2 size={14} className="animate-spin" />}{adv.available ? tr("Ativar") : tr("Componente ausente")}</button>
+      <div className="min-w-0 flex-1 text-[13px]"><div className="font-semibold">{title}</div><div className="text-muted">{text}</div></div>
+      {blocked !== 'crash' && <button disabled={busy || !adv.available} onClick={async () => { setBusy(true); const r = await cc.hardwareAdvanced(true); toast(r.message, r.ok ? 'ok' : 'error'); setBusy(false); }}
+        className="flex shrink-0 items-center gap-2 rounded-lg bg-[var(--accent)] px-3.5 py-2 text-[13px] font-semibold text-white disabled:opacity-60">{busy && <Loader2 size={14} className="animate-spin" />}{adv.available ? (blocked === 'admin' ? tr("Ativar de novo") : tr("Ativar")) : tr("Componente ausente")}</button>}
     </div>
   );
 }
@@ -385,6 +396,7 @@ function SensorsTab({ live, stats }: { live: HardwareLive | null; stats: Map<str
       <div className="relative overflow-hidden rounded-xl border border-[var(--line)] p-4" style={{ background: has ? `radial-gradient(120% 120% at 50% 100%, color-mix(in srgb, ${col} 35%, transparent), var(--surface) 70%)` : 'var(--surface)' }}>
         <div className="flex items-center gap-2 text-[12px] text-muted">{icon}{label}</div>
         <div className="mt-1 text-[26px] font-semibold tabular-nums" style={{ color: has ? col : undefined }}>{has ? `${Math.round(v!)} °C` : '—'}</div>
+        {!has && k === 'cpu' && live?.live?.advanced?.cpuBlocked && <div className="mt-1 text-[11.5px] leading-snug text-muted">{live.live.advanced.cpuBlocked === 'crash' ? tr("A leitura travou neste PC.") : tr("Precisa do monitoramento avançado.")}</div>}
       </div>
     );
   };
@@ -396,8 +408,9 @@ function SensorsTab({ live, stats }: { live: HardwareLive | null; stats: Map<str
       </div>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         {tile('cpu', tr("Processador"), <Cpu size={14} />)}{tile('gpu', tr("Placa de vídeo"), <Gpu size={14} />)}{tile('ram', tr("Memória"), <MemoryStick size={14} />)}
-        {tile('board', isMac ? tr("Placa lógica") : 'Placa-mãe', <CircuitBoard size={14} />)}{tile('disk', tr("Armazenamento"), <HardDrive size={14} />)}{tile('battery', tr("Bateria"), <Zap size={14} />)}
+        {tile('board', isMac ? tr("Placa lógica") : tr("Placa-mãe"), <CircuitBoard size={14} />)}{tile('disk', tr("Armazenamento"), <HardDrive size={14} />)}{tile('battery', tr("Bateria"), <Zap size={14} />)}
       </div>
+      <AdvancedBanner live={live} />
       {live?.live?.needsAdmin && !live.live.advanced?.active && <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3 text-[12.5px] text-muted">{live.live.needsAdmin}</div>}
       {fans.length > 0 && <div className="flex flex-wrap gap-2">{fans.map((f) => <span key={f.name} className="flex items-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-[12.5px]"><Fan size={13} className="text-[var(--accent)]" />{f.name}<b className="tabular-nums">{f.rpm} {tr("RPM")}</b></span>)}</div>}
       <SensorTable live={live} stats={stats} title={tr("Todos os sensores")} />

@@ -154,7 +154,7 @@ function App() {
       <div className="relative z-[1] flex min-h-0 flex-1">
         <Sidebar />
         {/* o menu flutua por cima; o conteúdo começa depois dele */}
-        <div className={'relative min-w-0 flex-1 overflow-hidden transition-[padding] duration-300 ease-[cubic-bezier(.2,.8,.2,1)] ' + (settings?.sidebarCollapsed ? 'pl-[72px]' : 'pl-[244px]')}>
+        <div className={'relative min-w-0 flex-1 overflow-hidden transition-[padding] duration-300 ease-[cubic-bezier(.2,.8,.2,1)] ' + (settings?.sidebarCollapsed ? 'pl-[80px]' : 'pl-[252px]')}>
           {!KEEP_ALIVE.has(page) && <main key={page} className="h-full min-w-0 overflow-hidden anim-page"><Content /></main>}
           {(KEEP_ALIVE.has(page) && !alive.includes(page) ? [...alive, page] : alive).map((p) => (
             <main key={p} className={p === page ? 'h-full min-w-0 overflow-hidden anim-page' : 'hidden'}><Content page={p} /></main>

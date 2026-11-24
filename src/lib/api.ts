@@ -85,7 +85,7 @@ export interface HwLive {
   power: { systemW?: number; batteryW?: number; adapterW?: number; voltage?: number; current?: number; plan?: string };
   cpuMHz?: number; fans: { name: string; rpm: number }[];
   sensors?: { kind: 'cpu' | 'gpu' | 'disk' | 'battery' | 'board' | 'ram' | 'psu'; group?: string; hw?: string; name: string; value: number; min?: number; max?: number; unit?: string }[];
-  advanced?: { available: boolean; active: boolean; source?: string };
+  advanced?: { available: boolean; active: boolean; source?: string; cpuBlocked?: 'driver' | 'admin' | 'crash' };
   needsAdmin?: string;
 }
 export interface HardwareLive {

@@ -13,8 +13,9 @@ import path from 'path';
 import { t } from '../../i18n';
 
 export interface LhmSensor { name: string; type: string; value: number | null; min: number | null; max: number | null }
-export interface LhmHardware { name: string; type: string; id: string; sensors: LhmSensor[]; sub: LhmHardware[] }
-export interface LhmSnapshot { at: number; admin: boolean; hardware: LhmHardware[] }
+export interface LhmHardware { name: string; type: string; id: string; stuck?: boolean; sensors: LhmSensor[]; sub: LhmHardware[] }
+/** groups: estado de cada etapa de abertura do helper ("ok", "pending", "timeout", "skipped" ou "error: …") */
+export interface LhmSnapshot { at: number; admin: boolean; pawnio?: boolean; groups?: Record<string, string>; hardware: LhmHardware[] }
 
 const TASK = 'CleanCodeSensors';
 const DATA = path.join(process.env.ProgramData || 'C:\\ProgramData', 'CleanCode', 'sensors.json');
@@ -138,6 +139,23 @@ export async function deactivate() {
   return { ok: r.ok, message: r.ok ? t("O monitoramento avançado foi desligado. Você pode remover o driver PawnIO em Aplicativos instalados.") : t("Cancelado") };
 }
 
+/**
+ * Motivo de o processador ficar sem temperatura e sem consumo (issue #1):
+ * - 'driver': o driver PawnIO não está instalado, então o Windows bloqueia a leitura;
+ * - 'admin': o driver está instalado, mas o helper não roda como administrador (a tarefa do monitoramento avançado não está ativa);
+ * - 'crash': a leitura do processador travou ou caiu neste PC, então o helper deixou o processador de fora por um dia.
+ */
+export function cpuBlocked(s: LhmSnapshot | null, flat: FlatSensor[]): 'driver' | 'admin' | 'crash' | undefined {
+  if (!s || !s.hardware) return undefined;
+  if (flat.some((x) => x.kind === 'cpu' && (x.group === 'temp' || x.group === 'power'))) return undefined;
+  const g = s.groups?.cpu || '';
+  if (g === 'timeout' || g === 'skipped' || g.startsWith('error') || s.hardware.some((h) => h.type === 'Cpu' && h.stuck)) return 'crash';
+  if (g === 'pending') return undefined;
+  if (s.pawnio === false) return 'driver';
+  if (!s.admin) return s.pawnio ? 'admin' : 'driver';
+  return 'crash';
+}
+
 // ---------- conversão para a lista de sensores do app ----------
 const COMPONENT: Record<string, string> = { Cpu: 'cpu', GpuNvidia: 'gpu', GpuAmd: 'gpu', GpuIntel: 'gpu', Memory: 'ram', Motherboard: 'board', SuperIO: 'board', EmbeddedController: 'board', Cooler: 'board', Storage: 'disk', Battery: 'battery', Psu: 'psu' };
 const GROUP: Record<string, { g: string; unit: string }> = {
@@ -153,6 +171,10 @@ export function flatten(s: LhmSnapshot | null): FlatSensor[] {
     for (const x of h.sensors || []) {
       if (x.value === null || x.value === undefined) continue;
       const g = GROUP[x.type]; if (!g) continue;
+      // Sem acesso ao hardware, a biblioteca cria os sensores do processador e da placa, mas devolve 0 sempre (issue #1).
+      // Uma temperatura de 0 °C, ou um consumo, uma tensão ou uma frequência que nunca saem de 0, não são leituras reais.
+      if (g.g === 'temp' && x.value <= 0) continue;
+      if ((kind === 'cpu' || kind === 'board') && ['power', 'volt', 'clock', 'current'].includes(g.g) && x.value === 0 && !x.max) continue;
       // limites de fábrica ("Warning/Critical Temperature" dos SSDs NVMe, "Thermal Sensor High Limit"…) não são leituras
       const group = g.g === 'temp' && /warning|critical|limit|alarm|threshold/i.test(x.name) ? 'limit' : g.g;
       out.push({ kind, group, hw: h.name, hwId: h.id, name: x.name, value: x.value, min: x.min ?? undefined, max: x.max ?? undefined, unit: g.unit });

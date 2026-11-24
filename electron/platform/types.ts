@@ -251,7 +251,8 @@ export interface HwLive {
   /** todos os sensores de temperatura disponíveis (um por disco, por GPU, zonas térmicas…) */
   sensors?: { kind: 'cpu' | 'gpu' | 'disk' | 'battery' | 'board' | 'ram' | 'psu'; group?: string; hw?: string; name: string; value: number; min?: number; max?: number; unit?: string }[];
   /** monitoramento avançado (Windows: LibreHardwareMonitor + driver PawnIO; Mac: IOReport) */
-  advanced?: { available: boolean; active: boolean; source?: string };
+  /** cpuBlocked: por que o processador está sem temperatura e consumo (Windows; ver lhm.ts) */
+  advanced?: { available: boolean; active: boolean; source?: string; cpuBlocked?: 'driver' | 'admin' | 'crash' };
   /** o que só aparece com o app aberto como administrador */
   needsAdmin?: string;
 }
