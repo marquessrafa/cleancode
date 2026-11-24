@@ -231,7 +231,169 @@ function hexEmblemTexture(accent: string) {
     c.font = '800 58px "SF Pro Display", "Segoe UI", sans-serif'; c.fillStyle = '#e8ecf2'; c.shadowBlur = 18; c.fillText('CLEAN', 250, 120); c.fillStyle = accent; c.fillText('CODE', 250, 178);
   });
 }
+// ======================= PLACA-MÃE AMD (AM5) =======================
+// Placa de linha gamer para processadores AMD, com desenho próprio inspirado nas placas AM5 topo de linha:
+// capa de I/O alta e inclinada com vidro iluminado, dissipadores grandes com aletas inclinadas, soquete AM5 com
+// suporte e parafusos, coluna de capacitores, tampas grandes de M.2 com grafismo cromado e slots PCIe blindados.
+// Não usa logotipos nem nomes de fabricantes: os textos e o emblema são do CleanCode.
+function ioGlassTexture(accent: string) {
+  return canvasTex(512, 1024, (c) => {
+    c.fillStyle = '#05060a'; c.fillRect(0, 0, 512, 1024);
+    // linhas verticais finas, do lilás no topo para a cor de destaque embaixo
+    const gr = c.createLinearGradient(0, 0, 0, 1024); gr.addColorStop(0, '#c9bcff'); gr.addColorStop(0.55, '#7f6bff'); gr.addColorStop(1, accent);
+    c.fillStyle = gr;
+    for (let x = 96; x < 500; x += 9) { c.globalAlpha = 0.18 + ((x / 9) % 3) * 0.08; c.fillRect(x, 30, 3, 964); }
+    c.globalAlpha = 1;
+    // emblema hexagonal grande, com brilho
+    c.strokeStyle = '#efeaff'; c.shadowColor = '#a99bff'; c.shadowBlur = 40; c.lineWidth = 26; c.lineJoin = 'round';
+    const hx = (cx: number, cy: number, r: number) => { c.beginPath(); for (let i = 0; i < 6; i++) { const a = Math.PI / 6 + i * Math.PI / 3; c.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); } c.closePath(); c.stroke(); };
+    hx(300, 470, 150); c.lineWidth = 16; hx(300, 470, 88);
+    c.shadowBlur = 0;
+    // nome na coluna da esquerda, letra por letra, bem discreto
+    c.fillStyle = 'rgba(220,220,235,0.28)'; c.font = '300 58px "Segoe UI", "SF Pro Display", sans-serif'; c.textAlign = 'center';
+    'CLEANCODE'.split('').forEach((ch, i) => c.fillText(ch, 46, 110 + i * 96));
+  });
+}
+function chromeSwooshTexture() {
+  return canvasTex(1024, 384, (c) => {
+    const bg = c.createLinearGradient(0, 0, 0, 384); bg.addColorStop(0, '#1c1d21'); bg.addColorStop(1, '#0b0c0e'); c.fillStyle = bg; c.fillRect(0, 0, 1024, 384);
+    // faixas cromadas em leque, desenho próprio
+    for (let i = 0; i < 7; i++) {
+      const g2 = c.createLinearGradient(200, 300, 820, 60); g2.addColorStop(0, 'rgba(255,255,255,0)'); g2.addColorStop(0.45, `rgba(235,238,245,${0.55 + i * 0.05})`); g2.addColorStop(1, 'rgba(120,124,132,0.2)');
+      c.fillStyle = g2; c.beginPath();
+      const x0 = 180 + i * 70, y0 = 330, x1 = 560 + i * 45, y1 = 70 + i * 14;
+      c.moveTo(x0, y0); c.quadraticCurveTo(x0 + 120, y0 - 120, x1, y1); c.lineTo(x1 + 26 - i * 2, y1 + 8); c.quadraticCurveTo(x0 + 150, y0 - 90, x0 + 40, y0); c.closePath(); c.fill();
+    }
+    c.fillStyle = 'rgba(255,255,255,0.05)'; for (let y = 0; y < 384; y += 3) c.fillRect(0, y, 1024, 1);
+  });
+}
+function engravedTexture(text: string, w = 1024, h = 128, spacing = 18) {
+  return canvasTex(w, h, (c) => {
+    c.clearRect(0, 0, w, h); c.fillStyle = 'rgba(225,228,234,0.85)'; c.font = '600 64px "Segoe UI", "SF Pro Display", sans-serif'; c.textBaseline = 'middle';
+    let x = 30; for (const ch of text) { c.fillText(ch, x, h / 2); x += c.measureText(ch).width + spacing; }
+  });
+}
+function amdBoardModel(opts: { dimms?: number; sticks?: number; cpu?: { name?: string; sub?: string; cores?: number } }): Model {
+  const g = new THREE.Group();
+  const W = 0.61, H = 0.49, z0 = 0.004;
+  const pcb = slab(W, H, 0.008, 0.008, new THREE.MeshStandardMaterial({ map: pcbTexture('#08090b', 'rgba(60,66,76,0.4)', 9), metalness: 0.3, roughness: 0.6 })); g.add(pcb);
+  const copper = slab(W + 0.003, H + 0.003, 0.004, 0.009, new THREE.MeshStandardMaterial({ color: 0xb36d2c, metalness: 0.85, roughness: 0.35 })); copper.position.z = -0.003; g.add(copper);
+  const gloss = new THREE.MeshStandardMaterial({ color: 0x141519, metalness: 0.55, roughness: 0.32 });
+  const satin = new THREE.MeshStandardMaterial({ color: 0x1d1f24, metalness: 0.6, roughness: 0.42 });
+  const darker = mat.dark(0x0d0e11, 0.5), steel = new THREE.MeshStandardMaterial({ color: 0xd9dde2, metalness: 1, roughness: 0.22 });
+  const add = (m: THREE.Object3D, x: number, y: number, z = z0) => { m.position.set(x, y, z); g.add(m); return m; };
+  // capa do I/O alta e inclinada, com vidro iluminado
+  add(extrude([[-0.305, -0.03], [-0.215, -0.03], [-0.17, 0.02], [-0.17, 0.245], [-0.305, 0.245]], 0.09, gloss, 0.004), 0, 0);
+  const glassMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: new THREE.Color(0xffffff), emissiveIntensity: 1.5, roughness: 0.15, metalness: 0.2 });
+  add(new THREE.Mesh(new THREE.PlaneGeometry(0.118, 0.255), glassMat), -0.238, 0.106, z0 + 0.0955);
+  add(box(0.004, 0.27, 0.004, steel), -0.177, 0.104, z0 + 0.095);
+  // dissipadores dos reguladores: bloco de cima com aletas inclinadas e bloco vertical ao lado do soquete
+  add(extrude([[-0.17, 0.165], [0.085, 0.165], [0.1, 0.18], [0.1, 0.245], [-0.17, 0.245]], 0.05, satin, 0.004), 0, 0);
+  for (let i = 0; i < 4; i++) { const fin = box(0.075, 0.016, 0.014, gloss); fin.rotation.z = -0.42; add(fin, -0.12 + i * 0.058, 0.212, z0 + 0.058); }
+  add(extrude([[-0.17, -0.005], [-0.118, -0.005], [-0.118, 0.165], [-0.17, 0.165]], 0.046, satin, 0.004), 0, 0);
+  for (let i = 0; i < 8; i++) add(box(0.05, 0.002, 0.002, mat.metal(0x3a3e45, 0.4)), -0.144, 0.01 + i * 0.019, z0 + 0.051);
+  // coluna de capacitores redondos e indutores em volta do soquete
+  const capTop = mat.metal(0xb7bcc3, 0.3);
+  for (let i = 0; i < 8; i++) {
+    const c1 = cyl(0.0058, 0.0058, 0.012, darker, 18); c1.rotation.x = Math.PI / 2; add(c1, -0.104, 0.135 - i * 0.02, z0 + 0.006);
+    const top = cyl(0.0045, 0.0045, 0.001, capTop, 18); top.rotation.x = Math.PI / 2; add(top, -0.104, 0.135 - i * 0.02, z0 + 0.0125);
+  }
+  for (let i = 0; i < 7; i++) add(rbox(0.015, 0.015, 0.011, 0.002, darker), -0.08 + i * 0.02, 0.148, z0 + 0.0055);
+  // soquete AM5: base, placa de contatos, moldura de fixação, suporte com quatro parafusos e alavanca
+  const sx = -0.03, sy = 0.06;
+  add(box(0.118, 0.118, 0.004, mat.plastic(0x0b0b0d)), sx, sy, z0 + 0.002);
+  const pads = new THREE.Mesh(new THREE.PlaneGeometry(0.072, 0.072), new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, (c) => { c.fillStyle = '#3a3420'; c.fillRect(0, 0, 256, 256); c.fillStyle = '#c9a54a'; for (let y = 4; y < 256; y += 7) for (let x = 4; x < 256; x += 7) c.fillRect(x, y, 3, 3); }), metalness: 0.8, roughness: 0.4 })); add(pads, sx, sy, z0 + 0.0045);
+  const fr = new THREE.Shape(); fr.moveTo(-0.05, -0.05); fr.lineTo(0.05, -0.05); fr.lineTo(0.05, 0.05); fr.lineTo(-0.05, 0.05); fr.lineTo(-0.05, -0.05);
+  const fh = new THREE.Path(); fh.moveTo(-0.039, -0.039); fh.lineTo(0.039, -0.039); fh.lineTo(0.039, 0.039); fh.lineTo(-0.039, 0.039); fh.lineTo(-0.039, -0.039); fr.holes.push(fh);
+  add(new THREE.Mesh(new THREE.ExtrudeGeometry(fr, { depth: 0.006, bevelEnabled: true, bevelSize: 0.0015, bevelThickness: 0.0015, bevelSegments: 2 }), mat.dark(0x2a2c31, 0.3)), sx, sy, z0 + 0.004);
+  for (const yy of [-1, 1]) {
+    add(rbox(0.12, 0.022, 0.012, 0.004, gloss), sx, sy + yy * 0.064, z0 + 0.006);
+    for (const xx of [-1, 1]) { const sc = cyl(0.0055, 0.0055, 0.006, steel, 20); sc.rotation.x = Math.PI / 2; add(sc, sx + xx * 0.045, sy + yy * 0.064, z0 + 0.014); }
+  }
+  add(cyl(0.0022, 0.0022, 0.11, steel, 12), sx + 0.058, sy - 0.004, z0 + 0.009);
+  let socketCpu: Model | null = cpuModel(opts.cpu || { name: 'AMD Ryzen' });
+  socketCpu.group.scale.setScalar(0.16); socketCpu.group.rotation.x = Math.PI / 2; add(socketCpu.group, sx, sy, z0 + 0.0055);
+  // slots de memória (com pentes)
+  const dimms = opts.dimms ?? 4, sticks = Math.min(dimms, opts.sticks ?? 2);
+  const ramSticks: ReturnType<typeof ramStick>[] = [];
+  for (let i = 0; i < dimms; i++) {
+    const x = 0.125 + i * 0.017;
+    add(box(0.008, 0.27, 0.009, mat.plastic(0x08090b)), x, 0.07, z0 + 0.004);
+    add(box(0.009, 0.012, 0.012, mat.plastic(0x30343b)), x, 0.21, z0 + 0.006);
+    const occupied = sticks >= dimms ? true : sticks === 1 ? i === 1 : sticks === 2 ? i % 2 === 1 : i < sticks;
+    if (occupied) {
+      const st = ramStick(); st.group.scale.setScalar(0.5);
+      st.group.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, 0, 0)));
+      st.group.position.set(x, 0.07, z0 + 0.008); g.add(st.group); ramSticks.push(st);
+    }
+  }
+  // lateral direita: display de diagnóstico, botões, conector de 24 pinos e o de 8 pinos
+  const dbgCanvas = document.createElement('canvas'); dbgCanvas.width = 128; dbgCanvas.height = 64;
+  const dbgTex = new THREE.CanvasTexture(dbgCanvas); dbgTex.colorSpace = THREE.SRGBColorSpace;
+  const drawDbg = (txt: string) => { const c = dbgCanvas.getContext('2d')!; c.fillStyle = '#000'; c.fillRect(0, 0, 128, 64); c.fillStyle = '#ff3b30'; c.font = '700 54px "SF Mono", Menlo, Consolas, monospace'; c.textAlign = 'center'; c.fillText(txt, 64, 52); dbgTex.needsUpdate = true; };
+  drawDbg('A0');
+  add(box(0.034, 0.02, 0.004, mat.plastic(0x050506)), 0.262, 0.225, z0 + 0.002);
+  add(new THREE.Mesh(new THREE.PlaneGeometry(0.03, 0.016), new THREE.MeshStandardMaterial({ color: 0x000000, emissive: new THREE.Color(0xffffff), emissiveMap: dbgTex, emissiveIntensity: 1.4 })), 0.262, 0.225, z0 + 0.0045);
+  const start = cyl(0.011, 0.011, 0.008, steel, 32); start.rotation.x = Math.PI / 2; add(start, 0.272, 0.19, z0 + 0.004);
+  const startRing = new THREE.Mesh(new THREE.TorusGeometry(0.012, 0.0012, 8, 32), mat.dark(0x2a2c31)); add(startRing, 0.272, 0.19, z0 + 0.008);
+  const flex = cyl(0.007, 0.007, 0.006, mat.dark(0x202226, 0.3), 24); flex.rotation.x = Math.PI / 2; add(flex, 0.272, 0.162, z0 + 0.003);
+  add(box(0.016, 0.07, 0.018, mat.plastic(0x0b0c0e)), 0.288, 0.06, z0 + 0.009);
+  add(box(0.016, 0.028, 0.016, mat.plastic(0x0b0c0e)), 0.288, -0.012, z0 + 0.008);
+  for (let i = 0; i < 6; i++) add(rbox(0.012, 0.012, 0.009, 0.002, darker), 0.24 + (i % 2) * 0.016, 0.12 - Math.floor(i / 2) * 0.03, z0 + 0.0045);
+  // tampa de M.2 logo abaixo do soquete, com o nome gravado
+  add(extrude([[-0.17, -0.008], [0.095, -0.008], [0.105, -0.02], [0.105, -0.045], [-0.17, -0.045]], 0.02, gloss, 0.003), 0, 0);
+  const nameBand = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 0.016), new THREE.MeshBasicMaterial({ map: engravedTexture('CLEANCODE'), transparent: true }));
+  add(nameBand, -0.01, -0.026, z0 + 0.0236);
+  // slots PCIe blindados (aço com trilhos claros)
+  const pcie = (y: number, len: number, x: number) => {
+    add(box(len, 0.012, 0.012, mat.plastic(0x0a0a0c)), x, y, z0 + 0.006);
+    add(box(len + 0.006, 0.017, 0.004, steel), x, y, z0 + 0.0125);
+    add(box(len - 0.01, 0.004, 0.0015, mat.plastic(0xe9ebee)), x, y, z0 + 0.0148);
+  };
+  pcie(-0.062, 0.24, -0.03);
+  // tampa grande com grafismo cromado e faixa com o nome
+  add(extrude([[-0.27, -0.165], [0.2, -0.165], [0.2, -0.08], [-0.27, -0.08]], 0.022, gloss, 0.004), 0, 0);
+  const swoosh = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.072), new THREE.MeshStandardMaterial({ map: chromeSwooshTexture(), metalness: 0.75, roughness: 0.28 }));
+  add(swoosh, -0.04, -0.124, z0 + 0.0265);
+  add(extrude([[0.2, -0.165], [0.29, -0.165], [0.29, -0.08], [0.2, -0.08]], 0.016, satin, 0.003), 0, 0);
+  const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.075, 0.012), new THREE.MeshBasicMaterial({ map: engravedTexture('CC · AM5', 1024, 128, 22), transparent: true }));
+  add(tag, 0.245, -0.1, z0 + 0.0205);
+  // faixa lateral esquerda (áudio) e o segundo slot PCIe
+  add(extrude([[-0.305, -0.235], [-0.272, -0.235], [-0.272, -0.07], [-0.305, -0.07]], 0.024, satin, 0.003), 0, 0);
+  pcie(-0.196, 0.22, -0.06);
+  add(extrude([[-0.27, -0.235], [0.17, -0.235], [0.17, -0.212], [-0.27, -0.212]], 0.012, gloss, 0.003), 0, 0);
+  // bateria da placa, conectores do rodapé e furos de fixação
+  const coin = cyl(0.016, 0.016, 0.004, steel, 36); coin.rotation.x = Math.PI / 2; add(coin, 0.25, -0.212, z0 + 0.002);
+  for (let i = 0; i < 6; i++) add(box(0.022, 0.008, 0.006, mat.plastic(0x15161a)), -0.02 + i * 0.04, -0.238, z0 + 0.003);
+  for (const [x, y] of [[-0.285, 0.225], [0.285, 0.225], [-0.285, -0.225], [0.285, -0.225], [0.02, 0.225], [0.03, -0.225]]) add(new THREE.Mesh(new THREE.TorusGeometry(0.006, 0.0015, 8, 20), mat.metal(0xb9bec4)), x, y, z0 + 0.001);
+  let lastAccent = '', lastDbg = '';
+  return {
+    group: g, focus: { distance: 1.25, target: [0, 0.245, 0], height: 0.42 }, orbit: { maxEl: 0.55, span: 0.95 },
+    pois: [
+      { at: [sx, sy, 0.012], d: 0.16, az: 0.1, el: 0.2 },          // processador no soquete
+      { at: [0.15, 0.07, 0.03], d: 0.2, az: 0.45, el: 0.18 },      // memórias
+      { at: [-0.04, 0.205, 0.06], d: 0.22, az: -0.2, el: 0.45 },   // dissipador com aletas
+      { at: [-0.04, -0.124, 0.03], d: 0.22, az: 0.15, el: 0.3 },   // tampa com grafismo cromado
+      { at: [0.268, 0.2, 0.008], d: 0.1, az: 0.3, el: 0.15 },      // display e botão de ligar
+      { at: [-0.238, 0.11, 0.1], d: 0.22, az: -0.5, el: 0.15 },    // vidro iluminado do I/O
+      { at: [-0.03, -0.062, 0.015], d: 0.2, az: 0.1, el: 0.3 },    // slot PCIe blindado
+    ],
+    update(live, t) {
+      const hex = accentHex(live);
+      if (hex !== lastAccent) { lastAccent = hex; glassMat.emissiveMap = ioGlassTexture(hex); glassMat.needsUpdate = true; }
+      glassMat.emissiveIntensity = 1.25 + Math.sin(t * 1.4) * 0.3 + (live.load ?? 0) * 0.7;
+      // o display mostra a temperatura do processador (ou o código de inicialização, sem leitura)
+      const code = live.temps?.cpu !== undefined ? String(Math.min(99, Math.round(live.temps.cpu))) : 'A0';
+      if (code !== lastDbg) { lastDbg = code; drawDbg(code); }
+      ramSticks.forEach((st, i) => st.update(t, live.accent, 0.8, i * 0.1));
+      socketCpu?.update?.(live, t, 0);
+    },
+  };
+}
+
 export function boardModel(opts: { dimms?: number; sticks?: number; mac?: boolean; cpu?: { name?: string; sub?: string; cores?: number } } = {}): Model {
+  // processador AMD no desktop: placa AM5 de linha gamer
+  if (!opts.mac && isAmdCpu(opts.cpu?.name)) return amdBoardModel(opts);
   const g = new THREE.Group();
   const W = 0.61, H = 0.49, mkTex = pcbTexture('#0a0b0e', 'rgba(70,82,96,0.45)', 7);
   const pcb = slab(W, H, 0.008, 0.008, new THREE.MeshStandardMaterial({ map: mkTex, metalness: 0.3, roughness: 0.55 })); g.add(pcb);
