@@ -5,6 +5,19 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.22', date: '2026-11-25', headline: 'Ventoinha da placa de vídeo AMD',
+    groups: [
+      { title: 'Ventoinhas', icon: 'chip', items: [
+        'No Windows, o CleanCode agora controla a ventoinha das placas de vídeo AMD, pelo driver da própria AMD. Você usa a velocidade fixa, a curva e o botão Testar, como nas ventoinhas da placa-mãe.',
+        'Quando você volta a placa de vídeo para Automático, ou fecha o CleanCode, a curva de ventoinha e o Zero RPM do driver voltam exatamente ao que eram. Os seus ajustes de desempenho no AMD Software não mudam.',
+        'As placas de vídeo NVIDIA e Intel continuam só com a leitura da velocidade, com o selo Em breve.',
+      ] },
+      { title: 'Painel', icon: 'panel', items: [
+        'No painel da bandeja, um valor comprido não fica mais por cima do título do cartão. Agora ele desce para a linha de baixo.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.21', date: '2026-11-25', headline: 'Assistente para identificar as ventoinhas',
     groups: [
       { title: 'Ventoinhas', icon: 'chip', items: [

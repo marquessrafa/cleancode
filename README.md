@@ -112,7 +112,7 @@ CleanCode was built to be **safe from the start**:
     <td width="50%" valign="top"><img src="docs/screenshots/hw-board.webp" alt="Motherboard tab" width="100%" /><br /><strong>Motherboard and logic board</strong><br />Shows the board model, the chip, the firmware version (or the BIOS version, on a PC) and the voltages. On a PC, it also shows the fans and the installed memory modules.</td>
   </tr>
   <tr>
-    <td width="50%" valign="top"><img src="docs/screenshots/fans.webp" alt="Fans screen" width="100%" /><br /><strong>Fans</strong><br />On Windows, you choose a fixed speed or a temperature curve for each motherboard fan. An assistant finds out which fan is which, and each fan goes back to automatic mode when you close CleanCode.</td>
+    <td width="50%" valign="top"><img src="docs/screenshots/fans.webp" alt="Fans screen" width="100%" /><br /><strong>Fans</strong><br />On Windows, you choose a fixed speed or a temperature curve for each motherboard fan and for AMD graphics cards. An assistant finds out which fan is which, and each fan goes back to automatic mode when you close CleanCode.</td>
   </tr>
 </table>
 
@@ -250,7 +250,8 @@ CleanCode was built to be **safe from the start**:
   - if the processor or the graphics card reaches 90 °C, the controlled fans go to 100% until the temperature drops to 85 °C;
   - after each command, CleanCode checks the value and the RPM that the board reports, and it returns the fan to automatic mode when the fan does not obey;
   - the "Identify the fans" assistant speeds up one fan at a time and asks where it is, and a guide explains what to do when a fan does not obey;
-  - control of the graphics card fan arrives in a future version.
+  - on AMD graphics cards (RX 5000 and newer), CleanCode controls the fan through the AMD driver (ADLX), and it restores the driver fan curve and Zero RPM when you go back to automatic mode;
+  - NVIDIA and Intel graphics cards show only the fan speed for now, and their control arrives in a future version.
 
 </details>
 

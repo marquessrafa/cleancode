@@ -112,7 +112,7 @@ O CleanCode foi feito para ser **seguro desde o início**:
     <td width="50%" valign="top"><img src="../screenshots/hw-board.webp" alt="Aba Placa-mãe" width="100%" /><br /><strong>Placa-mãe e placa lógica</strong><br />Mostra o modelo da placa, o chip, a versão do firmware (ou da BIOS, no PC) e as tensões. No PC, também mostra as ventoinhas e os pentes de memória instalados.</td>
   </tr>
   <tr>
-    <td width="50%" valign="top"><img src="../screenshots/fans.webp" alt="Tela Ventoinhas" width="100%" /><br /><strong>Ventoinhas</strong><br />No Windows, você escolhe uma velocidade fixa ou uma curva pela temperatura para cada ventoinha da placa-mãe. Um assistente descobre qual ventoinha é cada uma, e cada ventoinha volta ao modo automático quando você fecha o CleanCode.</td>
+    <td width="50%" valign="top"><img src="../screenshots/fans.webp" alt="Tela Ventoinhas" width="100%" /><br /><strong>Ventoinhas</strong><br />No Windows, você escolhe uma velocidade fixa ou uma curva pela temperatura para cada ventoinha da placa-mãe e das placas de vídeo AMD. Um assistente descobre qual ventoinha é cada uma, e cada ventoinha volta ao modo automático quando você fecha o CleanCode.</td>
   </tr>
 </table>
 
@@ -250,7 +250,8 @@ O CleanCode foi feito para ser **seguro desde o início**:
   - se o processador ou a placa de vídeo chegar a 90 °C, as ventoinhas controladas vão para 100% até a temperatura cair para 85 °C;
   - depois de cada comando, o CleanCode confere o valor e o RPM que a placa informa, e devolve a ventoinha ao modo automático quando ela não obedece;
   - o assistente "Identificar as ventoinhas" acelera uma ventoinha por vez e pergunta onde ela fica, e um guia explica o que fazer quando uma ventoinha não obedece;
-  - o controle da ventoinha da placa de vídeo chega numa próxima versão.
+  - nas placas de vídeo AMD (RX 5000 e mais novas), o CleanCode controla a ventoinha pelo driver da AMD (ADLX), e devolve a curva do driver e o Zero RPM quando você volta ao modo automático;
+  - as placas de vídeo NVIDIA e Intel por enquanto só mostram a velocidade da ventoinha, e o controle delas chega numa próxima versão.
 
 </details>
 

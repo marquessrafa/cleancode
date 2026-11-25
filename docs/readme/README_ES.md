@@ -112,7 +112,7 @@ CleanCode fue hecho para ser **seguro desde el principio**:
     <td width="50%" valign="top"><img src="../screenshots/hw-board.webp" alt="Pestaña Placa base" width="100%" /><br /><strong>Placa base y placa lógica</strong><br />Muestra el modelo de la placa, el chip, la versión del firmware (o de la BIOS, en un PC) y los voltajes. En un PC, también muestra los ventiladores y los módulos de memoria instalados.</td>
   </tr>
   <tr>
-    <td width="50%" valign="top"><img src="../screenshots/fans.webp" alt="Pantalla Ventiladores" width="100%" /><br /><strong>Ventiladores</strong><br />En Windows, eliges una velocidad fija o una curva de temperatura para cada ventilador de la placa base. Un asistente descubre qué ventilador es cada uno, y cada ventilador vuelve al modo automático cuando cierras CleanCode.</td>
+    <td width="50%" valign="top"><img src="../screenshots/fans.webp" alt="Pantalla Ventiladores" width="100%" /><br /><strong>Ventiladores</strong><br />En Windows, eliges una velocidad fija o una curva de temperatura para cada ventilador de la placa base y de las tarjetas gráficas AMD. Un asistente descubre qué ventilador es cada uno, y cada ventilador vuelve al modo automático cuando cierras CleanCode.</td>
   </tr>
 </table>
 
@@ -250,7 +250,8 @@ CleanCode fue hecho para ser **seguro desde el principio**:
   - si el procesador o la tarjeta gráfica llega a 90 °C, los ventiladores controlados pasan al 100% hasta que la temperatura baja a 85 °C;
   - después de cada comando, CleanCode comprueba el valor y las RPM que informa la placa, y devuelve el ventilador al modo automático cuando no obedece;
   - el asistente "Identificar los ventiladores" acelera un ventilador por vez y pregunta dónde está, y una guía explica qué hacer cuando un ventilador no obedece;
-  - el control del ventilador de la tarjeta gráfica llega en una próxima versión.
+  - en las tarjetas gráficas AMD (RX 5000 y más nuevas), CleanCode controla el ventilador por el controlador de AMD (ADLX), y devuelve la curva del controlador y el Zero RPM cuando vuelves al modo automático;
+  - las tarjetas gráficas NVIDIA e Intel por ahora solo muestran la velocidad del ventilador, y su control llega en una próxima versión.
 
 </details>
 
