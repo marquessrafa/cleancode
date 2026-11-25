@@ -39,6 +39,18 @@ jobs:
           if ($j.until -ne 1700000000000 -or $j.count -ne 2 -or $j.fixed -ne 45) { throw 'o pedido das ventoinhas foi lido errado' }
           if ($j.at20 -ne 20 -or $j.at40 -ne 30 -or $j.at60 -ne 70 -or $j.at90 -ne 100) { throw 'a curva de velocidade calculou errado' }
           'OK: o pedido foi lido e a curva calculou certo.'
+      - name: Diagnóstico do ADLX (placas AMD; o runner não tem placa AMD, então só confere que o helper não cai)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath .\out\cc-lhm.exe -ArgumentList '--adlx-probe' -RedirectStandardOutput adlx.txt -PassThru -NoNewWindow -Wait
+          Get-Content adlx.txt
+          if ($p.ExitCode -ne 0) { throw "o diagnóstico do ADLX fechou com o código $($p.ExitCode)" }
+      - name: Guardar o helper compilado (para testar num PC real antes de publicar)
+        uses: actions/upload-artifact@v4
+        with:
+          name: cc-lhm
+          path: out/
+          retention-days: 7
       - name: Testar uma leitura (com tempo limite)
         shell: pwsh
         run: |

@@ -24,11 +24,12 @@ let timer: ReturnType<typeof setInterval> | null = null;
 const num = (v: number) => String(Math.round(v * 10) / 10);
 /** Velocidade mínima de uma saída marcada como bomba do water cooler: uma bomba lenta ou parada esquenta o processador rápido. */
 export const PUMP_MIN = 60;
-// Placas de vídeo: o controle da ventoinha fica para uma próxima versão (a tela mostra "em breve"). O LibreHardwareMonitor 0.9.6
-// só controla placas AMD pela interface antiga do driver (Overdrive 5, ADL2_Overdrive5_FanSpeed_Set), e as placas AMD recentes
-// ignoram esse comando sem dar erro. O caminho previsto é o SDK ADLX da AMD. Até lá, o app não envia pedidos para nenhuma
-// placa de vídeo (AMD, NVIDIA ou Intel), e a ventoinha delas fica só para leitura.
-const gpuLocked = (id: string) => id.startsWith('/gpu-');
+// Placas de vídeo: o LibreHardwareMonitor 0.9.6 só controla placas AMD pela interface antiga do driver (Overdrive 5), e as placas
+// AMD recentes ignoram esse comando sem dar erro. Por isso, o helper controla as placas AMD pelo ADLX, o SDK novo que vem no
+// driver da AMD, e avisa no sensors.json (adlx: true) quando esse caminho funciona. Sem ADLX, e nas placas NVIDIA e Intel, a
+// ventoinha da placa de vídeo fica só para leitura, com o selo "em breve".
+let adlxOk = false;
+const gpuLocked = (id: string) => id.startsWith('/gpu-') && !(adlxOk && id.startsWith('/gpu-amd/'));
 function lines(until: number): string {
   const out = [`until\t${until}`];
   if (!until) return out.join('\n') + '\n';
@@ -52,6 +53,8 @@ function write(until: number) {
 }
 const wanted = () => !paused && (tests.size > 0 || Object.values(config).some((c) => c && c.mode !== 'auto'));
 function pump() {
+  // atualiza se o caminho ADLX está disponível (o pedido das placas AMD só sai quando ele funciona)
+  Lhm.snapshot().then((s) => { if (s) adlxOk = !!s.adlx; }).catch(() => {});
   if (wanted()) { write(Date.now() + LIFE); return; }
   write(0);
   if (timer) { clearInterval(timer); timer = null; }
@@ -88,6 +91,7 @@ const TEMP_KIND: Record<string, string> = { Cpu: 'cpu', GpuAmd: 'gpu', GpuNvidia
 /** Ventoinhas que aceitam controle, temperaturas que podem guiar uma curva e o que a tarefa aplicou em cada uma. */
 export async function state(): Promise<FanState> {
   const s = await Lhm.snapshot().catch(() => null);
+  if (s) adlxOk = !!s.adlx;
   const active = await Lhm.advancedActive().catch(() => false);
   const controls: FanControlInfo[] = [], temps: FanTempSource[] = [];
   const status = new Map((s?.fans || []).map((f) => [f.id, f]));

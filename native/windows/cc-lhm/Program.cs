@@ -26,6 +26,7 @@ using System.Security;
 using System.Text;
 using System.Threading;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using LibreHardwareMonitor.Hardware;
 
 static class Program
@@ -135,7 +136,7 @@ static class Program
           .Append(IsAdmin() ? "true" : "false").Append(",\"pawnio\":").Append(pawnio ? "true" : "false").Append(",\"groups\":{");
         bool first = true;
         foreach (var kv in Groups) { if (!first) sb.Append(','); first = false; sb.Append('"').Append(kv.Key).Append("\":\"").Append(Esc(kv.Value)).Append('"'); }
-        sb.Append("},\"fanControl\":").Append(fanControl ? "true" : "false").Append(",\"fans\":[").Append(fanControl ? Fans.StatusJson() : "").Append("],\"hardware\":[");
+        sb.Append("},\"fanControl\":").Append(fanControl ? "true" : "false").Append(",\"adlx\":").Append(fanControl && Adlx.Ready ? "true" : "false").Append(",\"fans\":[").Append(fanControl ? Fans.StatusJson() : "").Append("],\"hardware\":[");
         first = true;
         foreach (var h in list)
         {
@@ -289,6 +290,205 @@ static class Program
     // - Quando o pedido vence (o app travou ou fechou) ou some, cada ventoinha volta ao modo automático da placa.
     // - Se o processador ou a placa de vídeo chegar a 90 °C, as ventoinhas controladas vão para 100% até cair para 85 °C.
     // - Ao fechar, o helper devolve cada ventoinha ao modo automático.
+    // ---------- ventoinha das placas AMD pelo ADLX ----------
+    // A LibreHardwareMonitorLib 0.9.6 só controla placas AMD pela interface antiga do driver (ADL2_Overdrive5_FanSpeed_Set),
+    // que as placas recentes ignoram sem dar erro. O ADLX é o SDK novo da AMD e vem dentro do próprio driver
+    // (amdadlx64.dll, em System32). O helper chama o driver direto, sem código de terceiros: cada interface do ADLX é um
+    // objeto com uma tabela de funções (vtable), na ordem dos cabeçalhos públicos do SDK (IGPUTuning.h,
+    // IGPUManualFanTuning.h, ISystem.h e ICollections.h).
+    // - Velocidade: a curva de ventoinha do driver (5 pontos de temperatura e velocidade) recebe a mesma velocidade em
+    //   todos os pontos. O Zero RPM é desligado enquanto o CleanCode controla, para a ventoinha girar de verdade.
+    // - Volta ao automático: os pontos e o Zero RPM voltam exatamente ao que eram antes. O helper não usa ResetToFactory,
+    //   porque ele também apagaria os ajustes de desempenho que a pessoa fez no AMD Software.
+    internal static class Adlx
+    {
+        [DllImport("amdadlx64.dll", CallingConvention = CallingConvention.Cdecl)] static extern int ADLXQueryFullVersion(out ulong version);
+        [DllImport("amdadlx64.dll", CallingConvention = CallingConvention.Cdecl)] static extern int ADLXInitialize(ulong version, out IntPtr system);
+        [DllImport("amdadlx64.dll", CallingConvention = CallingConvention.Cdecl)] static extern int ADLXTerminate();
+
+        [StructLayout(LayoutKind.Sequential)] internal struct IntRange { public int Min, Max, Step; }
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int FnRelease(IntPtr self);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int FnQueryInterface(IntPtr self, [MarshalAs(UnmanagedType.LPWStr)] string id, out IntPtr result);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int FnGetPtr(IntPtr self, out IntPtr result);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate uint FnSize(IntPtr self);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int FnAt(IntPtr self, uint index, out IntPtr result);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int FnGpuBool(IntPtr self, IntPtr gpu, out byte result);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int FnGpuPtr(IntPtr self, IntPtr gpu, out IntPtr result);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int FnRanges(IntPtr self, out IntRange speed, out IntRange temperature);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int FnSetPtr(IntPtr self, IntPtr value);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int FnValid(IntPtr self, IntPtr states, out int errorIndex);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int FnGetBool(IntPtr self, out byte result);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int FnSetBool(IntPtr self, byte value);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int FnGetInt(IntPtr self, out int result);
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate int FnSetInt(IntPtr self, int value);
+
+        // posições na vtable (0 = primeira função)
+        const int Release_ = 1, QueryInterface_ = 2;
+        const int System_GetGPUs = 1, System_GetGPUTuningServices = 8;
+        const int List_Size = 3, GpuList_At = 11, StateList_At = 11;
+        const int Tuning_IsSupportedManualFanTuning = 10, Tuning_GetManualFanTuning = 16;
+        const int Fan_GetRanges = 3, Fan_GetStates = 4, Fan_IsValidStates = 6, Fan_SetStates = 7, Fan_IsSupportedZeroRPM = 8, Fan_GetZeroRPM = 9, Fan_SetZeroRPM = 10;
+        const int State_GetSpeed = 3, State_SetSpeed = 4, State_GetTemperature = 5, State_SetTemperature = 6;
+
+        static T Fn<T>(IntPtr obj, int index) where T : class => Marshal.GetDelegateForFunctionPointer<T>(Marshal.ReadIntPtr(Marshal.ReadIntPtr(obj), index * IntPtr.Size));
+        static void Rel(IntPtr obj) { if (obj != IntPtr.Zero) Fn<FnRelease>(obj, Release_)(obj); }
+
+        internal class Gpu { public IntPtr Fan; public IntRange Speed, Temp; public bool HasZeroRpm; public List<int[]> Original; public byte OriginalZeroRpm; public bool Touched; }
+        static readonly List<Gpu> Gpus = new List<Gpu>();
+        static bool tried;
+        static IntPtr system, tuning;
+        internal static string Error = "";
+
+        /// <summary>Abre o ADLX uma vez. Devolve false quando não há driver da AMD com ADLX neste PC.</summary>
+        internal static bool Init()
+        {
+            if (tried) return system != IntPtr.Zero;
+            tried = true;
+            try
+            {
+                // o próprio driver diz a versão que ele entende, e o helper pede exatamente essa
+                int r = ADLXQueryFullVersion(out var version);
+                if (r != 0) { Error = "versão " + r; return false; }
+                r = ADLXInitialize(version, out system);
+                if ((r != 0 && r != 1 && r != 2) || system == IntPtr.Zero) { Error = "início " + r; system = IntPtr.Zero; return false; }
+                r = Fn<FnGetPtr>(system, System_GetGPUTuningServices)(system, out tuning);
+                if (r != 0 || tuning == IntPtr.Zero) { Error = "ajustes " + r; return true; }
+                r = Fn<FnGetPtr>(system, System_GetGPUs)(system, out var list);
+                if (r != 0 || list == IntPtr.Zero) { Error = "placas " + r; return true; }
+                uint n = Fn<FnSize>(list, List_Size)(list);
+                for (uint i = 0; i < n; i++)
+                {
+                    var g = new Gpu();
+                    Gpus.Add(g);
+                    if (Fn<FnAt>(list, GpuList_At)(list, i, out var gpu) != 0 || gpu == IntPtr.Zero) continue;
+                    if (Fn<FnGpuBool>(tuning, Tuning_IsSupportedManualFanTuning)(tuning, gpu, out var supported) != 0 || supported == 0) continue;
+                    if (Fn<FnGpuPtr>(tuning, Tuning_GetManualFanTuning)(tuning, gpu, out var iface) != 0 || iface == IntPtr.Zero) continue;
+                    // a interface volta como IADLXInterface: pede a de ventoinha pelo nome
+                    if (Fn<FnQueryInterface>(iface, QueryInterface_)(iface, "IADLXManualFanTuning", out var fan) == 0 && fan != IntPtr.Zero) { g.Fan = fan; Rel(iface); }
+                    else g.Fan = iface;
+                    Fn<FnRanges>(g.Fan, Fan_GetRanges)(g.Fan, out g.Speed, out g.Temp);
+                    g.HasZeroRpm = Fn<FnGetBool>(g.Fan, Fan_IsSupportedZeroRPM)(g.Fan, out var zero) == 0 && zero != 0;
+                }
+                Rel(list);
+                return true;
+            }
+            catch (DllNotFoundException) { Error = "sem driver da AMD com ADLX"; }
+            catch (EntryPointNotFoundException) { Error = "ADLX antigo"; }
+            catch (Exception e) { Error = e.Message; }
+            system = IntPtr.Zero;
+            return false;
+        }
+
+        /// <summary>Alguma placa AMD aceita o controle manual da ventoinha pelo ADLX?</summary>
+        internal static bool Ready => Init() && Gpus.Any((g) => g.Fan != IntPtr.Zero);
+        static Gpu ByControl(string id)
+        {
+            // "/gpu-amd/0/control/0": a placa AMD número 0, na mesma ordem do ADLX
+            var parts = id.Split('/');
+            if (parts.Length < 3 || parts[1] != "gpu-amd" || !int.TryParse(parts[2], out var index)) return null;
+            return Init() && index < Gpus.Count && Gpus[index].Fan != IntPtr.Zero ? Gpus[index] : null;
+        }
+        internal static bool Handles(string id) => ByControl(id) != null;
+
+        static List<int[]> ReadStates(IntPtr fan)
+        {
+            if (Fn<FnGetPtr>(fan, Fan_GetStates)(fan, out var list) != 0 || list == IntPtr.Zero) return null;
+            var states = new List<int[]>();
+            uint n = Fn<FnSize>(list, List_Size)(list);
+            for (uint i = 0; i < n; i++)
+            {
+                if (Fn<FnAt>(list, StateList_At)(list, i, out var st) != 0 || st == IntPtr.Zero) continue;
+                Fn<FnGetInt>(st, State_GetSpeed)(st, out var speed);
+                Fn<FnGetInt>(st, State_GetTemperature)(st, out var temp);
+                states.Add(new[] { speed, temp });
+                Rel(st);
+            }
+            Rel(list);
+            return states;
+        }
+        /// <summary>Lê a curva atual, troca cada ponto pelo que <paramref name="map"/> devolve, confere e grava. Devolve null quando deu certo.</summary>
+        static string WriteStates(IntPtr fan, Func<int, int[], int[]> map)
+        {
+            if (Fn<FnGetPtr>(fan, Fan_GetStates)(fan, out var list) != 0 || list == IntPtr.Zero) return "sem curva";
+            try
+            {
+                uint n = Fn<FnSize>(list, List_Size)(list);
+                for (uint i = 0; i < n; i++)
+                {
+                    if (Fn<FnAt>(list, StateList_At)(list, i, out var st) != 0 || st == IntPtr.Zero) continue;
+                    Fn<FnGetInt>(st, State_GetSpeed)(st, out var speed);
+                    Fn<FnGetInt>(st, State_GetTemperature)(st, out var temp);
+                    var v = map((int)i, new[] { speed, temp });
+                    Fn<FnSetInt>(st, State_SetSpeed)(st, v[0]);
+                    Fn<FnSetInt>(st, State_SetTemperature)(st, v[1]);
+                    Rel(st);
+                }
+                int r = Fn<FnValid>(fan, Fan_IsValidStates)(fan, list, out var bad);
+                if (r != 0 || bad != -1) return "curva inválida no ponto " + bad + " (" + r + ")";
+                r = Fn<FnSetPtr>(fan, Fan_SetStates)(fan, list);
+                return r == 0 ? null : "o driver recusou a curva (" + r + ")";
+            }
+            finally { Rel(list); }
+        }
+
+        /// <summary>Coloca a ventoinha da placa em <paramref name="pct"/>%. Devolve null quando deu certo, ou o motivo do erro.</summary>
+        internal static string Set(string id, float pct)
+        {
+            var g = ByControl(id);
+            if (g == null) return "a placa não aceita o controle pelo ADLX";
+            if (!g.Touched)
+            {
+                g.Original = ReadStates(g.Fan);
+                if (g.Original == null) return "não deu para ler a curva da placa";
+                if (g.HasZeroRpm) Fn<FnGetBool>(g.Fan, Fan_GetZeroRPM)(g.Fan, out g.OriginalZeroRpm);
+                g.Touched = true;
+            }
+            int lo = g.Speed.Min, hi = g.Speed.Max > lo ? g.Speed.Max : 100, step = g.Speed.Step > 0 ? g.Speed.Step : 1;
+            int speed = (int)Math.Round(Math.Max(lo, Math.Min(hi, pct)) / step) * step;
+            speed = Math.Max(lo, Math.Min(hi, speed));
+            if (g.HasZeroRpm && speed > 0) Fn<FnSetBool>(g.Fan, Fan_SetZeroRPM)(g.Fan, 0);
+            return WriteStates(g.Fan, (i, s) => new[] { speed, s[1] });
+        }
+
+        /// <summary>Devolve a curva e o Zero RPM ao que eram antes de o CleanCode assumir.</summary>
+        internal static string Restore(string id)
+        {
+            var g = ByControl(id);
+            if (g == null || !g.Touched) return null;
+            var orig = g.Original;
+            var err = WriteStates(g.Fan, (i, s) => i < orig.Count ? orig[i] : s);
+            if (g.HasZeroRpm) Fn<FnSetBool>(g.Fan, Fan_SetZeroRPM)(g.Fan, g.OriginalZeroRpm);
+            g.Touched = false;
+            return err;
+        }
+
+        internal static void Shutdown()
+        {
+            if (system == IntPtr.Zero) return;
+            try { foreach (var g in Gpus) Rel(g.Fan); Rel(tuning); ADLXTerminate(); } catch { /* o processo vai fechar mesmo assim */ }
+            system = IntPtr.Zero;
+        }
+
+        /// <summary>Diagnóstico só de leitura (cc-lhm --adlx-probe): o que o ADLX informa sobre cada placa AMD.</summary>
+        internal static string Probe()
+        {
+            var sb = new StringBuilder();
+            bool ok = Init();
+            sb.AppendLine("adlx: " + (ok ? "ok" : "falhou") + (Error.Length > 0 ? " (" + Error + ")" : ""));
+            for (int i = 0; i < Gpus.Count; i++)
+            {
+                var g = Gpus[i];
+                if (g.Fan == IntPtr.Zero) { sb.AppendLine("placa " + i + ": sem controle manual da ventoinha"); continue; }
+                sb.AppendLine("placa " + i + ": velocidade " + g.Speed.Min + "-" + g.Speed.Max + "% (passo " + g.Speed.Step + "), temperatura " + g.Temp.Min + "-" + g.Temp.Max + " °C, zero rpm " + (g.HasZeroRpm ? "sim" : "não"));
+                if (g.HasZeroRpm && Fn<FnGetBool>(g.Fan, Fan_GetZeroRPM)(g.Fan, out var z) == 0) sb.AppendLine("  zero rpm ligado: " + (z != 0 ? "sim" : "não"));
+                var states = ReadStates(g.Fan);
+                if (states != null) sb.AppendLine("  curva: " + string.Join(", ", states.Select((s) => s[1] + " °C = " + s[0] + "%")));
+            }
+            return sb.ToString();
+        }
+    }
+
     internal static class Fans
     {
         internal class Want { public string Mode; public string Id; public float Value; public string Source; public List<KeyValuePair<float, float>> Points; public string Sig; }
@@ -424,10 +624,13 @@ static class Program
                     if (!controls.TryGetValue(w.Id, out var ctl)) { st.Error = "notfound"; continue; }
                     try
                     {
+                        // placa de vídeo AMD: a velocidade vai pelo ADLX, e a leitura do controle da biblioteca não acompanha
+                        // (ela lê pela interface antiga). Nesse caso, só a conferência pelo RPM vale.
+                        bool amd = Adlx.Handles(w.Id);
                         // conferência: a placa informa o valor que o CleanCode aplicou na leitura anterior?
                         var read = ctl.Sensor?.Value;
                         if (read.HasValue) st.Read = read.Value;
-                        if (Touched.ContainsKey(w.Id) && Applied.TryGetValue(w.Id, out var was) && read.HasValue)
+                        if (!amd && Touched.ContainsKey(w.Id) && Applied.TryGetValue(w.Id, out var was) && read.HasValue)
                         {
                             if (Math.Abs(read.Value - was) > Tolerance) Mismatch[w.Id] = (Mismatch.TryGetValue(w.Id, out var m) ? m : 0) + 1;
                             else Mismatch.Remove(w.Id);
@@ -448,12 +651,13 @@ static class Program
                         float lo = Math.Max(0, ctl.MinSoftwareValue), hi = ctl.MaxSoftwareValue > lo ? Math.Min(100, ctl.MaxSoftwareValue) : 100;
                         pct = Math.Max(lo, Math.Min(hi, pct));
                         bool changed = false;
-                        if (!Applied.TryGetValue(w.Id, out var prev) || Math.Abs(prev - pct) >= 0.5f || ctl.ControlMode != ControlMode.Software)
+                        if (!Applied.TryGetValue(w.Id, out var prev) || Math.Abs(prev - pct) >= 0.5f || (!amd && ctl.ControlMode != ControlMode.Software))
                         {
                             changed = true;
                             if (!Touched.ContainsKey(w.Id) && read.HasValue && fanOf.TryGetValue(w.Id, out var fanBefore) && fanBefore.Value.HasValue)
                                 RpmRef[w.Id] = new RpmCheck { Pct = read.Value, Rpm = fanBefore.Value.Value };
-                            ctl.SetSoftware(pct);
+                            if (amd) { var err = Adlx.Set(w.Id, pct); if (err != null) throw new Exception("ADLX: " + err); }
+                            else ctl.SetSoftware(pct);
                             Applied[w.Id] = pct;
                             if (!Touched.ContainsKey(w.Id)) { Touched[w.Id] = ctl; Released.Remove(w.Id); Log("ventoinha " + w.Id + ": o CleanCode assumiu o controle (" + w.Mode + "); antes, a placa informava " + Pct(read) + " e " + Rpm(fanOf, w.Id)); }
                         }
@@ -492,7 +696,12 @@ static class Program
         {
             var ctl = Touched[id];
             var before = ctl.Sensor?.Value;
-            try { ctl.SetDefault(); } catch (Exception e) { Log("ventoinha " + id + ": não voltou ao modo automático (" + e.Message + ")"); }
+            try
+            {
+                if (Adlx.Handles(id)) { var err = Adlx.Restore(id); if (err != null) throw new Exception("ADLX: " + err); }
+                else ctl.SetDefault();
+            }
+            catch (Exception e) { Log("ventoinha " + id + ": não voltou ao modo automático (" + e.Message + ")"); }
             Touched.Remove(id); Applied.Remove(id); Mismatch.Remove(id); RpmRef.Remove(id);
             Released[id] = new KeyValuePair<IControl, int>(ctl, 3);
             Log("ventoinha " + id + ": " + why + " (estava em " + Pct(before) + ")");
@@ -545,6 +754,24 @@ static class Program
         {
             var w = new StreamWriter(Console.OpenStandardOutput(), new UTF8Encoding(false)) { AutoFlush = true };
             w.WriteLine(Fans.SelfTest());
+            Environment.Exit(0);
+        }
+        // diagnóstico do ADLX (placas AMD): só lê, não muda nada. Com --adlx-test <porcentagem>, coloca a ventoinha da
+        // primeira placa AMD nessa velocidade por 8 segundos, mostra a curva e devolve tudo ao que era antes.
+        if (args.Contains("--adlx-probe") || args.Contains("--adlx-test"))
+        {
+            var w = new StreamWriter(Console.OpenStandardOutput(), new UTF8Encoding(false)) { AutoFlush = true };
+            w.Write(Adlx.Probe());
+            int ti = Array.IndexOf(args, "--adlx-test");
+            if (ti >= 0 && ti + 1 < args.Length && float.TryParse(args[ti + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out var testPct) && Adlx.Handles("/gpu-amd/0/control/0"))
+            {
+                w.WriteLine("teste: " + (Adlx.Set("/gpu-amd/0/control/0", testPct) ?? "ok, " + testPct.ToString(CultureInfo.InvariantCulture) + "% por 8 segundos"));
+                w.Write(Adlx.Probe());
+                Thread.Sleep(8000);
+                w.WriteLine("volta: " + (Adlx.Restore("/gpu-amd/0/control/0") ?? "ok"));
+                w.Write(Adlx.Probe());
+            }
+            Adlx.Shutdown();
             Environment.Exit(0);
         }
         bool once = args.Contains("--once");
@@ -625,7 +852,7 @@ static class Program
             }
         } while (!once);
         if (once && reads < 3) ClearMarkers();
-        if (fanControl) Fans.RestoreAll("o helper está fechando");
+        if (fanControl) { Fans.RestoreAll("o helper está fechando"); Adlx.Shutdown(); }
         // uma etapa travada não pode impedir o processo de sair
         if (!risky.IsAlive) { try { c.Close(); } catch { /* */ } }
         Environment.Exit(0);

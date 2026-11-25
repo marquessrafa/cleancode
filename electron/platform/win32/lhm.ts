@@ -18,7 +18,7 @@ export interface LhmHardware { name: string; type: string; id: string; stuck?: b
 /** groups: estado de cada etapa de abertura do helper ("ok", "pending", "timeout", "skipped" ou "error: …") */
 /** fanControl: a tarefa de administrador controla as ventoinhas; fans: o que ela aplicou em cada ventoinha (ver fans.ts) */
 export interface LhmFanStatus { id: string; mode: 'fixed' | 'curve' | 'emergency'; pct: number | null; read?: number | null; error: string | null }
-export interface LhmSnapshot { at: number; admin: boolean; pawnio?: boolean; groups?: Record<string, string>; fanControl?: boolean; fans?: LhmFanStatus[]; hardware: LhmHardware[] }
+export interface LhmSnapshot { at: number; admin: boolean; pawnio?: boolean; groups?: Record<string, string>; fanControl?: boolean; adlx?: boolean; fans?: LhmFanStatus[]; hardware: LhmHardware[] }
 
 const TASK = 'CleanCodeSensors';
 const DATA = path.join(process.env.ProgramData || 'C:\\ProgramData', 'CleanCode', 'sensors.json');
