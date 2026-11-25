@@ -5,9 +5,11 @@
 import type { FanConfig, FanState, FanControlInfo, FanTempSource } from './platform/types';
 
 const BOARD = 'Placa-mãe de exemplo (Chip de sensores de exemplo)';
+// CLEANCODE_PREVIEW_GPU troca o nome da placa de vídeo simulada, para conferir a foto de um modelo (ex.: AMD Radeon RX 6800 XT)
+const GPU = process.env.CLEANCODE_PREVIEW_GPU || 'Placa de vídeo de exemplo';
 const FANS: { id: string; name: string; hw: string; kind: FanControlInfo['kind']; max: number; auto: number }[] = [
   ...[1, 2, 3, 4, 5, 6, 7].map((i) => ({ id: `/lpc/exemplo/0/control/${i - 1}`, name: `Fan #${i}`, hw: BOARD, kind: 'board' as const, max: i === 2 ? 2900 : i === 5 ? 1600 : 0, auto: i === 2 ? 94 : 70 })),
-  { id: '/gpu-amd/0/control/0', name: 'GPU Fan', hw: 'Placa de vídeo de exemplo', kind: 'gpu', max: 3000, auto: 35 },
+  { id: '/gpu-amd/0/control/0', name: 'GPU Fan', hw: GPU, kind: 'gpu', max: 3000, auto: 35 },
 ];
 const tests = new Map<string, number>();
 const start = Date.now();
@@ -23,7 +25,7 @@ export function previewState(cfg: Record<string, FanConfig>): FanState {
   const s = (Date.now() - start) / 1000;
   const temps: FanTempSource[] = [
     { id: '/intelcpu/0/temperature/0', name: 'CPU Package', hw: 'Processador de exemplo', kind: 'cpu', value: Math.round(52 + 14 * Math.sin(s / 9)) },
-    { id: '/gpu-amd/0/temperature/0', name: 'GPU Core', hw: 'Placa de vídeo de exemplo', kind: 'gpu', value: Math.round(44 + 8 * Math.sin(s / 13)) },
+    { id: '/gpu-amd/0/temperature/0', name: 'GPU Core', hw: GPU, kind: 'gpu', value: Math.round(44 + 8 * Math.sin(s / 13)) },
     { id: '/lpc/exemplo/0/temperature/0', name: 'Motherboard', hw: BOARD, kind: 'board', value: 36 },
   ];
   const controls: FanControlInfo[] = FANS.map((f) => {

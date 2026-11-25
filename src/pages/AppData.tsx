@@ -54,7 +54,7 @@ export default function AppDataPage() {
   };
   const cleanAllSafe = async () => {
     const paths = (items || []).flatMap((i) => i.safePaths.map((s) => s.path));
-    const r = await confirm({ title: tr("Limpar caches, logs e atualizações antigas?"), message: tr("{0} em {1} pastas. Os programas criam esses arquivos de novo quando precisarem. O CleanCode não mexe nas configurações, nos logins nem nos jogos salvos. Para limpar mais, feche os programas que estão abertos.", fmtSize(totals.safe, units), fmtNum(paths.length)), confirmLabel: tr("Limpar") });
+    const r = await confirm({ title: tr("Limpar caches, logs e atualizações antigas?"), message: tr("{0} em {1} pastas. O CleanCode não mexe nas configurações, nos logins nem nos jogos salvos.", fmtSize(totals.safe, units), fmtNum(paths.length)), confirmLabel: tr("Limpar") });
     if (r.ok) doClean(paths, [], tr("Limpeza segura"));
   };
   const cleanOne = async (i: AppDataItem) => {
@@ -62,7 +62,7 @@ export default function AppDataPage() {
     if (r.ok) doClean(i.safePaths.map((s) => s.path), [], i.name);
   };
   const trashSelected = async () => {
-    const r = await confirm({ title: tr("Mover as sobras para a Lixeira?"), message: tr("{0} pasta(s), {1}. Nenhum programa instalado usa essas pastas. Mesmo assim, confira a lista, porque essas pastas podem guardar jogos salvos ou dados de programas portáteis. Se precisar, você restaura tudo pela Lixeira.", fmtNum(trashSel.size), fmtSize(trashSize, units)), confirmLabel: tr("Mover para a Lixeira"), danger: true });
+    const r = await confirm({ title: tr("Mover as sobras para a Lixeira?"), message: tr("{0} pasta(s), {1}. Confira a lista, porque essas pastas podem guardar jogos salvos.", fmtNum(trashSel.size), fmtSize(trashSize, units)), confirmLabel: tr("Mover para a Lixeira"), danger: true });
     if (r.ok) doClean([], [...trashSel], tr("Sobras"));
   };
 
@@ -70,7 +70,7 @@ export default function AppDataPage() {
     return (
       <Hero icon={<FolderCog size={46} />} title={isMac ? tr("Dados de apps") : tr("AppData")}
         text={isMac
-          ? tr("Os apps guardam caches, registros de atividade (logs) e dados na pasta ~/Library. Nesta tela, você vê quanto cada app ocupa e limpa apenas o que é seguro.")
+          ? tr("Veja quanto cada app ocupa na pasta ~/Library e limpe só o que é seguro.")
           : 'Os programas acumulam gigabytes nas pastas AppData\\Local, Roaming e LocalLow. Lá ficam caches, registros de atividade (logs), atualizações antigas e sobras de programas que já foram desinstalados. Nesta tela, você vê o que é cada pasta e limpa apenas o que é seguro.'}
         bullets={[
           { icon: <Sparkles size={15} />, text: tr("Mostra os caches, os logs e os relatórios de travamento de cada programa.") },
@@ -104,7 +104,7 @@ export default function AppDataPage() {
       </div>
       {filter === 'orphan' && totals.orphanCount > 0 && (
         <div className="mt-3 flex gap-2.5 rounded-lg bg-warn-soft px-3.5 py-2.5 text-[12.5px] text-muted"><AlertTriangle size={16} className="mt-0.5 shrink-0 text-warn" />
-          {tr("As sobras são pastas que não têm um programa instalado correspondente e que ninguém usa há mais de 30 dias. Normalmente, elas vêm de programas desinstalados. Mesmo assim, confira antes, porque essas pastas podem ter jogos salvos ou dados de programas portáteis. As sobras vão para a Lixeira, e você pode restaurar tudo de lá.")}</div>
+          {tr("As sobras são pastas de programas desinstalados que ninguém usa há mais de 30 dias. Elas vão para a Lixeira, e você pode restaurar tudo de lá.")}</div>
       )}
 
       <div className="mt-4 overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface)]">

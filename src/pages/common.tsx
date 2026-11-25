@@ -19,7 +19,7 @@ export function NeedsScan() {
     <Empty
       icon={<HardDrive size={22} />}
       title={t("Nenhuma varredura ativa")}
-      text={t("Escolha um disco ou uma pasta para analisar. Esta tela mostra os dados da análise que está aberta.")}
+      text={t("Escolha um disco ou uma pasta para analisar.")}
       action={
         <div className="flex flex-wrap justify-center gap-2">
           {drives.filter((d) => d.total > 0).map((d) => (
@@ -153,7 +153,7 @@ export function FullDiskAccessBanner({ className }: { className?: string }) {
       <ShieldAlert size={18} className="shrink-0 text-warn" />
       <div className="min-w-0 flex-1 text-[13px]">
         <div className="font-medium text-fg">{t("O CleanCode não tem Acesso Total ao Disco")}</div>
-        <div className="text-xs text-muted">{t("Sem esse acesso, pastas como ~/Library, Mail, Mensagens e a Lixeira aparecem como “Acesso negado” e ficam fora dos totais. O assistente mostra o caminho em menos de um minuto.")}</div>
+        <div className="text-xs text-muted">{t("Sem esse acesso, pastas como ~/Library, Mail e a Lixeira ficam fora dos totais.")}</div>
       </div>
       <Button size="sm" variant="primary" icon={<ShieldAlert size={13} />} onClick={openFdaAssistant}>{t("Liberar acesso")}</Button>
     </div>

@@ -40,7 +40,7 @@ export default function HistoryPage() {
 
   return (
     <PageBody>
-      <PageHeader title={t("Histórico e comparação")} icon={<HistoryIcon size={18} />} description={t("O CleanCode salva cada análise concluída. Ele guarda apenas a estrutura das pastas, de forma compactada. Para ver o que cresceu, compare a análise atual com uma análise anterior.")}
+      <PageHeader title={t("Histórico e comparação")} icon={<HistoryIcon size={18} />} description={t("Compare a análise atual com uma anterior para ver o que cresceu.")}
         actions={<>
           <Button icon={<Upload size={14} />} onClick={async () => { const id = await cc.historyImport(); if (id) { toast(t("Varredura importada")); load(); } }}>{t("Importar…")}</Button>
           <Button variant="primary" icon={<Save size={14} />} disabled={!active?.done} onClick={async () => { await cc.historySave(active!.id); toast(t("Varredura salva no histórico")); load(); }}>{t("Salvar varredura atual")}</Button>

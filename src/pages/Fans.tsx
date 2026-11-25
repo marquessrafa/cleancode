@@ -14,6 +14,9 @@ import { useApp } from '../lib/store';
 import { PageBody } from './common';
 import { Button, Select, cx } from '../components/ui';
 import { OPEN_ADVANCED } from '../components/AdvancedSetupModal';
+import { GpuHero, GpuTileArt, useGpuCard } from '../components/GpuArt';
+import { FanSpinner, FanTrioHero } from '../components/FanArt';
+import { PumpArt } from '../components/PumpArt';
 import { t as tr, LOCALE } from '../lib/i18n';
 
 type Points = [number, number][];
@@ -26,7 +29,9 @@ const PRESETS: { id: string; label: string; points: Points }[] = [
 ];
 const T_MIN = 20, T_MAX = 100;
 // segunda cor dos degradês: a cor de destaque girada no círculo de cores (a mesma técnica do Monitor de hardware)
-const ACC2 = 'oklch(from var(--accent) .78 .15 calc(h + 45))';
+// segunda cor dos degradês: a própria cor de destaque, um pouco mais clara (mesmo tom e mesma saturação)
+// (com uma cor de destaque cinza ou branca, o degradê fica no mesmo tom, em vez de virar rosa)
+const ACC2 = 'oklch(from var(--accent) calc(l + 0.08) c h)';
 const fmt = (v: number | undefined | null, d = 0) => (v === undefined || v === null || isNaN(v) ? '—' : v.toLocaleString(LOCALE, { maximumFractionDigits: d }));
 function interp(pts: Points, t: number) {
   if (!pts.length) return 0;
@@ -137,41 +142,40 @@ export default function FansPage() {
           <div className="flex items-center gap-2 text-[13px] text-muted"><Loader2 size={15} className="animate-spin" />{tr("O CleanCode está lendo as ventoinhas.")}</div>
         ) : !state.active ? (
           <Notice icon={<ShieldCheck size={22} />} title={tr("Ative o monitoramento avançado primeiro")}
-            text={tr("O controle das ventoinhas usa a tarefa de administrador do monitoramento avançado. Depois de ativar, o CleanCode muda a velocidade das ventoinhas sem pedir a sua permissão de novo.")}
+            text={tr("O controle das ventoinhas precisa do monitoramento avançado.")}
             action={<Button variant="primary" icon={<ShieldCheck size={14} />} onClick={openActivation}>{tr("Ativar o monitoramento avançado")}</Button>} />
         ) : !state.helperReady ? (
           <Notice icon={<Loader2 size={22} className="animate-spin" />} title={tr("O CleanCode está esperando a tarefa de administrador")}
-            text={tr("A tarefa de administrador ainda não respondeu com o controle das ventoinhas. Se este aviso continuar depois de alguns segundos, ative o monitoramento avançado de novo para instalar a versão nova do programa dos sensores.")}
+            text={tr("Se este aviso continuar, ative o monitoramento avançado de novo.")}
             action={<Button icon={<ShieldCheck size={14} />} onClick={openActivation}>{tr("Ativar de novo")}</Button>} />
         ) : !controls.length ? (
           <Notice icon={<Info size={22} />} title={tr("Nenhuma ventoinha aceita controle neste PC")}
-            text={tr("O LibreHardwareMonitor não encontrou nenhuma ventoinha que aceite comandos. Isso acontece quando a placa-mãe tem um chip de sensores que a biblioteca não sabe controlar.")} />
+            text={tr("O chip de sensores desta placa-mãe não aceita comandos.")} />
         ) : (
           <>
             {state.preview && <Banner tone="warn" icon={<FlaskConical size={18} />} title={tr("Esta é uma prévia com ventoinhas simuladas")}
-              text={tr("Nesta prévia, nenhuma mudança chega às ventoinhas de verdade. Para controlar as ventoinhas do PC, use o app instalado com o monitoramento avançado ativo.")} />}
+              text={tr("Nenhuma mudança chega às ventoinhas de verdade.")} />}
             {state.emergency && <Banner tone="danger" icon={<AlertTriangle size={18} />} title={tr("A proteção de temperatura está ativa")}
-              text={tr("O processador ou a placa de vídeo chegou a 90 °C. Por isso, o CleanCode colocou as ventoinhas controladas em 100%. Elas voltam à sua configuração quando a temperatura cair para 85 °C.")} />}
+              text={tr("Uma peça chegou a 90 °C, então as ventoinhas ficam em 100% até a temperatura cair para 85 °C.")} />}
 
-            {candidates.length > 0 && generic ? (
-              <IdentifyCard onClick={() => setWizard(true)} />
-            ) : (
-              <div className="text-[12.5px] text-muted">{tr("Clique numa ventoinha para mudar a velocidade dela.")}</div>
-            )}
+            {candidates.length > 0 && generic && <IdentifyCard onClick={() => setWizard(true)} />}
             <FanWizard open={wizard} onClose={() => setWizard(false)} candidates={candidates} live={ref} nameOf={(f) => fanName(f, draftRef.current[f.id])}
               onName={(id, patch) => change(id, patch)} />
-            <div className="grid gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))' }}>
-              {visible.map((f) => <FanTile key={f.id} fan={f} cfg={draft[f.id]} active={sel?.id === f.id} onClick={() => setSelected(f.id)} />)}
-            </div>
+            {/* as saídas sem ventoinha ligada ficam escondidas; o botão fica no canto direito, em cima dos cartões */}
             {hidden.length > 0 && (
-              <div className="flex flex-wrap items-center gap-3 text-[12.5px] text-muted">
-                <span>{showEmpty ? tr("As saídas da placa-mãe sem ventoinha ligada também aparecem acima.") : tr("{0} saídas da placa-mãe estão sem ventoinha ligada (0 RPM), então o CleanCode escondeu essas saídas.", hidden.length)}</span>
+              <div className="flex justify-end">
                 <Button size="sm" variant="outline" onClick={() => setShowEmpty((v) => !v)}>{showEmpty ? tr("Esconder as saídas vazias") : tr("Mostrar as saídas vazias")}</Button>
               </div>
             )}
+            <div className="grid gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))' }}>
+              {visible.map((f) => <FanTile key={f.id} fan={f} cfg={draft[f.id]} active={sel?.id === f.id} onClick={() => setSelected(f.id)} />)}
+            </div>
+            {showEmpty && hidden.length > 0 && <p className="-mt-2 text-[12px] text-muted">{tr("As saídas com 0 RPM estão sem ventoinha ligada.")}</p>}
+            {sel && <SelectedGpu key={`foto-${sel.id}-${draft[sel.id]?.pump ? 'bomba' : 'fan'}`} fan={sel} cfg={draft[sel.id]} />}
             {sel && <Editor key={sel.id} fan={sel} cfg={draft[sel.id]} temps={state.temps} onChange={(p) => change(sel.id, p)} live={ref} />}
             <HowItWorks />
             <FanHelp general />
+            <GpuCredit hw={controls.find((f) => f.kind === 'gpu')?.hw} />
           </>
         )}
       </div>
@@ -196,7 +200,7 @@ function IdentifyCard({ onClick }: { onClick: () => void }) {
       </div>
       <div className="min-w-0 flex-1">
         <div className="text-[14px] font-semibold">{tr("Descubra qual ventoinha é cada uma")}</div>
-        <div className="mt-0.5 text-[12.5px] text-muted">{tr("Algumas saídas estão com nomes genéricos. O assistente acelera uma ventoinha por vez e pergunta onde ela fica. Leva menos de um minuto.")}</div>
+        <div className="mt-0.5 text-[12.5px] text-muted">{tr("O assistente acelera uma ventoinha por vez e pergunta onde ela fica.")}</div>
       </div>
       <span className="flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-semibold text-[var(--on-accent)] shadow-sm transition-transform group-hover:scale-[1.03]" style={{ background: `linear-gradient(135deg, var(--accent), ${ACC2})` }}>
         <Wand2 size={14} />{tr("Identificar as ventoinhas")}
@@ -235,7 +239,7 @@ function Hero({ state, draft, ready, onIdentify }: { state: FanState | null; dra
         <FanDial size={92} pct={avgPct} rpm={maxRpm} />
         <div className="min-w-[240px] flex-1">
           <h1 className="text-[22px] font-semibold tracking-tight">{tr("Ventoinhas")}</h1>
-          <p className="mt-0.5 max-w-[620px] text-[13px] text-muted">{tr("Escolha a velocidade de cada ventoinha da placa-mãe e da placa de vídeo. Você pode usar uma velocidade fixa ou uma curva que acompanha a temperatura.")}</p>
+          <p className="mt-0.5 max-w-[620px] text-[13px] text-muted">{tr("Escolha a velocidade de cada ventoinha.")}</p>
           {ready && (
             <div className="mt-3 flex flex-wrap items-center gap-3">
               {onIdentify && <IdentifyButton onClick={onIdentify} />}
@@ -287,11 +291,11 @@ function Banner({ tone, icon, title, text }: { tone: 'warn' | 'danger'; icon: Re
 // ---------- estado de cada ventoinha (texto e cor) ----------
 function fanStatus(fan: FanControlInfo, mode: Mode): { tone: 'ok' | 'warn' | 'danger' | 'idle'; short: string; long: string } {
   const st = fan.status;
-  if (fan.locked) return { tone: 'ok', short: tr("Em breve"), long: tr("O controle desta ventoinha chega numa próxima versão. Por enquanto, o CleanCode só mostra a velocidade.") };
+  if (fan.locked) return { tone: 'ok', short: tr("Em breve"), long: tr("Por enquanto, o CleanCode só mostra a velocidade desta ventoinha.") };
   if (mode === 'auto') return { tone: 'idle', short: tr("Automático"), long: tr("A placa decide a velocidade desta ventoinha, pelo perfil do BIOS.") };
   if (!st) return { tone: 'ok', short: tr("Aplicando"), long: tr("O CleanCode está aplicando a configuração.") };
-  if (st.error === 'refused') return { tone: 'warn', short: tr("A placa recusou"), long: tr("A placa não obedeceu ao comando. Por isso, o CleanCode devolveu esta ventoinha ao modo automático. Se você mudar a configuração, o CleanCode tenta de novo.") };
-  if (st.error === 'norpm') return { tone: 'warn', short: tr("Não responde"), long: tr("A placa aceitou o comando, mas o RPM não mudou. Por isso, o CleanCode devolveu esta ventoinha ao modo automático. Veja abaixo como resolver.") };
+  if (st.error === 'refused') return { tone: 'warn', short: tr("A placa recusou"), long: tr("A placa não obedeceu, então a ventoinha voltou ao modo automático.") };
+  if (st.error === 'norpm') return { tone: 'warn', short: tr("Não responde"), long: tr("O RPM não mudou, então a ventoinha voltou ao modo automático. Veja abaixo como resolver.") };
   if (st.error === 'notfound') return { tone: 'warn', short: tr("Não encontrada"), long: tr("A tarefa de administrador não encontrou esta ventoinha.") };
   if (st.error === 'nosource') return { tone: 'warn', short: tr("Sem temperatura"), long: tr("A temperatura escolhida está sem leitura agora. Por isso, a ventoinha ficou no modo automático.") };
   if (st.error) return { tone: 'warn', short: tr("Erro"), long: tr("A placa recusou o comando: {0}", st.error.replace(/^error:\s*/, '')) };
@@ -306,10 +310,34 @@ const MODE_LABEL: Record<Mode, string> = { auto: tr("Automático"), fixed: tr("V
 function FanTile({ fan, cfg, active, onClick }: { fan: FanControlInfo; cfg?: FanConfig; active: boolean; onClick: () => void }) {
   const mode = fan.locked ? 'auto' : cfg?.mode || 'auto';
   const s = fanStatus(fan, mode);
+  const card = useGpuCard(fan.kind === 'gpu' ? fan.hw : undefined);
+  if (card) {
+    // placa de vídeo com foto: a placa em 3D no lado esquerdo, sumindo num degradê antes do nome e do RPM
+    const fill = active ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)';
+    return (
+      <button onClick={onClick} className={cx('group relative h-[84px] overflow-hidden rounded-xl border text-left transition-all duration-200', active ? 'border-[color-mix(in_srgb,var(--accent)_60%,transparent)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_14%,transparent)]' : 'border-[var(--line)] hover:border-[color-mix(in_srgb,var(--accent)_35%,var(--line))]')}
+        style={{ background: fill }}>
+        <GpuTileArt card={card} rpm={fan.rpm} />
+        <div className="pointer-events-none absolute inset-0" style={{ background: `linear-gradient(90deg, transparent 0%, transparent 34%, color-mix(in srgb, ${fill} 88%, transparent) 50%, ${fill} 60%)` }} />
+        <div className="absolute bottom-2 left-[44%] right-2.5 top-2 flex flex-col">
+          <div className="flex items-start gap-1.5">
+            <span className="min-w-0 flex-1 break-words text-[12.5px] font-semibold leading-tight">{fanName(fan, cfg)}</span>
+            <span className="shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-semibold" style={{ color: TONE[s.tone], background: `color-mix(in srgb, ${TONE[s.tone]} 14%, transparent)` }}>{mode === 'auto' || s.tone === 'warn' || s.tone === 'danger' ? s.short : MODE_LABEL[mode]}</span>
+          </div>
+          <div className="text-[10.5px] text-muted">{cfg?.label ? fan.name : kindLabel(fan.kind)}</div>
+          <div className="mt-auto flex items-baseline gap-1.5">
+            <span className="text-[17px] font-semibold tabular-nums leading-none">{fmt(fan.rpm)}</span>
+            <span className="text-[10.5px] text-muted">RPM</span>
+            <span className="ml-auto text-[11px] tabular-nums text-muted">{fmt(fan.pct)}%</span>
+          </div>
+        </div>
+      </button>
+    );
+  }
   return (
     <button onClick={onClick} className={cx('group relative flex items-center gap-3 overflow-hidden rounded-xl border p-3 text-left transition-all duration-200', active ? 'border-[color-mix(in_srgb,var(--accent)_60%,transparent)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_14%,transparent)]' : 'border-[var(--line)] hover:border-[color-mix(in_srgb,var(--accent)_35%,var(--line))]')}
       style={{ background: active ? `linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, var(--surface)), var(--surface) 70%)` : 'var(--surface)' }}>
-      <FanDial size={54} pct={fan.pct} rpm={fan.rpm} tone={s.tone === 'warn' ? 'warn' : s.tone === 'danger' ? 'danger' : 'ok'} dim={!fan.rpm} />
+      {fan.kind === 'gpu' ? <FanDial size={54} pct={fan.pct} rpm={fan.rpm} tone={s.tone === 'warn' ? 'warn' : s.tone === 'danger' ? 'danger' : 'ok'} dim={!fan.rpm} /> : cfg?.pump ? <PumpArt compact rpm={fan.rpm} size={56} /> : <FanSpinner rpm={fan.rpm} size={56} />}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           {cfg?.pump && <Droplets size={12} className="shrink-0 text-[var(--accent)]" />}
@@ -329,6 +357,22 @@ function FanTile({ fan, cfg, active, onClick }: { fan: FanControlInfo; cfg?: Fan
   );
 }
 
+// crédito das fotos das placas de vídeo e aviso de marcas (só aparece quando a tela mostra uma dessas fotos)
+function GpuCredit({ hw }: { hw?: string }) {
+  const card = useGpuCard(hw);
+  if (!card) return null;
+  return <p className="text-[11.5px] text-faint">{tr("A TechPowerUp cedeu as fotos das placas de vídeo. AMD, Radeon, NVIDIA, GeForce, Intel e Arc são marcas das empresas donas delas.")}</p>;
+}
+
+// ventoinha escolhida: a foto da placa de vídeo, ou três ventoinhas unidas (nas outras saídas), soltas acima do painel
+function SelectedGpu({ fan, cfg }: { fan: FanControlInfo; cfg?: FanConfig }) {
+  const card = useGpuCard(fan.kind === 'gpu' ? fan.hw : undefined);
+  if (card) return <div className="rise-in"><GpuHero card={card} rpm={fan.rpm} height={300} /></div>;
+  if (fan.kind === 'gpu') return null;
+  // saída marcada como bomba do water cooler: a bomba em 3D; nas outras, as três ventoinhas unidas
+  return <div className="rise-in">{cfg?.pump ? <PumpArt rpm={fan.rpm} height={300} /> : <FanTrioHero rpm={fan.rpm} height={300} />}</div>;
+}
+
 // ---------- painel de edição da ventoinha escolhida ----------
 type TestStep = { phase: 'low' | 'high' | 'done'; lowPct: number; low?: number; high?: number };
 function Editor({ fan, cfg, temps, onChange, live }: { fan: FanControlInfo; cfg?: FanConfig; temps: FanTempSource[]; onChange: (p: Partial<FanConfig>) => void; live: React.MutableRefObject<FanState | null> }) {
@@ -345,6 +389,9 @@ function Editor({ fan, cfg, temps, onChange, live }: { fan: FanControlInfo; cfg?
   const temp = temps.find((t) => t.id === source)?.value;
   const s = fanStatus(fan, mode);
   const value = Math.max(floor, cfg?.value ?? Math.round(fan.pct ?? 50));
+  const gpuCard = useGpuCard(fan.kind === 'gpu' ? fan.hw : undefined);
+  // com arte em cima (a foto da placa de vídeo ou as ventoinhas desenhadas), o cabeçalho sobe para dentro dela
+  const card = !!gpuCard || fan.kind !== 'gpu';
 
   const setMode = (m: Mode) => {
     if (m === 'fixed') onChange({ mode: m, value });
@@ -363,26 +410,28 @@ function Editor({ fan, cfg, temps, onChange, live }: { fan: FanControlInfo; cfg?
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)]">
-      <div className="h-[3px] w-full" style={{ background: `linear-gradient(90deg, var(--accent), ${ACC2})` }} />
-      <div className="p-4">
+    // os controles ficam soltos na página, sem caixa em volta, logo abaixo da placa. Com a foto da placa de vídeo, o
+    // cabeçalho sobe para dentro do degradê da foto e fica no centro
+    <div className={cx('relative', card && 'z-10 -mt-16 min-[1500px]:-mt-[300px]')}>
+      <div className="rise-stagger py-1">
         {/* cabeçalho: anel grande, nome, peça, RPM e ações */}
-        <div className="flex flex-wrap items-center gap-4">
-          <FanDial size={76} pct={fan.pct} rpm={fan.rpm} tone={s.tone === 'warn' ? 'warn' : s.tone === 'danger' ? 'danger' : 'ok'} dim={!fan.rpm} />
-          <div className="min-w-[220px] flex-1">
+        <div className={cx('flex flex-wrap items-center gap-4', card && 'flex-col justify-center text-center min-[1500px]:min-h-[300px] min-[1500px]:!items-start min-[1500px]:pl-[50%] min-[1500px]:text-left')}>
+          {!card && <FanDial size={76} pct={fan.pct} rpm={fan.rpm} tone={s.tone === 'warn' ? 'warn' : s.tone === 'danger' ? 'danger' : 'ok'} dim={!fan.rpm} />}
+          <div className={cx('min-w-[220px]', card ? 'flex-none' : 'flex-1')}>
             {editing ? (
-              <form className="flex items-center gap-1.5" onSubmit={(e) => { e.preventDefault(); onChange({ label: name.trim() || undefined }); setEditing(false); }}>
+              <form className={cx('flex items-center gap-1.5', card && 'justify-center min-[1500px]:justify-start')} onSubmit={(e) => { e.preventDefault(); onChange({ label: name.trim() || undefined }); setEditing(false); }}>
                 <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={fan.name} className="h-8 min-w-0 flex-1 rounded-md border border-[var(--line)] bg-[var(--bg)] px-2 text-[14px] outline-none focus:border-[var(--accent)]" />
                 <Button size="sm" type="submit" icon={<Check size={13} />}>{tr("Salvar")}</Button>
               </form>
             ) : (
-              <div className="flex items-center gap-1.5">
-                <span className="text-[17px] font-semibold">{fanName(fan, cfg)}</span>
+              <div className={cx('flex items-center gap-1.5', card && 'justify-center min-[1500px]:justify-start')}>
+                {/* com arte atrás: sombra escura no tema escuro e brilho branco suave no claro, para o nome se destacar da imagem */}
+                <span className={cx('font-semibold text-[var(--accent)]', card ? 'text-[26px] leading-tight [text-shadow:0_1px_10px_rgba(255,255,255,.85)] dark:[text-shadow:0_2px_12px_rgba(0,0,0,.85)]' : 'text-[17px]')}>{fanName(fan, cfg)}</span>
                 <button title={tr("Dar um nome para esta ventoinha")} onClick={() => { setName(cfg?.label || ''); setEditing(true); }} className="rounded p-1 text-faint hover:bg-[var(--hover)] hover:text-[var(--fg)]"><Pencil size={13} /></button>
               </div>
             )}
             <div className="text-[12px] text-muted">{fanSub(fan, cfg)}</div>
-            <div className="mt-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[12.5px]">
+            <div className={cx('mt-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[12.5px]', card && 'justify-center min-[1500px]:justify-start')}>
               <span><span className="text-[20px] font-semibold tabular-nums">{fmt(fan.rpm)}</span> <span className="text-muted">RPM</span></span>
               <span className="text-muted">{tr("{0}% da velocidade", fmt(fan.pct))}</span>
             </div>
@@ -403,24 +452,31 @@ function Editor({ fan, cfg, temps, onChange, live }: { fan: FanControlInfo; cfg?
             <Sparkles size={18} className="mt-0.5 shrink-0 text-[var(--accent)]" />
             <div className="space-y-1">
               <div className="flex items-center gap-2 font-semibold">{tr("Controle da placa de vídeo")}<span className="rounded-full px-2 py-0.5 text-[10.5px] font-semibold text-[var(--on-accent)]" style={{ background: `linear-gradient(135deg, var(--accent), ${ACC2})` }}>{tr("Em breve")}</span></div>
-              <div className="text-muted">{tr("O CleanCode ainda não controla a ventoinha da placa de vídeo. Esse controle chega numa próxima versão, e por enquanto o CleanCode só mostra a velocidade.")}</div>
-              <div className="text-muted">{tr("Até lá, use o programa da fabricante da placa para mudar a ventoinha. Nas placas AMD, por exemplo, use o AMD Software: Adrenalin Edition.")}</div>
+              <div className="text-muted">{tr("O CleanCode ainda não controla a ventoinha desta placa de vídeo.")}</div>
+              <div className="text-muted">{tr("Até lá, use o programa da fabricante da placa.")}</div>
             </div>
           </div>
         ) : (<>
-        {/* modo */}
-        <div className="mt-4 grid grid-cols-3 gap-1 rounded-xl border border-[var(--line)] bg-[var(--surface-2)] p-1">
+        {/* controles: as abas de modo em cima e, separado delas, o bloco com o status e o controle do modo escolhido.
+            O conjunto ocupa a largura de três cartões da grade de cima */}
+        {/* com arte em cima, na tela larga, o bloco sobe até ficar a 80 pixels dos botões ao lado da imagem */}
+        <div className={cx('mt-4 grid gap-2.5', card && 'min-[1500px]:-mt-1')} style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))' }}>
+        <div className="col-span-3 min-w-0">
+        <div className="flex w-fit gap-1 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-1">
           {(['auto', 'fixed', 'curve'] as Mode[]).map((m) => (
-            <button key={m} onClick={() => setMode(m)} className={cx('rounded-lg px-3 py-2 text-[13px] font-semibold transition-all', mode === m ? 'text-[var(--on-accent)] shadow-sm' : 'text-muted hover:text-[var(--fg)]')}
+            <button key={m} onClick={() => setMode(m)} className={cx('rounded-lg px-4 py-1.5 text-[12.5px] font-semibold transition-all', mode === m ? 'text-[var(--on-accent)] shadow-sm' : 'text-muted hover:text-[var(--fg)]')}
               style={mode === m ? { background: `linear-gradient(135deg, var(--accent), ${ACC2})` } : undefined}>{MODE_LABEL[m]}</button>
           ))}
         </div>
-        <div className="mt-2 flex items-start gap-2 text-[12.5px]" style={{ color: s.tone === 'idle' ? undefined : TONE[s.tone] }}>
+        <div className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
+        <div className="flex items-start gap-2 text-[12.5px]" style={{ color: s.tone === 'idle' ? undefined : TONE[s.tone] }}>
           <span className="mt-[5px] h-2 w-2 shrink-0 rounded-full" style={{ background: TONE[s.tone] }} />
           <span className={s.tone === 'idle' || s.tone === 'ok' ? 'text-muted' : ''}>{s.long}</span>
         </div>
         {!locked && (fan.status?.error === 'norpm' || fan.status?.error === 'refused') && <div className="mt-2"><FanHelp defaultOpen compact /></div>}
-        {pump && <div className="mt-1 text-[12px] text-muted">{tr("Esta saída está marcada como bomba do water cooler. Por isso, o CleanCode nunca deixa a velocidade abaixo de {0}%.", PUMP_MIN)}</div>}
+        {pump && <div className="mt-1 text-[12px] text-muted">{tr("Como bomba do water cooler, esta saída nunca fica abaixo de {0}%.", PUMP_MIN)}</div>}
+        {/* placa AMD: o 0% liga o Zero RPM do driver */}
+        {fan.id.startsWith("/gpu-amd/") && mode !== "auto" && <div className="mt-1 text-[12px] text-muted">{tr("Em 0%, a ventoinha para enquanto a placa está fria e volta a girar quando ela esquenta (Zero RPM).")}</div>}
 
         {mode === 'fixed' && (
           <div className="mt-4">
@@ -438,26 +494,25 @@ function Editor({ fan, cfg, temps, onChange, live }: { fan: FanControlInfo; cfg?
           <div className="mt-4 space-y-3">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
               <span className="text-[12.5px] text-muted">{tr("Temperatura que guia a curva")}</span>
-              <Select className="min-w-[320px] flex-1" value={source || ''} onChange={(v) => onChange({ source: v })} options={temps.map((t) => ({ value: t.id, label: `${t.name}, ${t.hw}: ${fmt(t.value)} °C` }))} />
+              <Select className="min-w-[260px] flex-1" value={source || ''} onChange={(v) => onChange({ source: v })} options={temps.map((t) => ({ value: t.id, label: `${t.name}, ${t.hw}: ${fmt(t.value)} °C` }))} />
             </div>
-          <div className="grid gap-4 lg:grid-cols-[1fr_250px]">
             <CurveEditor points={points} temp={temp} floor={floor} onChange={(pts) => onChange({ points: pts, source })} />
-            <div className="space-y-3">
-              <div>
-                <div className="mb-1 text-[12px] text-muted">{tr("Começar de um modelo")}</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {PRESETS.map((p) => <button key={p.id} onClick={() => onChange({ points: p.points.map(([t, v]) => [t, Math.max(floor, v)]) as Points, source })} className="rounded-lg border border-[var(--line)] px-2.5 py-1.5 text-[12px] font-medium hover:border-[var(--accent)] hover:text-[var(--accent)]">{p.label}</button>)}
-                </div>
+            {/* embaixo do gráfico: os modelos, a leitura de agora e a dica */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="mr-1 text-[12px] text-muted">{tr("Começar de um modelo")}</span>
+                {PRESETS.map((p) => <button key={p.id} onClick={() => onChange({ points: p.points.map(([t, v]) => [t, Math.max(floor, v)]) as Points, source })} className="rounded-lg border border-[var(--line)] px-2.5 py-1.5 text-[12px] font-medium hover:border-[var(--accent)] hover:text-[var(--accent)]">{p.label}</button>)}
               </div>
-              <div className="rounded-lg bg-[var(--surface-2)] p-2.5 text-[12px] text-muted">
+              <div className="rounded-lg bg-[var(--surface-2)] px-2.5 py-1.5 text-[12px] text-muted">
                 {temp !== undefined ? tr("Agora: {0} °C. A curva pede {1}%.", fmt(temp), fmt(Math.max(floor, interp(points, temp)))) : tr("A temperatura escolhida está sem leitura agora.")}
               </div>
-              <div className="text-[11.5px] text-muted">{tr("Arraste os pontos para mudar a curva. Clique duas vezes no gráfico para criar um ponto, e clique com o botão direito num ponto para apagar.")}</div>
             </div>
-          </div>
+            <div className="text-[11.5px] text-muted">{tr("Arraste os pontos. Clique duas vezes para criar um ponto e use o botão direito para apagar.")}</div>
           </div>
         )}
-
+        </div>
+        </div>
+        </div>
         </>)}
 
         {test && (
@@ -472,29 +527,30 @@ function Editor({ fan, cfg, temps, onChange, live }: { fan: FanControlInfo; cfg?
   );
 }
 function testResult(lowPct: number, low?: number, high?: number) {
-  if (low === undefined || high === undefined) return tr("Esta saída não informa o RPM. Por isso, o teste não consegue conferir se a ventoinha obedeceu. Depois do teste, a ventoinha voltou à configuração anterior.");
-  if (!low && !high) return tr("A ventoinha não girou no teste. Talvez não exista uma ventoinha ligada nesta saída. Depois do teste, a ventoinha voltou à configuração anterior.");
-  if (high - low > Math.max(150, high * 0.15)) return tr("A ventoinha obedeceu ao comando: ela girou a {0} RPM em {1}% e a {2} RPM em 100%. Depois do teste, a ventoinha voltou à configuração anterior.", fmt(low), lowPct, fmt(high));
-  return tr("O RPM quase não mudou: {0} RPM em {1}% e {2} RPM em 100%. A placa pode estar ignorando o comando. Depois do teste, a ventoinha voltou à configuração anterior.", fmt(low), lowPct, fmt(high));
+  if (low === undefined || high === undefined) return tr("Esta saída não informa o RPM, então o teste não consegue conferir a ventoinha.");
+  if (!low && !high) return tr("A ventoinha não girou no teste. Talvez não exista uma ventoinha nesta saída.");
+  if (high - low > Math.max(150, high * 0.15)) return tr("A ventoinha obedeceu: {0} RPM em {1}% e {2} RPM em 100%.", fmt(low), lowPct, fmt(high));
+  return tr("O RPM quase não mudou: {0} RPM em {1}% e {2} RPM em 100%.", fmt(low), lowPct, fmt(high));
 }
 
 // ---------- controle deslizante com degradê (o campo nativo fica por cima, invisível, para o teclado e o leitor de tela) ----------
 function GradientSlider({ value, min, onChange }: { value: number; min: number; onChange: (v: number) => void }) {
   return (
     <div className="flex items-center gap-4">
-      <div className="relative h-9 flex-1">
-        <div className="absolute inset-x-0 top-1/2 h-2.5 -translate-y-1/2 rounded-full bg-[var(--surface-2)] ring-1 ring-[var(--line)]" />
-        <div className="absolute left-0 top-1/2 h-2.5 -translate-y-1/2 rounded-full" style={{ width: `${value}%`, background: `linear-gradient(90deg, ${ACC2}, var(--accent))`, boxShadow: '0 0 14px color-mix(in srgb, var(--accent) 45%, transparent)' }} />
-        <div className="pointer-events-none absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-[var(--accent)] bg-[var(--surface)] shadow" style={{ left: `${value}%` }} />
+      <div className="relative h-7 flex-1">
+        <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-[var(--surface-2)] ring-1 ring-[var(--line)]" />
+        <div className="absolute left-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full" style={{ width: `${value}%`, background: `linear-gradient(90deg, ${ACC2}, var(--accent))`, boxShadow: '0 0 14px color-mix(in srgb, var(--accent) 45%, transparent)' }} />
+        <div className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-[var(--accent)] bg-[var(--surface)] shadow" style={{ left: `${value}%` }} />
         <input type="range" min={0} max={100} step={1} value={value} onChange={(e) => onChange(Math.max(min, Number(e.target.value)))} aria-label={tr("Velocidade fixa")} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
       </div>
-      <span className="w-16 text-right text-[22px] font-semibold tabular-nums">{fmt(value)}%</span>
+      <span className="w-14 text-right text-[17px] font-semibold tabular-nums">{fmt(value)}%</span>
     </div>
   );
 }
 
 // ---------- editor da curva (temperatura no eixo horizontal, velocidade no vertical) ----------
-const W = 560, H = 230, PL = 36, PR = 24, PT = 14, PB = 26;
+// proporção larga e baixa: o gráfico ocupa a largura de três cartões sem ficar alto
+const W = 900, H = 230, PL = 36, PR = 24, PT = 14, PB = 26;
 const sx = (t: number) => PL + ((t - T_MIN) / (T_MAX - T_MIN)) * (W - PL - PR);
 const sy = (p: number) => PT + (1 - p / 100) * (H - PT - PB);
 function CurveEditor({ points, temp, floor, onChange }: { points: Points; temp?: number; floor: number; onChange: (p: Points) => void }) {
@@ -567,7 +623,8 @@ function CurveEditor({ points, temp, floor, onChange }: { points: Points; temp?:
             <circle cx={sx(t)} cy={sy(p)} r={6.5} fill="var(--surface)" stroke="var(--accent)" strokeWidth={2.6} className="cursor-grab active:cursor-grabbing"
               onPointerDown={(e) => { drag.current = i; try { (e.target as Element).setPointerCapture?.(e.pointerId); } catch { /* sem captura: o arrasto continua pela área do gráfico */ } }}
               onContextMenu={(e) => { e.preventDefault(); remove(i); }} />
-            {hover === i && <text x={sx(t)} y={sy(p) - 14} textAnchor="middle" fontSize="10.5" fontWeight={600} fill="var(--fg)">{tr("{0} °C: {1}%", t, p)}</text>}
+            {/* o valor fica sempre dentro do gráfico: abaixo do ponto quando ele está perto do topo, e alinhado para dentro perto das bordas */}
+            {hover === i && <text x={sx(t)} y={sy(p) < 34 ? sy(p) + 26 : sy(p) - 14} textAnchor={sx(t) > W - PR - 50 ? "end" : sx(t) < PL + 50 ? "start" : "middle"} fontSize="10.5" fontWeight={600} fill="var(--fg)">{tr("{0} °C: {1}%", t, p)}</text>}
           </g>
         ))}
       </svg>
@@ -596,10 +653,10 @@ function HowItWorks() {
       </button>
       {open && (
         <ul className="list-disc space-y-1 px-4 pb-3 pl-9 text-muted">
-          <li>{tr("O CleanCode só muda as ventoinhas que você tirar do modo Automático. As outras continuam com o controle da placa.")}</li>
-          <li>{tr("Depois de cada comando, o CleanCode confere o valor que a placa informa. Se a placa não obedecer por 6 segundos, o CleanCode devolve a ventoinha ao modo automático e avisa nesta tela.")}</li>
-          <li>{tr("Se o processador ou a placa de vídeo chegar a 90 °C, o CleanCode coloca as ventoinhas controladas em 100% até a temperatura cair para 85 °C.")}</li>
-          <li>{tr("Quando você fecha o CleanCode, cada ventoinha volta ao modo automático da placa. Isso também acontece se o CleanCode travar por mais de 12 segundos.")}</li>
+          <li>{tr("O CleanCode só muda as ventoinhas que saem do modo Automático.")}</li>
+          <li>{tr("Se a placa não obedecer, a ventoinha volta ao modo automático.")}</li>
+          <li>{tr("A 90 °C, o CleanCode coloca as ventoinhas em 100% até a temperatura cair para 85 °C.")}</li>
+          <li>{tr("Quando você fecha o CleanCode, as ventoinhas voltam ao modo automático.")}</li>
           <li>{tr("Se o programa dos sensores fechar de repente, uma ventoinha pode ficar na última velocidade até você reiniciar o Windows.")}</li>
           <li>{tr("Para desfazer uma mudança, escolha Automático na ventoinha.")}</li>
         </ul>

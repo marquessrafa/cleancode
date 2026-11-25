@@ -114,7 +114,7 @@ export function UpdateModal() {
               <div className="relative h-2.5 overflow-hidden rounded-full bg-[var(--surface-2)]">
                 <div className="upd-stripes relative h-full rounded-full transition-[width] duration-300 ease-out" style={{ width: `${Math.max(3, pct * 100)}%`, background: 'linear-gradient(90deg, color-mix(in srgb, var(--accent) 70%, #fff 0%), var(--accent))', boxShadow: '0 0 14px var(--accent)' }} />
               </div>
-              <p className="mt-3 text-[12.5px] text-muted">{tr("O CleanCode está baixando a versão nova e vai conferir se o arquivo chegou inteiro (SHA-512). Enquanto isso, você pode continuar usando o app.")}</p>
+              <p className="mt-3 text-[12.5px] text-muted">{tr("O CleanCode está baixando a versão nova. Enquanto isso, você pode continuar usando o app.")}</p>
             </div>
           )}
 
@@ -141,7 +141,7 @@ export function UpdateModal() {
               <p className="mt-3 text-[12.5px] text-muted">
                 {phase === 'restart' ? tr("Tudo pronto. O CleanCode {0} está instalado e vai reiniciar agora.", info.version)
                   : isMac ? tr("O CleanCode está instalando a versão nova com o app aberto. Ele só reinicia quando a instalação terminar.")
-                  : tr("O CleanCode vai fechar, e a instalação continua em uma janela pequena no centro da tela. Quando a instalação terminar, o CleanCode abre de novo sozinho.")}
+                  : tr("O CleanCode vai fechar, instalar a versão nova e abrir de novo sozinho.")}
               </p>
             </div>
           )}

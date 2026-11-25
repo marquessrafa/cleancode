@@ -37,8 +37,8 @@ export default function Discover() {
     <PageBody>
       <PageHeader title={t("Descoberta")} icon={<Radar size={18} />}
         description={isMac
-          ? t("Mostra os apps que você não abre há meses e o espaço que eles ocupam. O CleanCode descobre o último uso de cada app pelo Spotlight, que guarda a data da última vez que o app foi aberto.")
-          : t("Mostra os programas que você não abre há meses e o espaço que eles ocupam. O CleanCode descobre o último uso pelo histórico de execução do Windows (UserAssist) e pelo Prefetch. Para ler o Prefetch, o CleanCode precisa rodar como administrador.")}
+          ? t("Mostra os apps que você não abre há meses e o espaço que eles ocupam.")
+          : t("Mostra os programas que você não abre há meses e o espaço que eles ocupam.")}
         actions={<Button icon={<RefreshCw size={14} className={loading ? 'animate-spin' : ''} />} disabled={loading} onClick={reload}>{t("Recarregar")}</Button>} />
       {un.panel}
       <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3">

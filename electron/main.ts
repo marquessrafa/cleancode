@@ -765,7 +765,7 @@ function applyWindowColors() {
 function createWindow(initialPath?: string | null) {
   const c = themeColors();
   const win = new BrowserWindow({
-    width: 1400, height: 880, minWidth: 900, minHeight: 600, show: false,
+    width: 1400, height: 880, minWidth: 1280, minHeight: 720, show: false,
     backgroundColor: c.color, ...system.windowChrome(c),
     icon: path.join(__dirname, '..', 'build', 'icon.ico'),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true },

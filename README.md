@@ -395,3 +395,5 @@ CleanCode is an independent project, with its own design and its own code. It ha
 CleanCode uses the [MIT](LICENSE) license. This means that you can use, study, change and share the code freely.
 
 The app uses these third-party libraries: three.js (MIT license) and LibreHardwareMonitorLib (MPL 2.0 license). The PawnIO driver (GPL-2.0 license) does not come with CleanCode. It is downloaded from its official website and installed separately, and only when you turn on advanced monitoring.
+
+TechPowerUp provided the graphics card photos that appear on the Fans screen, and CleanCode uses them with permission. AMD, Radeon, NVIDIA, GeForce, Intel and Arc are trademarks of their respective owners. CleanCode has no ties to these companies.

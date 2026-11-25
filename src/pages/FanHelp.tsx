@@ -20,22 +20,22 @@ export function FanHelp({ defaultOpen = false, compact = false, general = false 
       {open && (
         <div className="space-y-3 px-3.5 pb-3.5">
           <Cause icon={<Network size={15} />} title={tr("Ventoinhas num hub de outra marca")}>
-            <p>{tr("Muitas ventoinhas ficam ligadas num hub da própria marca, como os da Lian Li, da Corsair, da NZXT e da Thermaltake. Nesse caso, quem decide a velocidade é o programa da marca, e o cabo ligado na placa-mãe só informa o RPM.")}</p>
-            <p>{tr("Para resolver, abra o programa da marca e ative o modo que segue a placa-mãe. Esse modo costuma se chamar algo como sincronizar com a placa-mãe, ou MB Sync.")}</p>
-            <p>{tr("Nas ventoinhas da Lian Li, por exemplo, essa opção fica no L-Connect. Depois de ativar, o hub passa a seguir o conector da placa, e o CleanCode consegue controlar todas as ventoinhas ligadas nele.")}</p>
-            <p>{tr("Se o hub não tiver esse modo, ligue as ventoinhas direto num conector da placa-mãe, ou controle a velocidade pelo programa da marca.")}</p>
+            <p>{tr("Ventoinhas num hub da marca, como Lian Li, Corsair ou NZXT, seguem o programa da marca, e não a placa-mãe.")}</p>
+            <p>{tr("No programa da marca, ative o modo que segue a placa-mãe, que costuma se chamar MB Sync.")}</p>
+            <p>{tr("Na Lian Li, essa opção fica no L-Connect.")}</p>
+            <p>{tr("Se o hub não tiver esse modo, ligue as ventoinhas direto na placa-mãe.")}</p>
           </Cause>
           <Cause icon={<Plug size={15} />} title={tr("Ventoinha de 3 pinos num conector em modo PWM")}>
-            <p>{tr("Uma ventoinha de 3 pinos não entende o sinal PWM e gira sempre na mesma velocidade. Na BIOS, abra o controle de ventoinhas e mude o modo desse conector para DC.")}</p>
+            <p>{tr("Uma ventoinha de 3 pinos ignora o sinal PWM. Na BIOS, mude o modo desse conector para DC.")}</p>
           </Cause>
           <Cause icon={<Cpu size={15} />} title={tr("Conector ligado a outro chip, ou que copia outro conector")}>
-            <p>{tr("Em algumas placas-mãe, um conector é controlado por um chip que o LibreHardwareMonitor não consegue usar. Em outras, um conector não tem controle próprio e copia o sinal de outro, como o CPU_OPT, que costuma seguir o CPU_FAN.")}</p>
-            <p>{tr("Para descobrir, use o Testar em cada saída, inclusive nas vazias. Se nenhuma saída mexer na ventoinha, ligue ela em outro conector. O conector que sobrar pode ficar com a bomba do water cooler, que normalmente gira sempre rápido.")}</p>
+            <p>{tr("Alguns conectores usam um chip sem suporte, ou copiam outro conector, como o CPU_OPT, que segue o CPU_FAN.")}</p>
+            <p>{tr("Use o Testar em cada saída. Se nenhuma mexer na ventoinha, ligue ela em outro conector.")}</p>
           </Cause>
           <Cause icon={<Usb size={15} />} title={tr("Peças controladas pelo USB")}>
-            <p>{tr("Algumas peças recebem a velocidade só pelo cabo USB, como a ventoinha embutida no bloco de alguns water coolers. Essas peças não seguem a placa-mãe, então só o programa da marca consegue mudar a velocidade delas.")}</p>
+            <p>{tr("Peças controladas pelo cabo USB, como a ventoinha de alguns water coolers, só mudam pelo programa da marca.")}</p>
           </Cause>
-          <p className="text-muted">{tr("Depois de mudar alguma coisa, use o botão Testar ou o assistente para conferir se a ventoinha passou a obedecer.")}</p>
+          <p className="text-muted">{tr("Depois, use o Testar para conferir.")}</p>
         </div>
       )}
     </div>

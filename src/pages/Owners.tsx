@@ -23,7 +23,7 @@ export default function Owners() {
   const total = (data || []).reduce((s, o) => s + o.size, 0);
   return (
     <PageBody>
-      <PageHeader title={t("Proprietários")} icon={<Users size={18} />} description={t("Mostra quanto espaço cada usuário ocupa, de acordo com o dono de cada arquivo no Windows. O CleanCode só lê os donos quando você pede, e apenas da pasta selecionada.")}
+      <PageHeader title={t("Proprietários")} icon={<Users size={18} />} description={t("Mostra quanto espaço cada usuário ocupa na pasta selecionada.")}
         actions={<Button variant="primary" icon={<Play size={14} />} loading={busy} disabled={!active!.done} onClick={run}>{data ? t("Analisar de novo") : t("Analisar proprietários")}</Button>} />
       <ScopeBar />
       {busy && (
@@ -36,7 +36,7 @@ export default function Owners() {
         </Card>
       )}
       {!data && !busy ? (
-        <Card><Empty icon={<Users size={20} />} title={task?.status === 'cancelled' ? t("Análise cancelada") : task?.status === 'error' ? t("A análise falhou") : t("Clique em “Analisar proprietários”")} text={active!.done ? t("Em pastas muito grandes, a leitura pode levar alguns minutos. Depois, os donos também aparecem na coluna “Proprietário” do Explorador.") : t("Aguarde a varredura terminar.")} /></Card>
+        <Card><Empty icon={<Users size={20} />} title={task?.status === 'cancelled' ? t("Análise cancelada") : task?.status === 'error' ? t("A análise falhou") : t("Clique em “Analisar proprietários”")} text={active!.done ? t("Em pastas muito grandes, a leitura pode levar alguns minutos.") : t("Aguarde a varredura terminar.")} /></Card>
       ) : data && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_1fr]">
           <Card className="flex items-center justify-center">

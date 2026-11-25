@@ -97,7 +97,7 @@ export default function Clutter() {
           <div className="anim-pop"><Stack active={phase === 'scanning'} /></div>
           <div className="w-full max-w-md anim-page">
             <h1 className="text-[40px] font-semibold leading-tight tracking-tight text-fg">{tr("Acúmulos")}</h1>
-            <p className="mt-2 text-[15px] text-muted">{tr("Encontra o que se acumula nas suas pastas, como arquivos duplicados, fotos parecidas, arquivos grandes esquecidos e arquivos antigos na pasta de Transferências.")}</p>
+            <p className="mt-2 text-[15px] text-muted">{tr("Encontra duplicados, fotos parecidas, arquivos grandes esquecidos e arquivos antigos em Transferências.")}</p>
             <div className="mt-6 space-y-3">
               {[{ i: <Copy size={16} />, t: tr("Encontra arquivos com o conteúdo idêntico.") }, { i: <Images size={16} />, t: tr("Encontra fotos parecidas, como sequências, edições e capturas de tela.") }, { i: <FileBox size={16} />, t: tr("Encontra arquivos com mais de 100 MB e arquivos que ninguém muda há 1 ano.") }].map((f, k) => (
                 <div key={k} className="flex items-center gap-3 text-[14px] font-medium text-fg anim-page" style={{ animationDelay: `${80 + k * 60}ms` }}><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-soft text-accent">{f.i}</span>{f.t}</div>

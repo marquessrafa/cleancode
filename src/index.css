@@ -103,6 +103,32 @@ input, textarea, select { user-select: text; }
 
 @keyframes fade-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+/* entrada em cascata: cada filho sobe e aparece, um pouco depois do anterior (painel das ventoinhas) */
+/* Ventoinhas: a placa grande some para baixo na tela estreita e para a direita na tela larga (1500 pixels ou mais) */
+.gpu-hero { -webkit-mask-image: linear-gradient(to bottom, #000 50%, transparent 96%); mask-image: linear-gradient(to bottom, #000 50%, transparent 96%); }
+@media (min-width: 1500px) { .gpu-hero { -webkit-mask-image: linear-gradient(to right, #000 30%, transparent 72%); mask-image: linear-gradient(to right, #000 30%, transparent 72%); } }
+/* bomba do water cooler: na tela larga, além de sumir para a direita, some embaixo, onde as mangueiras saem da imagem */
+@media (min-width: 1500px) { .pump-hero { -webkit-mask-image: linear-gradient(to right, #000 30%, transparent 72%), linear-gradient(to bottom, #000 74%, transparent 100%); mask-image: linear-gradient(to right, #000 30%, transparent 72%), linear-gradient(to bottom, #000 74%, transparent 100%); -webkit-mask-composite: source-in; mask-composite: intersect; } }
+/* Visão geral: brilho leve passando na diagonal no cartão do disco escolhido */
+@keyframes sheen { 0% { background-position: 160% 0; } 55%, 100% { background-position: -60% 0; } }
+.card-sheen { background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,.07) 48%, rgba(255,255,255,.11) 50%, rgba(255,255,255,.07) 52%, transparent 62%) no-repeat; background-size: 250% 100%; animation: sheen 7s ease-in-out infinite; }
+/* Visão geral: os outros discos ficam sem cor e voltam a ter cor ao passar o mouse */
+.drive-muted { filter: saturate(.15) brightness(.85); }
+.drive-muted:hover { filter: none; }
+@media (prefers-reduced-motion: reduce) { .card-sheen { animation: none; } }
+@keyframes rise-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.rise-in { animation: rise-in .55s cubic-bezier(.2,.7,.2,1) both; }
+.rise-stagger > * { animation: rise-in .55s cubic-bezier(.2,.7,.2,1) both; }
+.rise-stagger > :nth-child(1) { animation-delay: 80ms; }
+.rise-stagger > :nth-child(2) { animation-delay: 150ms; }
+.rise-stagger > :nth-child(3) { animation-delay: 220ms; }
+.rise-stagger > :nth-child(4) { animation-delay: 290ms; }
+.rise-stagger > :nth-child(5) { animation-delay: 360ms; }
+.rise-stagger > :nth-child(6) { animation-delay: 430ms; }
+.rise-stagger > :nth-child(7) { animation-delay: 500ms; }
+.rise-stagger > :nth-child(8) { animation-delay: 570ms; }
+.rise-stagger > :nth-child(n+9) { animation-delay: 640ms; }
+@media (prefers-reduced-motion: reduce) { .rise-in, .rise-stagger > * { animation: none; } }
 @keyframes pop { from { opacity: 0; transform: scale(.96) translateY(4px); } to { opacity: 1; transform: none; } }
 @keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
 @keyframes slide-in { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }

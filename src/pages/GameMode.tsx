@@ -81,13 +81,13 @@ export default function GameMode() {
   if (!started) {
     return (
       <Hero icon={<Gamepad2 size={46} />} title={tr("Modo Jogo")}
-        text={tr("Durante uma sessão de jogo, o CleanCode fecha o que pesa em segundo plano, libera memória e coloca o sistema em desempenho máximo. Quando você encerra a sessão, tudo volta a ser como era antes.")}
+        text={tr("Durante o jogo, o CleanCode fecha o que pesa em segundo plano e coloca o sistema em desempenho máximo. No fim, tudo volta ao normal.")}
         bullets={[
           { icon: <MemoryStick size={15} />, text: tr("Fecha os apps pesados e libera memória.") },
           { icon: <Power size={15} />, text: isMac ? tr("Desliga o Modo Pouca Energia durante a sessão") : tr("Liga o plano de energia de alto desempenho e dá prioridade alta para o jogo.") },
           { icon: <Sparkles size={15} />, text: isMac ? tr("Limpa os caches de shaders do Metal, que podem causar travadas.") : tr("Ajusta o Windows para jogos e limpa os caches de shaders.") },
         ]}
-        note={tr("O maior ganho vem de fechar os programas pesados. Apenas liberar memória melhora pouco a quantidade de quadros por segundo (FPS).")}
+        note={tr("O maior ganho vem de fechar os programas pesados.")}
         action={{ label: tr("Preparar"), onClick: load }} busy={busy === 'load'} busyText="Lendo…" />
     );
   }
@@ -99,7 +99,7 @@ export default function GameMode() {
         <Orb icon={<Gamepad2 size={30} />} active={active} size={130} />
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-semibold">{tr("Modo Jogo")} {active ? <Badge tone="accent">{tr("ativo")}</Badge> : null}</h1>
-          <p className="mt-1 text-[13px] text-muted">{active ? tr("O sistema está em desempenho máximo. Quando terminar de jogar, encerre a sessão para que os ajustes voltem ao normal.") : tr("{0} app(s) para fechar, o que libera cerca de {1} de memória", close.size, fmtSize(freeing))}</p>
+          <p className="mt-1 text-[13px] text-muted">{active ? tr("O sistema está em desempenho máximo. Encerre a sessão quando terminar de jogar.") : tr("{0} app(s) para fechar, o que libera cerca de {1} de memória", close.size, fmtSize(freeing))}</p>
           {status && <div className="mt-2 flex gap-4 text-[12px] text-muted"><span>{tr("Memória livre:")} {fmtSize(status.memory.free)} {tr("de")} {fmtSize(status.memory.total, 'auto', 0)}</span>{status.powerPlan && <span>{tr("Energia:")} {status.powerPlan}</span>}</div>}
         </div>
         <Button variant="ghost" icon={<RotateCcw size={15} />} onClick={load} disabled={!!busy}>{tr("Atualizar")}</Button>
@@ -126,7 +126,7 @@ export default function GameMode() {
               </label>
             ))}
           </div>
-          <div className="px-4 py-2 text-[11px] text-muted">{tr("O CleanCode pede para os apps fecharem do jeito normal. Por isso, alguns apps podem perguntar se você quer salvar o trabalho.")}</div>
+          <div className="px-4 py-2 text-[11px] text-muted">{tr("Alguns apps podem perguntar se você quer salvar antes de fechar.")}</div>
         </div>
 
         <div className="space-y-4">

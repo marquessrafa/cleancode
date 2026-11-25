@@ -136,8 +136,8 @@ export function AdvancedSetupModal({ live }: { live: HardwareLive | null }) {
             <div className="pb-2">
               <p className="text-[13px] leading-relaxed text-muted">
                 {redo
-                  ? tr("O programa que lê os sensores mudou nesta versão do CleanCode. Por isso, ele precisa mapear os sensores deste PC de novo para voltar a ler o processador, a placa-mãe e a energia.")
-                  : tr("Para ler os sensores deste PC, o CleanCode precisa mapear cada peça. No mapeamento, ele instala o driver assinado PawnIO e um programa que lê os sensores como administrador. Depois, ele confere o que cada peça informa.")}
+                  ? tr("O programa dos sensores mudou nesta versão, então ele precisa mapear as peças de novo.")
+                  : tr("Para ler os sensores, o CleanCode instala o driver assinado PawnIO e um programa que roda como administrador.")}
               </p>
               <p className="mt-2 text-[13px] leading-relaxed text-muted">{tr("Nada é instalado antes de você clicar em Iniciar mapeamento.")}</p>
               <ul className="mt-4 space-y-2.5">
@@ -145,11 +145,11 @@ export function AdvancedSetupModal({ live }: { live: HardwareLive | null }) {
               </ul>
               <div className="mt-4 flex items-start gap-2.5 rounded-lg border border-line bg-[var(--surface-2)] px-3.5 py-3 text-[12.5px] text-muted">
                 <ShieldCheck size={15} className="mt-0.5 shrink-0 text-accent" />
-                <span>{tr("O Windows pede a sua permissão de administrador uma única vez. Depois disso, o CleanCode lê os sensores sem pedir de novo. Você pode desligar o monitoramento avançado quando quiser.")}</span>
+                <span>{tr("O Windows pede a sua permissão uma única vez, e você pode desligar isso quando quiser.")}</span>
               </div>
               <div className="mt-2.5 flex items-start gap-2.5 rounded-lg border border-[color-mix(in_srgb,var(--warn)_35%,transparent)] bg-warn-soft px-3.5 py-3 text-[12.5px] text-fg">
                 <AlertTriangle size={15} className="mt-0.5 shrink-0 text-warn" />
-                <span>{tr("Sem o mapeamento, o widget da barra de tarefas e o Monitor de hardware não funcionam direito. Eles ficam sem a temperatura e o consumo do processador, sem os sensores da placa-mãe e sem as ventoinhas.")}</span>
+                <span>{tr("Sem o mapeamento, o widget e o Monitor de hardware ficam sem temperaturas, consumo e ventoinhas.")}</span>
               </div>
             </div>
           )}
@@ -210,8 +210,8 @@ export function AdvancedSetupModal({ live }: { live: HardwareLive | null }) {
               </div>
               <p className="mt-3 text-[12.5px] text-muted">
                 {phase === 'done'
-                  ? (anyFail ? tr("Os sensores avançados estão ativos, mas a leitura de algumas peças falhou. Você pode enviar um relatório para o GitHub, para que o problema seja corrigido.")
-                    : !allOk ? tr("Os sensores avançados estão ativos. Os itens não mapeados mostram o motivo. Na maioria dos casos, a peça não informa aquele dado neste PC.")
+                  ? (anyFail ? tr("A leitura de algumas peças falhou. Você pode enviar um relatório para o GitHub.")
+                    : !allOk ? tr("Os itens não mapeados mostram o motivo, que quase sempre é a peça não informar o dado.")
                     : (result?.message || tr("Os sensores avançados estão ativos.")))
                   : shown === 2 ? tr("Se o Windows mostrar uma janela pedindo permissão, clique em Sim para continuar.") : tr("Você pode continuar usando o app enquanto o CleanCode termina.")}
               </p>

@@ -154,7 +154,7 @@ function AdvancedBanner({ live }: { live: HardwareLive | null }) {
       <ShieldCheck size={22} className="shrink-0 text-[var(--accent)]" />
       <div className="min-w-0 flex-1 text-[13px]">
         <div className="font-semibold">{tr("A leitura do processador travou neste PC")}</div>
-        <div className="text-muted">{tr("Para não travar as outras leituras, o CleanCode deixou os sensores do processador de fora e vai tentar de novo amanhã. As outras peças continuam com leitura normal.")}</div>
+        <div className="text-muted">{tr("Os sensores do processador ficaram de fora para não travar as outras leituras. O CleanCode tenta de novo amanhã.")}</div>
       </div>
       <button onClick={() => cc.hardwareReport()} className="flex shrink-0 items-center gap-2 rounded-lg border border-[var(--line)] px-3.5 py-2 text-[13px] font-semibold hover:bg-[var(--hover)]">{tr("Enviar relatório")}</button>
     </div>
@@ -185,7 +185,7 @@ function FreeMemoryCard() {
         <Button variant="primary" size="sm" loading={busy === 'quick'} disabled={!!busy} icon={<MemoryStick size={14} />} onClick={() => run(false)}>{tr("Liberar memória")}</Button>
         {!isMac && <Button size="sm" loading={busy === 'deep'} disabled={!!busy} onClick={() => run(true)}>{tr("Completa (administrador)")}</Button>}
       </div>
-      <div className="mt-2 text-[12px] text-muted">{msg || (isMac ? tr("Libera a memória que os apps não estão usando. O macOS pede a sua senha.") : tr("Esvazia a memória que os programas reservaram e não estão usando. A opção completa também limpa a memória em espera do Windows."))}</div>
+      <div className="mt-2 text-[12px] text-muted">{msg || (isMac ? tr("Libera a memória que os apps não estão usando. O macOS pede a sua senha.") : tr("Libera a memória que os programas reservaram e não estão usando."))}</div>
     </div>
   );
 }

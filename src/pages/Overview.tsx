@@ -8,6 +8,7 @@ import { useApp } from '../lib/store';
 import { cc, Drive, Row, isMac, joinPath } from '../lib/api';
 import { fmtSize, fmtPct, fmtNum, fmtDate, fmtRelative, categoryOf, baseName, driveTag, PALETTE } from '../lib/format';
 import { Badge, Button, Card, cx, PageHeader, ProgressBar } from '../components/ui';
+import { CardParticles, DriveArt, driveKind } from '../components/DriveArt';
 import { BarList, Donut, DriveBadges, FullDiskAccessBanner, Legend, PageBody, useDriveHardware } from './common';
 import { StorageMapCard } from '../components/StorageMap';
 import { AppIcon, cancelPrefetch, openUninstaller, prefetchDossier, RecentInstalls, useApps } from './appsShared';
@@ -35,6 +36,9 @@ export default function Overview() {
   const staleSize = stale.reduce((s, a) => s + (a.size || 0), 0);
   const bigApps = useMemo(() => [...(apps || [])].filter((a) => a.size).sort((a, b) => (b.size || 0) - (a.size || 0)).slice(0, 5), [apps]);
 
+  // disco da aba aberta: vem primeiro na grade e fica grande
+  const picked = !!active && real.some((d) => d.root.toLowerCase() === active.root.toLowerCase());
+  const ordered = picked ? [...real].sort((a, b) => Number(b.root.toLowerCase() === active!.root.toLowerCase()) - Number(a.root.toLowerCase() === active!.root.toLowerCase())) : real;
   return (
     <PageBody>
       <PageHeader
@@ -53,38 +57,53 @@ export default function Overview() {
       <div className="mb-5">
         <div className="mb-2.5 flex items-baseline justify-between">
           <h2 className="flex items-center gap-2 text-[15px] font-semibold"><HardDrive size={16} className="text-accent" />{t("Escolha um disco para analisar")}</h2>
-          <span className="text-[12px] text-muted">{t("A análise mostra o que ocupa espaço. Depois dela, as telas de Análise de disco ficam disponíveis.")}</span>
+          <span className="text-[12px] text-muted">{t("A análise mostra o que ocupa espaço.")}</span>
         </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {/* com um disco escolhido nesta aba, ele vem primeiro e ocupa 2 colunas e 2 linhas; os outros ficam do lado,
+            em 2 colunas e 2 linhas, e o que sobrar continua nas linhas de baixo */}
+        <div className={cx('grid gap-3', picked ? 'grid-cols-2 xl:grid-cols-4' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3')}>
           {drives === null && [0, 1].map((i) => <div key={i} className="skeleton h-[148px] rounded-xl" />)}
-          {real.map((d, i) => {
+          {ordered.map((d, i) => {
             const pct = d.total ? d.used / d.total : 0;
             const tone = pct > 0.9 ? 'var(--danger)' : pct > 0.75 ? 'var(--warn)' : 'var(--accent)';
             const h = hw.byRoot(d.root);
             const Icon = h?.bus === 'USB' || d.type === 'Removível' ? Usb : d.type === 'Rede' ? Network : d.type === 'CD/DVD' ? Disc : h?.media === 'SSD' ? MemoryStick : HardDrive;
             const scanning = active && active.root.toLowerCase() === d.root.toLowerCase();
+            const big = !!scanning && picked;
             return (
-              <div key={d.root} className="group relative overflow-hidden rounded-xl border border-line bg-surface p-4 transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-lg" style={{ animation: `fade-up .3s ${i * 50}ms both`, background: 'linear-gradient(150deg, color-mix(in srgb, var(--accent) 9%, var(--surface)), var(--surface) 60%)' }}>
-                <div className="flex items-start gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-[var(--on-accent)] shadow-md" style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000))' }}><Icon size={20} /></div>
+              <div key={d.root} className={cx('group relative flex flex-col overflow-hidden rounded-xl border bg-surface transition-all duration-300 hover:-translate-y-0.5 hover:border-accent hover:shadow-lg', big ? 'col-span-2 row-span-2 border-accent p-6' : 'border-line p-4', picked && !big && 'drive-muted')} style={{ animation: `fade-up .3s ${i * 50}ms both`, background: `linear-gradient(150deg, color-mix(in srgb, var(--accent) ${big ? 16 : 9}%, var(--surface)), var(--surface) 60%)` }}>
+                {/* cartão grande: partículas, um brilho leve passando na diagonal e o disco em 3D no lado direito */}
+                {big && <>
+                  <CardParticles />
+                  <div className="card-sheen pointer-events-none absolute inset-0" />
+                  <DriveArt kind={driveKind(h)} label={h?.model} className="bottom-[24px] right-0 top-[40px] w-[45%]" />
+                </>}
+                <div className="relative flex items-start gap-3">
+                  <div className={cx('flex shrink-0 items-center justify-center rounded-xl text-[var(--on-accent)] shadow-md', big ? 'h-16 w-16' : 'h-11 w-11')} style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000))' }}><Icon size={big ? 30 : 20} /></div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-[14px] font-semibold text-fg">{d.label || t("Disco local")}</div>
-                    <div className="truncate text-[12px] text-muted">{driveTag(d.root)} · {d.fs}</div>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className={cx('truncate font-semibold text-fg', big ? 'text-[20px]' : 'text-[14px]')}>{d.label || t("Disco local")}</span>
+                      {big && <span className="shrink-0 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[11px] font-semibold text-[var(--on-accent)]">{t("Selecionado")}</span>}
+                    </div>
+                    <div className={cx('truncate text-muted', big ? 'text-[13px]' : 'text-[12px]')}>{driveTag(d.root)} · {d.fs}</div>
                   </div>
-                  <div className="text-right"><div className="text-[18px] font-semibold tnum leading-none" style={{ color: tone }}>{fmtPct(pct, 0)}</div><div className="text-[11px] text-muted">{t("usado")}</div></div>
+                  <div className="text-right"><div className={cx('font-semibold tnum leading-none', big ? 'text-[34px]' : 'text-[18px]')} style={{ color: tone }}>{fmtPct(pct, 0)}</div><div className="text-[11px] text-muted">{t("usado")}</div></div>
                 </div>
-                <div className="mt-2"><DriveBadges hw={h} loading={hw.loading} /></div>
-                <ProgressBar value={pct} tone={tone} className="mt-2 h-2" />
-                <div className="mt-1.5 flex items-center justify-between">
+                <div className="relative mt-2"><DriveBadges hw={h} loading={hw.loading} /></div>
+                {/* no cartão grande, o espaço usado, o livre e o total aparecem em números grandes */}
+                {big && <div className="relative mt-auto grid w-[53%] grid-cols-3 gap-3 pt-4">
+                  {[[t('Espaço usado'), fmtSize(d.used, units)], [t('Espaço livre'), fmtSize(d.free, units)], [t('Total'), fmtSize(d.total, units)]].map(([k, v]) => (
+                    <div key={k} className="min-w-0"><div className="text-[12px] text-muted">{k}</div><div className="whitespace-nowrap text-[20px] font-semibold tnum leading-tight text-fg">{v}</div></div>
+                  ))}
+                </div>}
+                <ProgressBar value={pct} tone={tone} className={cx('relative', big ? 'mt-4 h-3' : 'mt-2 h-2')} />
+                <div className="relative mt-1.5 flex items-center justify-between">
                   <span className="text-[12px] text-muted tnum"><b className="font-medium text-fg">{fmtSize(d.free, units)}</b> {t("livres de")} {fmtSize(d.total, units)}</span>
                   <Button size="sm" variant={scanning ? 'default' : 'primary'} onClick={() => (scanning ? go('explorer') : startScan(d.root))}>{scanning ? t("Abrir análise") : t("Analisar")} <ArrowRight size={12} /></Button>
                 </div>
               </div>
             );
           })}
-          <button onClick={pick} className="flex min-h-[148px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line text-[13px] text-muted transition-colors hover:border-accent hover:text-fg">
-            <FolderOpen size={22} />{t("Analisar uma pasta…")}
-          </button>
         </div>
       </div>
 
@@ -109,7 +128,7 @@ export default function Overview() {
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent"><Sparkles size={18} /></div>
             <div>
               <div className="text-[13px] font-medium text-fg">{t("Analise um disco para ver as sugestões")}</div>
-              <div className="text-xs text-muted">{t("Depois da análise, esta área mostra os tipos de arquivo, as maiores pastas, os arquivos antigos e o que você pode limpar.")}</div>
+              <div className="text-xs text-muted">{t("Depois da análise, aqui aparece o que ocupa espaço e o que dá para limpar.")}</div>
             </div>
           </div>
           {real[0] && <Button variant="primary" onClick={() => startScan(real[0].root)}>{t("Analisar")} {isMac ? real[0].label || real[0].root : driveTag(real[0].root)} {t("agora")}</Button>}

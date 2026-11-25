@@ -5,6 +5,25 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.24', date: '2026-11-25', headline: 'Ventoinhas com fotos, 3D e textos mais curtos',
+    groups: [
+      { title: 'Ventoinhas', icon: 'chip', items: [
+        'A placa de vídeo aparece com a foto do modelo, e as ventoinhas dela giram na rotação da placa. A TechPowerUp cedeu as fotos.',
+        'As ventoinhas da placa-mãe aparecem desenhadas, com LEDs que acendem quando elas giram. A saída marcada como bomba mostra uma bomba de water cooler em 3D.',
+        'Nas placas de vídeo AMD, o 0% agora liga o Zero RPM, então a ventoinha para enquanto a placa está fria.',
+        'Os controles de cada ventoinha ficam num bloco com abas, e a curva ficou mais baixa.',
+      ] },
+      { title: 'Análise de disco', icon: 'wrench', items: [
+        'A tela Discos saiu. O botão + abre uma aba nova e mostra a lista de discos para você escolher.',
+        'Na Visão geral, o disco da aba aberta aparece grande, em 3D, com a tag Selecionado.',
+      ] },
+      { title: 'Aparência', icon: 'sparkles', items: [
+        'Os textos do app ficaram mais curtos e diretos.',
+        'A janela não fica menor que 1280 por 720 pixels.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.23', date: '2026-11-25', headline: 'Tela Discos e abas independentes',
     groups: [
       { title: 'Análise de disco', icon: 'wrench', items: [

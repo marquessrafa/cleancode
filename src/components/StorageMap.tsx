@@ -133,7 +133,7 @@ export function StorageMapCard({ drives, apps }: { drives: Drive[] | null; apps:
             <><span className="h-2 w-2 rounded-full bg-[var(--line-strong)]" /><span className="font-medium text-fg">{t("Livre")}</span><span className="text-muted tnum">{fmtSize(sys.free, units)} · {fmtPct(sys.free / total, 1)} {t("do disco")}</span></>
           ) : hov ? (
             <><span className="h-2 w-2 rounded-full" style={{ background: hov.color, boxShadow: `0 0 8px ${hov.color}` }} /><span className="font-medium text-fg">{t(hov.label)}</span><span className="text-muted tnum">{hov.done ? t("{0} · {1} do disco", fmtSize(hov.size, units), fmtPct(hov.size / total, 1)) : t("medindo…")}</span><span className="truncate text-faint">— {hov.hint}</span></>
-          ) : <span className="text-faint">{t("Passe o mouse sobre a barra para ver cada parte. Depois, clique em uma parte para ver o que fazer com ela.")}</span>}
+          ) : <span className="text-faint">{t("Clique numa parte da barra para ver o que fazer com ela.")}</span>}
         </div>
 
         {/* categorias */}

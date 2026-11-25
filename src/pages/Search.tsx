@@ -40,7 +40,7 @@ export default function SearchPage() {
 
   return (
     <PageBody>
-      <PageHeader title={t("Pesquisa avançada")} icon={<SearchIcon size={18} />} description={t("Procure arquivos combinando o nome, o tamanho, as datas e os atributos. No nome, o asterisco (*) vale por qualquer sequência de letras, e o ponto de interrogação (?) vale por uma letra. Depois, você pode exportar, mover ou mandar os resultados para a Lixeira.")} />
+      <PageHeader title={t("Pesquisa avançada")} icon={<SearchIcon size={18} />} description={t("Procure arquivos pelo nome, pelo tamanho, pelas datas e pelos atributos. No nome, o * vale por várias letras e o ? vale por uma.")} />
       <ScopeBar />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[340px_1fr]">
         <div className="space-y-4">

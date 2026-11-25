@@ -447,7 +447,12 @@ static class Program
             int lo = g.Speed.Min, hi = g.Speed.Max > lo ? g.Speed.Max : 100, step = g.Speed.Step > 0 ? g.Speed.Step : 1;
             int speed = (int)Math.Round(Math.Max(lo, Math.Min(hi, pct)) / step) * step;
             speed = Math.Max(lo, Math.Min(hi, speed));
-            if (g.HasZeroRpm && speed > 0) Fn<FnSetBool>(g.Fan, Fan_SetZeroRPM)(g.Fan, 0);
+            // 0% pedido (na velocidade fixa ou num ponto da curva) quer dizer Zero RPM: o driver para a ventoinha enquanto a
+            // placa está fria e volta a girar quando ela esquenta. A curva fica no mínimo que o driver aceita (o driver não
+            // aceita 0% na curva). Acima de 0%, o Zero RPM fica desligado, para a ventoinha girar na velocidade pedida.
+            bool zero = pct < 0.5f && g.HasZeroRpm;
+            if (g.HasZeroRpm) Fn<FnSetBool>(g.Fan, Fan_SetZeroRPM)(g.Fan, (byte)(zero ? 1 : 0));
+            if (zero) speed = lo;
             return WriteStates(g.Fan, (i, s) => new[] { speed, s[1] });
         }
 

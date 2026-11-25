@@ -108,7 +108,7 @@ export default function Cleanup() {
       message: <>{fmtNum(selection.count)} {tr("itens em")} {chosen.length} {tr("categorias.")}{review.length ? <> {tr("Inclui itens para revisar (")}{review.map((c) => c.name).join(', ')}).</> : null} {tr("A Lixeira é sempre esvaziada de vez.")}</>,
       items: chosen.map((c) => ({ label: c.name, detail: fmtSize(c.special ? results[c.id].size : results[c.id].items.filter((i) => !deselected.has(i.path)).reduce((s, i) => s + i.size, 0), units) })),
       options: [
-        { key: 'trash', label: tr("Mover para a Lixeira"), hint: tr("Você consegue recuperar os itens até esvaziar a Lixeira. Por isso, o espaço só fica livre depois que a Lixeira é esvaziada.") },
+        { key: 'trash', label: tr("Mover para a Lixeira"), hint: tr("Os itens ficam na Lixeira, e o espaço só fica livre quando você esvazia a Lixeira.") },
         { key: 'delete', label: tr("Apagar definitivamente"), hint: tr("O espaço fica livre na hora, mas não dá para desfazer.") },
       ],
       defaultOption: 'trash', danger: true, confirmLabel: tr("Limpar"),
@@ -159,7 +159,7 @@ export default function Cleanup() {
                 </button>
                 {!isMac && <div className="mt-6 max-w-[340px] text-left">
                   <Toggle checked={aggressive} onChange={toggleAggressive} label={tr("Modo agressivo")}
-                    hint={tr("Inclui os arquivos temporários com mais de 1 hora, em vez de apenas os que têm mais de 1 dia. Os arquivos que estão em uso ficam de fora da limpeza.")} />
+                    hint={tr("Inclui os temporários com mais de 1 hora, em vez de 1 dia.")} />
                 </div>}
               </>
             ) : (

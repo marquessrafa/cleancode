@@ -76,7 +76,7 @@ export default function Activity() {
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl text-[var(--on-accent)]" style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 50%, #ffffff))', boxShadow: '0 8px 28px color-mix(in srgb, var(--accent) 35%, transparent)' }}><ActivityIcon size={26} /></div>
         <div className="min-w-0 flex-1">
           <h1 className="text-[26px] font-semibold tracking-tight text-fg">{tr("Atividades")}</h1>
-          <p className="text-sm text-muted">{tr("Esta tela mostra tudo o que o CleanCode já fez, como limpezas, manutenções, mudanças nos itens de início, desinstalações e exclusões.")}</p>
+          <p className="text-sm text-muted">{tr("Aqui fica tudo o que o CleanCode já fez.")}</p>
         </div>
         {!!list?.length && <Button variant="ghost" icon={<Trash size={14} />} onClick={clear}>{tr("Apagar histórico")}</Button>}
       </div>
@@ -115,7 +115,7 @@ export default function Activity() {
         <Segmented size="sm" value={filter} onChange={setFilter} options={[{ value: 'all', label: tr("Tudo") }, { value: 'cleanup', label: tr("Limpeza") }, { value: 'maintenance', label: tr("Desempenho") }, { value: 'apps', label: tr("Apps") }, { value: 'files', label: tr("Arquivos") }]} />
       </div>
       {list && !days.length ? (
-        <Empty icon={<ActivityIcon size={20} />} title={tr("Nada registrado ainda")} text={tr("Quando o CleanCode fizer uma limpeza, uma manutenção ou uma desinstalação, a ação vai aparecer aqui.")} />
+        <Empty icon={<ActivityIcon size={20} />} title={tr("Nada registrado ainda")} text={tr("As limpezas, manutenções e desinstalações aparecem aqui.")} />
       ) : days.map(([day, items], di) => (
         <div key={day} className="mb-5 anim-page" style={{ animationDelay: `${Math.min(di, 6) * 40}ms` }}>
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-faint">{day}</div>

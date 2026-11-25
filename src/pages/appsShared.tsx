@@ -66,7 +66,7 @@ export function useRemoveEntry(onDone: (ids: string[]) => void) {
     if (!list.length) return;
     const r = await confirm({
       title: list.length === 1 ? tr("Remover \"{0}\" da lista?", list[0].name) : tr("Remover {0} entradas órfãs?", list.length),
-      message: <>{tr("O desinstalador e a pasta destes programas não existem mais, porque os arquivos já foram apagados. Esta ação remove apenas a entrada que sobrou no registro do Windows, na lista \"Aplicativos instalados\". Para as entradas que valem para todos os usuários, o Windows pede permissão de administrador.")}</>,
+      message: <>{tr("Os arquivos destes programas já foram apagados. Esta ação remove só a entrada que sobrou na lista de aplicativos instalados.")}</>,
       items: list.map((a) => ({ label: a.name, detail: a.hive === 'HKLM' ? tr("todos os usuários") : tr("este usuário") })),
       confirmLabel: tr("Remover da lista"),
     });

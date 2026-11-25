@@ -23,7 +23,7 @@ function UpdatesCard() {
   const statusText =
     st === 'checking' ? 'Verificando…'
       : st === 'available' ? t("A versão {0} está disponível", update.info?.version)
-      : st === 'ready' ? t("A versão {0} já foi baixada. Ela será instalada quando você fechar a janela, ou agora, se você clicar em \"Atualizar agora\".", update.info?.version)
+      : st === 'ready' ? t("A versão {0} já foi baixada e será instalada quando você fechar a janela.", update.info?.version)
       : st === 'none' ? t("Você já tem a versão mais recente ({0})", info?.version)
       : st === 'downloading' ? `Baixando… ${update.total ? Math.round(((update.done || 0) / update.total) * 100) : 0}%`
       : st === 'installing' ? t("O CleanCode está instalando a versão nova e vai abrir de novo sozinho.")
@@ -42,9 +42,9 @@ function UpdatesCard() {
               : update.source === 'missing' ? t("O CleanCode não encontrou o endereço das atualizações agora. Ele continua procurando sozinho.")
               : t("O CleanCode configurou sozinho o endereço das atualizações.")}
           </div>
-          <Toggle checked={s.autoCheckUpdates} onChange={(v) => set({ autoCheckUpdates: v })} label={t("Verificar automaticamente")} hint={t("O CleanCode procura versões novas quando abre, a cada 3 minutos e quando o computador sai do repouso.")} />
+          <Toggle checked={s.autoCheckUpdates} onChange={(v) => set({ autoCheckUpdates: v })} label={t("Verificar automaticamente")} hint={t("O CleanCode procura versões novas a cada 3 minutos.")} />
           <Toggle checked={s.autoInstallUpdates} disabled={!s.autoCheckUpdates} onChange={(v) => set({ autoInstallUpdates: v })} label={t("Instalar automaticamente")}
-            hint={t("O CleanCode baixa a versão nova sozinho. Se a janela estiver fechada, ele instala na hora. Se a janela estiver aberta, ele instala quando você fechar a janela ou sair do app. Depois, o app abre de novo já atualizado.")} />
+            hint={t("O CleanCode baixa a versão nova sozinho e instala quando você fecha a janela.")} />
         </div>
         <div className="flex flex-col items-stretch gap-2 lg:w-52">
           <Button icon={<RefreshCw size={14} className={st === 'checking' ? 'animate-spin' : ''} />} disabled={st === 'checking' || st === 'downloading' || st === 'installing'} onClick={() => cc.updateCheck()}>{t("Verificar agora")}</Button>
@@ -63,7 +63,7 @@ export default function SettingsPage() {
   if (!s) return null;
   return (
     <PageBody>
-      <PageHeader title={t("Configurações")} icon={<Cog size={18} />} description={t("Aqui você muda a aparência do app, o jeito como a análise funciona e a integração com o {0}.", OS_NAME)} />
+      <PageHeader title={t("Configurações")} icon={<Cog size={18} />} description={t("Ajuste a aparência e o funcionamento do app.")} />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card title={t("Aparência")}>
           <div className="flex items-center justify-between py-2">
@@ -75,7 +75,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between gap-4 py-2">
             <span>
               <span className="block text-[13px]">{t("Idioma")}</span>
-              <span className="block text-xs text-muted">{t("Na opção automática, o CleanCode usa o idioma do computador. Quando você troca o idioma, o CleanCode reinicia.")}</span>
+              <span className="block text-xs text-muted">{t("O CleanCode reinicia quando você troca o idioma.")}</span>
             </span>
             <Select className="w-48" value={s.language || 'auto'} onChange={async (v) => { if (v === (s.language || 'auto')) return; set({ language: v as Settings['language'] }); await cc.settingsSet({ language: v as Settings['language'] }); cc.relaunch(); }} options={[
               { value: 'auto', label: t("Automático") }, { value: 'pt', label: LANG_NAMES.pt }, { value: 'en', label: LANG_NAMES.en }, { value: 'es', label: LANG_NAMES.es },
@@ -84,7 +84,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between gap-4 py-2">
             <span>
               <span className="block text-[13px]">{t("Cor de destaque")}</span>
-              <span className="block text-xs text-muted">{t("A cor de destaque aparece nos botões, nas chaves, nas seleções e nos gráficos. O fundo do app não muda.")}</span>
+              <span className="block text-xs text-muted">{t("A cor de destaque aparece nos botões, nas seleções e nos gráficos.")}</span>
             </span>
             <div className="flex items-center gap-2">
               {ACCENT_OPTIONS.map((a) => (
@@ -109,7 +109,7 @@ export default function SettingsPage() {
             <Select className="w-32" value={String(s.decimals)} onChange={(v) => set({ decimals: +v })} options={['0', '1', '2', '3'].map((d) => ({ value: d, label: d }))} />
           </div>
           <Toggle checked={s.boldLarge} onChange={(v) => set({ boldLarge: v })} label={t("Destacar itens grandes em negrito")} hint={t("Destaca os itens que ocupam 15% ou mais do espaço analisado.")} />
-          <Toggle checked={s.sizeBars} onChange={(v) => set({ sizeBars: v })} label={t("Barras de tamanho na árvore")} hint={t("Mostra uma faixa atrás de cada pasta. O tamanho da faixa mostra quanto a pasta ocupa dentro da pasta de cima.")} />
+          <Toggle checked={s.sizeBars} onChange={(v) => set({ sizeBars: v })} label={t("Barras de tamanho na árvore")} hint={t("Mostra uma faixa com o tamanho de cada pasta.")} />
           <Toggle checked={s.compressedBlue} onChange={(v) => set({ compressedBlue: v })} label={t("Mostrar itens compactados ({0}) em azul", isMac ? 'APFS' : 'NTFS')} />
           <Toggle checked={s.datesWithTime} onChange={(v) => set({ datesWithTime: v })} label={t("Mostrar datas com horário")} />
         </Card>
@@ -122,7 +122,7 @@ export default function SettingsPage() {
         <Card title={t("Integração com o {0}", OS_NAME)}>
           {info?.contextMenu && <Toggle checked={!!ctx} disabled={ctx === null} onChange={async (v) => { const r = await cc.contextMenu(v); setCtx(r); toast(r ? t("Menu de contexto ativado") : t("Menu de contexto removido")); }}
             label={<span className="flex items-center gap-2"><MousePointerClick size={14} /> {t("“Analisar com CleanCode” no menu do")} {FILE_MANAGER}</span>} hint={t("Para analisar uma pasta ou um disco, clique nele com o botão direito.")} />}
-          {info?.canElevate && <Toggle checked={s.alwaysAdmin} onChange={(v) => set({ alwaysAdmin: v })} label={t("Sempre iniciar como administrador")} hint={t("O Windows pede a sua permissão de administrador sempre que o CleanCode abre. Com essa permissão, o CleanCode consegue ler todas as pastas.")} />}
+          {info?.canElevate && <Toggle checked={s.alwaysAdmin} onChange={(v) => set({ alwaysAdmin: v })} label={t("Sempre iniciar como administrador")} hint={t("O Windows pede permissão de administrador sempre que o CleanCode abre, e assim ele lê todas as pastas.")} />}
           <div className="mt-2 flex flex-wrap gap-2">
             {info?.canElevate && <Button icon={<ShieldCheck size={14} />} disabled={info?.isAdmin} onClick={() => cc.restartAdmin()}>{info?.isAdmin ? t("O CleanCode já está aberto como administrador") : t("Reiniciar como administrador")}</Button>}
             <Button icon={<AppWindow size={14} />} onClick={() => cc.newWindow()}>{t("Nova janela")}</Button>
@@ -133,8 +133,8 @@ export default function SettingsPage() {
             <div>
               <Toggle checked={s.runInBackground} onChange={(v) => set({ runInBackground: v })} label={t("Continuar rodando em segundo plano")}
                 hint={isMac
-                  ? t("Quando você fecha a janela, o CleanCode continua aberto na barra de menus, no topo da tela, e sai do Dock. Assim, o monitoramento continua funcionando. Para sair do app, clique no ícone da barra de menus e escolha Sair.")
-                  : t("Quando você fecha a janela, o CleanCode continua aberto na bandeja do sistema, perto do relógio. Assim, o monitoramento continua funcionando. Para sair do app, clique com o botão direito no ícone da bandeja.")} />
+                  ? t("Ao fechar a janela, o CleanCode continua na barra de menus. Para sair, use o ícone da barra de menus.")
+                  : t("Ao fechar a janela, o CleanCode continua na bandeja, perto do relógio. Para sair, clique com o botão direito no ícone.")} />
               <Toggle checked={s.startWithWindows} disabled={login ? !login.packaged : true} onChange={async (v) => { set({ startWithWindows: v }); setTimeout(() => cc.loginItemStatus().then(setLogin), 300); }}
                 label={t("Iniciar com o {0}", OS_NAME)} hint={login && !login.packaged ? t("Esta opção só funciona na versão instalada do app.") : isMac ? t("Quando você entra no macOS, o CleanCode abre apenas na barra de menus.") : t("Quando você entra no Windows, o CleanCode abre minimizado na bandeja.")} />
             </div>

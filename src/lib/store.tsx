@@ -13,13 +13,13 @@ export interface BgTask {
 }
 
 export type Page =
-  | 'overview' | 'disks' | 'explorer' | 'visual' | 'types' | 'age' | 'owners' | 'top' | 'duplicates' | 'search' | 'history'
+  | 'overview' | 'explorer' | 'visual' | 'types' | 'age' | 'owners' | 'top' | 'duplicates' | 'search' | 'history'
   | 'discover' | 'uninstall' | 'cleanup' | 'performance' | 'protection' | 'activity' | 'smartcare' | 'clutter' | 'settings' | 'repairs' | 'browsers' | 'game' | 'hardware' | 'fans' | 'appdata' | 'dossier';
 
 /** Aba do topo: a análise ligada a ela (null até você escolher um disco) e a última tela de Análise de disco aberta nela. */
 export interface TabState { key: number; scanId: number | null; page: Page | null }
 /** Telas que mudam de aba para aba (o grupo Análise de disco). As outras são as mesmas em todas as abas. */
-export const DISK_PAGES = new Set<Page>(['disks', 'explorer', 'visual', 'types', 'age', 'owners', 'top', 'duplicates', 'search', 'history']);
+export const DISK_PAGES = new Set<Page>(['explorer', 'visual', 'types', 'age', 'owners', 'top', 'duplicates', 'search', 'history']);
 
 export interface ScanState { id: number; root: string; progress: Progress | null; done: boolean; stopped?: boolean; selected: number; selectedPath: string; comparing?: string | null }
 export interface Toast { id: number; kind: 'ok' | 'error' | 'info'; text: string }
@@ -159,7 +159,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setPage('dossier');
   }, []);
   const [scans, setScans] = useState<ScanState[]>([]);
-  // abas do topo: cada uma tem a própria análise (ou nenhuma, até você escolher um disco na tela Discos) e lembra a última
+  // abas do topo: cada uma tem a própria análise (ou nenhuma, até você escolher um disco na Visão geral) e lembra a última
   // tela de Análise de disco aberta. Visão geral, Manutenção e Hardware são as mesmas em todas as abas.
   const [tabs, setTabsState] = useState<TabState[]>([]);
   const [activeTab, setActiveTabState] = useState<number | null>(null);
@@ -263,7 +263,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   /**
    * Começa uma análise. Se a aba aberta ainda não tem análise, ela fica ligada a esta. Com here, a análise troca a da
-   * aba aberta (a tela Discos e o Atualizar fazem isso). Nos outros casos, a análise abre numa aba nova.
+   * aba aberta (o Atualizar faz isso). Nos outros casos, a análise abre numa aba nova.
    */
   const startScan = useCallback(async (root: string, opts?: { here?: boolean }) => {
     const id = await cc.scanStart(root);
@@ -271,15 +271,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const cur = tabsRef.current.find((t) => t.key === activeTabRef.current);
     if (cur && (cur.scanId === null || opts?.here)) {
       const old = cur.scanId;
-      // a aba esquece a tela Discos: ao voltar para ela, abre o Explorador da análise nova
-      setTabs(tabsRef.current.map((t) => (t.key === cur.key ? { ...t, scanId: id, page: t.page === 'disks' ? null : t.page } : t)));
+      setTabs(tabsRef.current.map((t) => (t.key === cur.key ? { ...t, scanId: id } : t)));
       if (old !== null && old !== id) { cc.scanClose(old); setScans((ss) => ss.filter((s) => s.id !== old)); }
     } else {
       const key = tabSeq.current++;
       setTabs([...tabsRef.current, { key, scanId: id, page: null }]);
       setActiveTab(key);
     }
-    setPage((p) => (p === 'overview' || p === 'discover' || p === 'uninstall' || p === 'settings' || p === 'disks' ? 'explorer' : p));
+    setPage((p) => (p === 'overview' || p === 'discover' || p === 'uninstall' || p === 'settings' ? 'explorer' : p));
     setS((s) => (s ? { ...s, recent: [root, ...s.recent.filter((r) => r.toLowerCase() !== root.toLowerCase())].slice(0, 12) } : s));
     return id;
   }, []);
@@ -305,16 +304,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTabs(next);
     setActiveTab(key);
     const tab = next.find((t) => t.key === key);
-    if (onDisk && tab) setPage(tab.page || (tab.scanId === null ? 'disks' : now === 'disks' ? 'explorer' : now));
+    // uma aba sem análise abre a Visão geral, onde você escolhe o disco
+    if (onDisk && tab) setPage(tab.scanId === null ? 'overview' : tab.page || now);
   }, []);
-  /** Aba nova, sem análise: abre a tela Discos para você escolher o que essa aba vai analisar. */
+  /** Aba nova, sem análise: abre a Visão geral para você escolher o disco que essa aba vai analisar. */
   const newTab = useCallback(() => {
     const now = pageRef.current;
     const prev = tabsRef.current.map((t) => (t.key === activeTabRef.current && DISK_PAGES.has(now) ? { ...t, page: now } : t));
     const key = tabSeq.current++;
-    setTabs([...prev, { key, scanId: null, page: 'disks' }]);
+    setTabs([...prev, { key, scanId: null, page: null }]);
     setActiveTab(key);
-    setPage('disks');
+    setPage('overview');
   }, []);
   /** Fecha uma aba e a análise dela. */
   const closeTab = useCallback((key: number) => {
@@ -327,7 +327,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (activeTabRef.current === key) {
       const neighbor = rest[Math.min(idx, rest.length - 1)];
       setActiveTab(neighbor ? neighbor.key : null);
-      if (neighbor && DISK_PAGES.has(pageRef.current)) setPage(neighbor.page || (neighbor.scanId === null ? 'disks' : pageRef.current === 'disks' ? 'explorer' : pageRef.current));
+      if (neighbor && DISK_PAGES.has(pageRef.current)) setPage(neighbor.scanId === null ? 'overview' : neighbor.page || pageRef.current);
     }
   }, []);
   /** Fecha a aba que tem esta análise. */

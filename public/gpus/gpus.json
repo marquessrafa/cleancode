@@ -1,0 +1,1894 @@
+{
+ "cards": [
+  {
+   "name": "AMD Radeon AI PRO R9700",
+   "file": "amd-radeon-ai-pro-r9700.webp",
+   "w": 836,
+   "h": 373,
+   "box": {
+    "x0": 39,
+    "y0": 0,
+    "x1": 835,
+    "y1": 315
+   },
+   "fans": [
+    {
+     "cx": 691.1,
+     "cy": 138.1,
+     "r": 91.8
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 480",
+   "file": "amd-radeon-rx-480.webp",
+   "w": 1076,
+   "h": 532,
+   "box": {
+    "x0": 62,
+    "y0": 0,
+    "x1": 1075,
+    "y1": 438
+   },
+   "fans": [
+    {
+     "cx": 901.9,
+     "cy": 196,
+     "r": 123.3
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 550",
+   "file": "amd-radeon-rx-550.webp",
+   "w": 681,
+   "h": 540,
+   "box": {
+    "x0": 50,
+    "y0": 0,
+    "x1": 680,
+    "y1": 440
+   },
+   "fans": [
+    {
+     "cx": 456.7,
+     "cy": 209.6,
+     "r": 160.1
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 5500 XT",
+   "file": "amd-radeon-rx-5500-xt.webp",
+   "w": 804,
+   "h": 540,
+   "box": {
+    "x0": 46,
+    "y0": 0,
+    "x1": 803,
+    "y1": 450
+   },
+   "fans": [
+    {
+     "cx": 430.5,
+     "cy": 207.8,
+     "r": 173.1
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 5600 XT",
+   "file": "amd-radeon-rx-5600-xt.webp",
+   "w": 1193,
+   "h": 540,
+   "box": {
+    "x0": 90,
+    "y0": 0,
+    "x1": 1192,
+    "y1": 472
+   },
+   "fans": [
+    {
+     "cx": 443.3,
+     "cy": 231.6,
+     "r": 197.2
+    },
+    {
+     "cx": 885.8,
+     "cy": 231.1,
+     "r": 193.4
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 570",
+   "file": "amd-radeon-rx-570.webp",
+   "w": 912,
+   "h": 540,
+   "box": {
+    "x0": 47,
+    "y0": 0,
+    "x1": 911,
+    "y1": 427
+   },
+   "fans": [
+    {
+     "cx": 300.4,
+     "cy": 212.1,
+     "r": 157.9
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 5700 XT",
+   "file": "amd-radeon-rx-5700-xt.webp",
+   "w": 1200,
+   "h": 527,
+   "box": {
+    "x0": 50,
+    "y0": 0,
+    "x1": 1199,
+    "y1": 450
+   },
+   "fans": [
+    {
+     "cx": 870.2,
+     "cy": 197.7,
+     "r": 138.7
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 5700",
+   "file": "amd-radeon-rx-5700.webp",
+   "w": 1183,
+   "h": 540,
+   "box": {
+    "x0": 51,
+    "y0": 7,
+    "x1": 1177,
+    "y1": 450
+   },
+   "fans": [
+    {
+     "cx": 871.4,
+     "cy": 208,
+     "r": 143.4
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 580 2048SP",
+   "file": "amd-radeon-rx-580-2048sp.webp",
+   "w": 912,
+   "h": 540,
+   "box": {
+    "x0": 47,
+    "y0": 0,
+    "x1": 911,
+    "y1": 427
+   },
+   "fans": [
+    {
+     "cx": 300.5,
+     "cy": 212.2,
+     "r": 157.9
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 580",
+   "file": "amd-radeon-rx-580.webp",
+   "w": 912,
+   "h": 540,
+   "box": {
+    "x0": 47,
+    "y0": 0,
+    "x1": 911,
+    "y1": 429
+   },
+   "fans": [
+    {
+     "cx": 295.7,
+     "cy": 212.3,
+     "r": 160.4
+    },
+    {
+     "cx": 678.5,
+     "cy": 208.2,
+     "r": 163.9
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 590",
+   "file": "amd-radeon-rx-580.webp",
+   "w": 912,
+   "h": 540,
+   "box": {
+    "x0": 47,
+    "y0": 0,
+    "x1": 911,
+    "y1": 429
+   },
+   "fans": [
+    {
+     "cx": 295.7,
+     "cy": 212.3,
+     "r": 160.4
+    },
+    {
+     "cx": 678.5,
+     "cy": 208.2,
+     "r": 163.9
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 6500 XT",
+   "file": "amd-radeon-rx-6500-xt.webp",
+   "w": 834,
+   "h": 540,
+   "box": {
+    "x0": 53,
+    "y0": 4,
+    "x1": 827,
+    "y1": 452
+   },
+   "fans": [
+    {
+     "cx": 275.6,
+     "cy": 207.8,
+     "r": 155.9
+    },
+    {
+     "cx": 626.4,
+     "cy": 205.5,
+     "r": 153.7
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 6600 XT",
+   "file": "amd-radeon-rx-6600-xt.webp",
+   "w": 845,
+   "h": 523,
+   "box": {
+    "x0": 55,
+    "y0": 0,
+    "x1": 844,
+    "y1": 452
+   },
+   "fans": [
+    {
+     "cx": 455.5,
+     "cy": 210,
+     "r": 166.7
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 6600",
+   "file": "amd-radeon-rx-6600.webp",
+   "w": 845,
+   "h": 523,
+   "box": {
+    "x0": 55,
+    "y0": 0,
+    "x1": 844,
+    "y1": 452
+   },
+   "fans": [
+    {
+     "cx": 455.4,
+     "cy": 210.3,
+     "r": 166.7
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 6650 XT",
+   "file": "amd-radeon-rx-6650-xt.webp",
+   "w": 838,
+   "h": 540,
+   "box": {
+    "x0": 51,
+    "y0": 0,
+    "x1": 837,
+    "y1": 452
+   },
+   "fans": [
+    {
+     "cx": 275.7,
+     "cy": 207.4,
+     "r": 156.9
+    },
+    {
+     "cx": 630.9,
+     "cy": 205.5,
+     "r": 156.6
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 6700 XT",
+   "file": "amd-radeon-rx-6700-xt.webp",
+   "w": 1205,
+   "h": 540,
+   "box": {
+    "x0": 55,
+    "y0": 0,
+    "x1": 1204,
+    "y1": 459
+   },
+   "fans": [
+    {
+     "cx": 329.3,
+     "cy": 208.3,
+     "r": 194.9
+    },
+    {
+     "cx": 935,
+     "cy": 208.7,
+     "r": 194.6
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 6700",
+   "file": "amd-radeon-rx-6700.webp",
+   "w": 1205,
+   "h": 540,
+   "box": {
+    "x0": 55,
+    "y0": 0,
+    "x1": 1204,
+    "y1": 459
+   },
+   "fans": [
+    {
+     "cx": 329.3,
+     "cy": 208.3,
+     "r": 194.8
+    },
+    {
+     "cx": 935,
+     "cy": 208.7,
+     "r": 194.6
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 6750 XT",
+   "file": "amd-radeon-rx-6750-xt.webp",
+   "w": 1121,
+   "h": 540,
+   "box": {
+    "x0": 49,
+    "y0": 0,
+    "x1": 1120,
+    "y1": 459
+   },
+   "fans": [
+    {
+     "cx": 236.7,
+     "cy": 212.4,
+     "r": 155.9
+    },
+    {
+     "cx": 588.2,
+     "cy": 212.4,
+     "r": 162.5
+    },
+    {
+     "cx": 939.6,
+     "cy": 212.4,
+     "r": 161.9
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 6800 XT",
+   "file": "amd-radeon-rx-6800-xt.webp",
+   "w": 1120,
+   "h": 540,
+   "box": {
+    "x0": 49,
+    "y0": 0,
+    "x1": 1119,
+    "y1": 467
+   },
+   "fans": [
+    {
+     "cx": 228.9,
+     "cy": 214.3,
+     "r": 169.6
+    },
+    {
+     "cx": 582.1,
+     "cy": 215.2,
+     "r": 167.7
+    },
+    {
+     "cx": 935.3,
+     "cy": 213.8,
+     "r": 168.6
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 6800",
+   "file": "amd-radeon-rx-6800.webp",
+   "w": 1120,
+   "h": 540,
+   "box": {
+    "x0": 51,
+    "y0": 0,
+    "x1": 1119,
+    "y1": 465
+   },
+   "fans": [
+    {
+     "cx": 237.7,
+     "cy": 211.2,
+     "r": 166.4
+    },
+    {
+     "cx": 588,
+     "cy": 212.8,
+     "r": 166.9
+    },
+    {
+     "cx": 937.2,
+     "cy": 212.4,
+     "r": 168.4
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 6900 XT",
+   "file": "amd-radeon-rx-6800-xt.webp",
+   "w": 1120,
+   "h": 540,
+   "box": {
+    "x0": 49,
+    "y0": 0,
+    "x1": 1119,
+    "y1": 467
+   },
+   "fans": [
+    {
+     "cx": 228.9,
+     "cy": 214.3,
+     "r": 169.6
+    },
+    {
+     "cx": 582.1,
+     "cy": 215.2,
+     "r": 167.7
+    },
+    {
+     "cx": 935.3,
+     "cy": 213.8,
+     "r": 168.6
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 6950 XT",
+   "file": "amd-radeon-rx-6950-xt.webp",
+   "w": 1120,
+   "h": 540,
+   "box": {
+    "x0": 45,
+    "y0": 0,
+    "x1": 1119,
+    "y1": 459
+   },
+   "fans": [
+    {
+     "cx": 222.8,
+     "cy": 216,
+     "r": 164.2
+    },
+    {
+     "cx": 579.3,
+     "cy": 215.2,
+     "r": 168.2
+    },
+    {
+     "cx": 936,
+     "cy": 216.1,
+     "r": 163.7
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 7600 XT",
+   "file": "amd-radeon-rx-7600-xt.webp",
+   "w": 887,
+   "h": 540,
+   "box": {
+    "x0": 51,
+    "y0": 0,
+    "x1": 886,
+    "y1": 461
+   },
+   "fans": [
+    {
+     "cx": 266.8,
+     "cy": 210.2,
+     "r": 156.8
+    },
+    {
+     "cx": 628.3,
+     "cy": 210.6,
+     "r": 155
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 7600",
+   "file": "amd-radeon-rx-7600.webp",
+   "w": 887,
+   "h": 540,
+   "box": {
+    "x0": 51,
+    "y0": 0,
+    "x1": 886,
+    "y1": 461
+   },
+   "fans": [
+    {
+     "cx": 266.6,
+     "cy": 210.1,
+     "r": 157.2
+    },
+    {
+     "cx": 625.3,
+     "cy": 209.1,
+     "r": 157.4
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 7700 XT",
+   "file": "amd-radeon-rx-7700-xt.webp",
+   "w": 1207,
+   "h": 540,
+   "box": {
+    "x0": 52,
+    "y0": 0,
+    "x1": 1206,
+    "y1": 458
+   },
+   "fans": [
+    {
+     "cx": 406.7,
+     "cy": 209.8,
+     "r": 181.4
+    },
+    {
+     "cx": 937.9,
+     "cy": 216.1,
+     "r": 190
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 7800 XT",
+   "file": "amd-radeon-rx-7700-xt.webp",
+   "w": 1207,
+   "h": 540,
+   "box": {
+    "x0": 52,
+    "y0": 0,
+    "x1": 1206,
+    "y1": 458
+   },
+   "fans": [
+    {
+     "cx": 406.7,
+     "cy": 209.8,
+     "r": 181.4
+    },
+    {
+     "cx": 937.9,
+     "cy": 216.1,
+     "r": 190
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 7900 GRE",
+   "file": "amd-radeon-rx-7900-gre.webp",
+   "w": 1215,
+   "h": 540,
+   "box": {
+    "x0": 53,
+    "y0": 0,
+    "x1": 1214,
+    "y1": 460
+   },
+   "fans": [
+    {
+     "cx": 260.3,
+     "cy": 211.4,
+     "r": 171.4
+    },
+    {
+     "cx": 634.6,
+     "cy": 211,
+     "r": 169.1
+    },
+    {
+     "cx": 1008.1,
+     "cy": 210.4,
+     "r": 167.8
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 7900 XT",
+   "file": "amd-radeon-rx-7900-xt.webp",
+   "w": 1215,
+   "h": 540,
+   "box": {
+    "x0": 53,
+    "y0": 0,
+    "x1": 1214,
+    "y1": 460
+   },
+   "fans": [
+    {
+     "cx": 260.9,
+     "cy": 211.5,
+     "r": 170.7
+    },
+    {
+     "cx": 634.8,
+     "cy": 211.3,
+     "r": 169.8
+    },
+    {
+     "cx": 1008.1,
+     "cy": 210.8,
+     "r": 167.8
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 7900 XTX",
+   "file": "amd-radeon-rx-7900-xtx.webp",
+   "w": 1169,
+   "h": 540,
+   "box": {
+    "x0": 48,
+    "y0": 0,
+    "x1": 1168,
+    "y1": 466
+   },
+   "fans": [
+    {
+     "cx": 241.6,
+     "cy": 216.1,
+     "r": 165.9
+    },
+    {
+     "cx": 608.2,
+     "cy": 215.7,
+     "r": 163.7
+    },
+    {
+     "cx": 977,
+     "cy": 214.9,
+     "r": 167
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 9050",
+   "file": "amd-radeon-rx-9050.webp",
+   "w": 736,
+   "h": 447,
+   "box": {
+    "x0": 51,
+    "y0": 0,
+    "x1": 735,
+    "y1": 372
+   },
+   "fans": [
+    {
+     "cx": 225.4,
+     "cy": 188.5,
+     "r": 145.8
+    },
+    {
+     "cx": 569.7,
+     "cy": 188.3,
+     "r": 143.8
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 9060 XT 16 GB",
+   "file": "amd-radeon-rx-9060-xt-16-gb.webp",
+   "w": 736,
+   "h": 447,
+   "box": {
+    "x0": 51,
+    "y0": 0,
+    "x1": 735,
+    "y1": 373
+   },
+   "fans": [
+    {
+     "cx": 225.3,
+     "cy": 188.4,
+     "r": 146.5
+    },
+    {
+     "cx": 569.6,
+     "cy": 188.4,
+     "r": 143.9
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 9060 XT 8 GB",
+   "file": "amd-radeon-rx-9060-xt-16-gb.webp",
+   "w": 736,
+   "h": 447,
+   "box": {
+    "x0": 51,
+    "y0": 0,
+    "x1": 735,
+    "y1": 373
+   },
+   "fans": [
+    {
+     "cx": 225.3,
+     "cy": 188.4,
+     "r": 146.5
+    },
+    {
+     "cx": 569.6,
+     "cy": 188.4,
+     "r": 143.9
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 9070 GRE",
+   "file": "amd-radeon-rx-9070-gre.webp",
+   "w": 766,
+   "h": 393,
+   "box": {
+    "x0": 39,
+    "y0": 0,
+    "x1": 765,
+    "y1": 344
+   },
+   "fans": [
+    {
+     "cx": 237.2,
+     "cy": 164,
+     "r": 123.7
+    },
+    {
+     "cx": 568.2,
+     "cy": 163.5,
+     "r": 121.8
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 9070 XT",
+   "file": "amd-radeon-rx-9070-xt.webp",
+   "w": 872,
+   "h": 395,
+   "box": {
+    "x0": 39,
+    "y0": 0,
+    "x1": 871,
+    "y1": 344
+   },
+   "fans": [
+    {
+     "cx": 185.5,
+     "cy": 165.3,
+     "r": 123.8
+    },
+    {
+     "cx": 456.5,
+     "cy": 165.3,
+     "r": 126.6
+    },
+    {
+     "cx": 727,
+     "cy": 165.3,
+     "r": 123.3
+    }
+   ]
+  },
+  {
+   "name": "AMD Radeon RX 9070",
+   "file": "amd-radeon-rx-9070.webp",
+   "w": 766,
+   "h": 393,
+   "box": {
+    "x0": 39,
+    "y0": 0,
+    "x1": 765,
+    "y1": 344
+   },
+   "fans": [
+    {
+     "cx": 237.2,
+     "cy": 164,
+     "r": 123.5
+    },
+    {
+     "cx": 568.3,
+     "cy": 163.5,
+     "r": 122.1
+    }
+   ]
+  },
+  {
+   "name": "Intel Arc B580",
+   "file": "intel-arc-b580.webp",
+   "w": 1204,
+   "h": 540,
+   "box": {
+    "x0": 52,
+    "y0": 0,
+    "x1": 1203,
+    "y1": 456
+   },
+   "fans": [
+    {
+     "cx": 365.4,
+     "cy": 210.9,
+     "r": 178.3
+    },
+    {
+     "cx": 896.7,
+     "cy": 207,
+     "r": 173.3
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce GTX 1050 Ti",
+   "file": "nvidia-geforce-gtx-1050-ti.webp",
+   "w": 480,
+   "h": 321,
+   "box": {
+    "x0": 36,
+    "y0": 4,
+    "x1": 479,
+    "y1": 276
+   },
+   "fans": [
+    {
+     "cx": 305.8,
+     "cy": 124.7,
+     "r": 78.5
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce GTX 1050",
+   "file": "nvidia-geforce-gtx-1050.webp",
+   "w": 480,
+   "h": 321,
+   "box": {
+    "x0": 36,
+    "y0": 4,
+    "x1": 479,
+    "y1": 276
+   },
+   "fans": [
+    {
+     "cx": 305.7,
+     "cy": 124.7,
+     "r": 78.5
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce GTX 1060 6 GB",
+   "file": "nvidia-geforce-gtx-1060-6-gb.webp",
+   "w": 1130,
+   "h": 540,
+   "box": {
+    "x0": 55,
+    "y0": 0,
+    "x1": 1129,
+    "y1": 465
+   },
+   "fans": [
+    {
+     "cx": 836.2,
+     "cy": 203.2,
+     "r": 133.7
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce GTX 1070 Ti",
+   "file": "nvidia-geforce-gtx-1070-ti.webp",
+   "w": 1208,
+   "h": 540,
+   "box": {
+    "x0": 55,
+    "y0": 0,
+    "x1": 1203,
+    "y1": 467
+   },
+   "fans": [
+    {
+     "cx": 887.8,
+     "cy": 208.4,
+     "r": 134.6
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce GTX 1070",
+   "file": "nvidia-geforce-gtx-1070.webp",
+   "w": 1202,
+   "h": 540,
+   "box": {
+    "x0": 56,
+    "y0": 5,
+    "x1": 1201,
+    "y1": 468
+   },
+   "fans": [
+    {
+     "cx": 884.7,
+     "cy": 209.4,
+     "r": 133.4
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce GTX 1080 Ti",
+   "file": "nvidia-geforce-gtx-1080-ti.webp",
+   "w": 1208,
+   "h": 540,
+   "box": {
+    "x0": 56,
+    "y0": 0,
+    "x1": 1207,
+    "y1": 467
+   },
+   "fans": [
+    {
+     "cx": 888.4,
+     "cy": 208.7,
+     "r": 134.8
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce GTX 1080",
+   "file": "nvidia-geforce-gtx-1080.webp",
+   "w": 1207,
+   "h": 540,
+   "box": {
+    "x0": 55,
+    "y0": 0,
+    "x1": 1206,
+    "y1": 466
+   },
+   "fans": [
+    {
+     "cx": 885.7,
+     "cy": 202,
+     "r": 133.6
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce GTX 1650 SUPER",
+   "file": "nvidia-geforce-gtx-1650-super.webp",
+   "w": 1014,
+   "h": 540,
+   "box": {
+    "x0": 53,
+    "y0": 0,
+    "x1": 1013,
+    "y1": 459
+   },
+   "fans": [
+    {
+     "cx": 299.1,
+     "cy": 213.8,
+     "r": 179.3
+    },
+    {
+     "cx": 781,
+     "cy": 215.3,
+     "r": 182.5
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce GTX 1650",
+   "file": "nvidia-geforce-gtx-1650.webp",
+   "w": 1111,
+   "h": 540,
+   "box": {
+    "x0": 53,
+    "y0": 0,
+    "x1": 1110,
+    "y1": 461
+   },
+   "fans": [
+    {
+     "cx": 925.4,
+     "cy": 201.8,
+     "r": 138.6
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce GTX 1660 SUPER",
+   "file": "nvidia-geforce-gtx-1660-super.webp",
+   "w": 1014,
+   "h": 540,
+   "box": {
+    "x0": 53,
+    "y0": 0,
+    "x1": 1013,
+    "y1": 459
+   },
+   "fans": [
+    {
+     "cx": 299.1,
+     "cy": 213.8,
+     "r": 179.3
+    },
+    {
+     "cx": 781,
+     "cy": 215.3,
+     "r": 182.5
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce GTX 1660 Ti",
+   "file": "nvidia-geforce-gtx-1660-ti.webp",
+   "w": 1023,
+   "h": 540,
+   "box": {
+    "x0": 52,
+    "y0": 0,
+    "x1": 1022,
+    "y1": 473
+   },
+   "fans": [
+    {
+     "cx": 303.2,
+     "cy": 209.1,
+     "r": 182.7
+    },
+    {
+     "cx": 781.2,
+     "cy": 210.9,
+     "r": 182.7
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce GTX 1660",
+   "file": "nvidia-geforce-gtx-1660.webp",
+   "w": 1023,
+   "h": 540,
+   "box": {
+    "x0": 52,
+    "y0": 0,
+    "x1": 1022,
+    "y1": 473
+   },
+   "fans": [
+    {
+     "cx": 303,
+     "cy": 209.5,
+     "r": 183.2
+    },
+    {
+     "cx": 780.6,
+     "cy": 210.9,
+     "r": 182.1
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce GTX 960",
+   "file": "nvidia-geforce-gtx-960.webp",
+   "w": 1100,
+   "h": 540,
+   "box": {
+    "x0": 52,
+    "y0": 0,
+    "x1": 1099,
+    "y1": 463
+   },
+   "fans": [
+    {
+     "cx": 915.7,
+     "cy": 206.2,
+     "r": 130.4
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce GTX 970",
+   "file": "nvidia-geforce-gtx-970.webp",
+   "w": 968,
+   "h": 440,
+   "box": {
+    "x0": 48,
+    "y0": 6,
+    "x1": 962,
+    "y1": 384
+   },
+   "fans": [
+    {
+     "cx": 714.9,
+     "cy": 169.6,
+     "r": 103.5
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce GTX 980 Ti",
+   "file": "nvidia-geforce-gtx-980-ti.webp",
+   "w": 1205,
+   "h": 540,
+   "box": {
+    "x0": 54,
+    "y0": 0,
+    "x1": 1204,
+    "y1": 461
+   },
+   "fans": [
+    {
+     "cx": 887.4,
+     "cy": 210,
+     "r": 129.3
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 2060 SUPER",
+   "file": "nvidia-geforce-rtx-2060-super.webp",
+   "w": 1014,
+   "h": 540,
+   "box": {
+    "x0": 53,
+    "y0": 0,
+    "x1": 1013,
+    "y1": 459
+   },
+   "fans": [
+    {
+     "cx": 299,
+     "cy": 213.9,
+     "r": 179.1
+    },
+    {
+     "cx": 781.2,
+     "cy": 215.4,
+     "r": 182.3
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 2060",
+   "file": "nvidia-geforce-rtx-2060.webp",
+   "w": 1023,
+   "h": 540,
+   "box": {
+    "x0": 52,
+    "y0": 0,
+    "x1": 1022,
+    "y1": 473
+   },
+   "fans": [
+    {
+     "cx": 303.1,
+     "cy": 209.6,
+     "r": 183.3
+    },
+    {
+     "cx": 781.5,
+     "cy": 211,
+     "r": 183
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 2070 SUPER",
+   "file": "nvidia-geforce-rtx-2070-super.webp",
+   "w": 1138,
+   "h": 540,
+   "box": {
+    "x0": 53,
+    "y0": 0,
+    "x1": 1137,
+    "y1": 459
+   },
+   "fans": [
+    {
+     "cx": 318.2,
+     "cy": 222.8,
+     "r": 176
+    },
+    {
+     "cx": 891.7,
+     "cy": 219.4,
+     "r": 177.6
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 2070",
+   "file": "nvidia-geforce-rtx-2070.webp",
+   "w": 1017,
+   "h": 540,
+   "box": {
+    "x0": 54,
+    "y0": 4,
+    "x1": 1016,
+    "y1": 468
+   },
+   "fans": [
+    {
+     "cx": 301.6,
+     "cy": 207.9,
+     "r": 184.5
+    },
+    {
+     "cx": 781.5,
+     "cy": 206.1,
+     "r": 183.9
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 2080 SUPER",
+   "file": "nvidia-geforce-rtx-2080-super.webp",
+   "w": 1136,
+   "h": 540,
+   "box": {
+    "x0": 53,
+    "y0": 4,
+    "x1": 1135,
+    "y1": 457
+   },
+   "fans": [
+    {
+     "cx": 318.3,
+     "cy": 221.6,
+     "r": 174.7
+    },
+    {
+     "cx": 887.9,
+     "cy": 221.4,
+     "r": 174.6
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 2080 Ti",
+   "file": "nvidia-geforce-rtx-2080-ti.webp",
+   "w": 1163,
+   "h": 540,
+   "box": {
+    "x0": 55,
+    "y0": 0,
+    "x1": 1158,
+    "y1": 471
+   },
+   "fans": [
+    {
+     "cx": 322.9,
+     "cy": 212.8,
+     "r": 177.6
+    },
+    {
+     "cx": 906.9,
+     "cy": 218.7,
+     "r": 178.2
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 2080",
+   "file": "nvidia-geforce-rtx-2080.webp",
+   "w": 1160,
+   "h": 540,
+   "box": {
+    "x0": 55,
+    "y0": 3,
+    "x1": 1159,
+    "y1": 471
+   },
+   "fans": [
+    {
+     "cx": 322.8,
+     "cy": 213.6,
+     "r": 177.4
+    },
+    {
+     "cx": 905.5,
+     "cy": 220.1,
+     "r": 177.1
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 3050 6 GB",
+   "file": "nvidia-geforce-rtx-3050-6-gb.webp",
+   "w": 1111,
+   "h": 540,
+   "box": {
+    "x0": 53,
+    "y0": 0,
+    "x1": 1110,
+    "y1": 461
+   },
+   "fans": [
+    {
+     "cx": 925.6,
+     "cy": 201.7,
+     "r": 137.5
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 3050 8 GB",
+   "file": "nvidia-geforce-rtx-3050-8-gb.webp",
+   "w": 1082,
+   "h": 540,
+   "box": {
+    "x0": 55,
+    "y0": 0,
+    "x1": 1081,
+    "y1": 461
+   },
+   "fans": [
+    {
+     "cx": 302.2,
+     "cy": 210.9,
+     "r": 181.8
+    },
+    {
+     "cx": 849.1,
+     "cy": 207.8,
+     "r": 183
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 3060 12 GB",
+   "file": "nvidia-geforce-rtx-3060-12-gb.webp",
+   "w": 1082,
+   "h": 540,
+   "box": {
+    "x0": 55,
+    "y0": 0,
+    "x1": 1081,
+    "y1": 461
+   },
+   "fans": [
+    {
+     "cx": 302.1,
+     "cy": 210.9,
+     "r": 181.7
+    },
+    {
+     "cx": 849.1,
+     "cy": 207.9,
+     "r": 183
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 3060 Ti",
+   "file": "nvidia-geforce-rtx-3060-ti.webp",
+   "w": 1082,
+   "h": 540,
+   "box": {
+    "x0": 55,
+    "y0": 0,
+    "x1": 1081,
+    "y1": 461
+   },
+   "fans": [
+    {
+     "cx": 302.2,
+     "cy": 211,
+     "r": 181.8
+    },
+    {
+     "cx": 849.2,
+     "cy": 207.8,
+     "r": 182.8
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 3070 Ti",
+   "file": "nvidia-geforce-rtx-3070-ti.webp",
+   "w": 1192,
+   "h": 540,
+   "box": {
+    "x0": 53,
+    "y0": 0,
+    "x1": 1191,
+    "y1": 470
+   },
+   "fans": [
+    {
+     "cx": 358.3,
+     "cy": 209.2,
+     "r": 183.9
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 3070",
+   "file": "nvidia-geforce-rtx-3070.webp",
+   "w": 777,
+   "h": 386,
+   "box": {
+    "x0": 41,
+    "y0": 0,
+    "x1": 776,
+    "y1": 327
+   },
+   "fans": [
+    {
+     "cx": 215.2,
+     "cy": 150.1,
+     "r": 129.3
+    },
+    {
+     "cx": 607.8,
+     "cy": 150.5,
+     "r": 129.8
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 3080",
+   "file": "nvidia-geforce-rtx-3080.webp",
+   "w": 1269,
+   "h": 540,
+   "box": {
+    "x0": 53,
+    "y0": 0,
+    "x1": 1268,
+    "y1": 447
+   },
+   "fans": [
+    {
+     "cx": 299.9,
+     "cy": 215.1,
+     "r": 174.2
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 3090 Ti",
+   "file": "nvidia-geforce-rtx-3090-ti.webp",
+   "w": 1151,
+   "h": 540,
+   "box": {
+    "x0": 47,
+    "y0": 0,
+    "x1": 1150,
+    "y1": 462
+   },
+   "fans": [
+    {
+     "cx": 283.4,
+     "cy": 217.2,
+     "r": 189.9
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 3090",
+   "file": "nvidia-geforce-rtx-3090.webp",
+   "w": 1160,
+   "h": 540,
+   "box": {
+    "x0": 46,
+    "y0": 0,
+    "x1": 1159,
+    "y1": 467
+   },
+   "fans": [
+    {
+     "cx": 285.8,
+     "cy": 220,
+     "r": 196.1
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 4060 Ti 8 GB",
+   "file": "nvidia-geforce-rtx-4060-ti-8-gb.webp",
+   "w": 1088,
+   "h": 540,
+   "box": {
+    "x0": 57,
+    "y0": 5,
+    "x1": 1087,
+    "y1": 463
+   },
+   "fans": [
+    {
+     "cx": 300.1,
+     "cy": 213.1,
+     "r": 196.3
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 4060",
+   "file": "nvidia-geforce-rtx-4060.webp",
+   "w": 1088,
+   "h": 540,
+   "box": {
+    "x0": 57,
+    "y0": 5,
+    "x1": 1087,
+    "y1": 463
+   },
+   "fans": [
+    {
+     "cx": 300.2,
+     "cy": 213.2,
+     "r": 196.3
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 4070 SUPER",
+   "file": "nvidia-geforce-rtx-4070-super.webp",
+   "w": 1091,
+   "h": 540,
+   "box": {
+    "x0": 56,
+    "y0": 0,
+    "x1": 1090,
+    "y1": 464
+   },
+   "fans": [
+    {
+     "cx": 294,
+     "cy": 212.4,
+     "r": 191.5
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 4070 Ti SUPER",
+   "file": "nvidia-geforce-rtx-4070-ti-super.webp",
+   "w": 1269,
+   "h": 540,
+   "box": {
+    "x0": 53,
+    "y0": 0,
+    "x1": 1268,
+    "y1": 447
+   },
+   "fans": [
+    {
+     "cx": 300.1,
+     "cy": 213.6,
+     "r": 178.6
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 4070 Ti",
+   "file": "nvidia-geforce-rtx-4070-ti.webp",
+   "w": 1269,
+   "h": 540,
+   "box": {
+    "x0": 53,
+    "y0": 0,
+    "x1": 1268,
+    "y1": 447
+   },
+   "fans": [
+    {
+     "cx": 299.9,
+     "cy": 214.9,
+     "r": 174.3
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 4070",
+   "file": "nvidia-geforce-rtx-4070.webp",
+   "w": 1090,
+   "h": 540,
+   "box": {
+    "x0": 56,
+    "y0": 0,
+    "x1": 1089,
+    "y1": 466
+   },
+   "fans": [
+    {
+     "cx": 296.9,
+     "cy": 207.6,
+     "r": 191
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 4080 SUPER",
+   "file": "nvidia-geforce-rtx-4080-super.webp",
+   "w": 1133,
+   "h": 540,
+   "box": {
+    "x0": 48,
+    "y0": 0,
+    "x1": 1132,
+    "y1": 470
+   },
+   "fans": [
+    {
+     "cx": 262.7,
+     "cy": 219.7,
+     "r": 201.1
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 4080",
+   "file": "nvidia-geforce-rtx-4080.webp",
+   "w": 1133,
+   "h": 540,
+   "box": {
+    "x0": 49,
+    "y0": 0,
+    "x1": 1132,
+    "y1": 468
+   },
+   "fans": [
+    {
+     "cx": 267,
+     "cy": 221.4,
+     "r": 200.9
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 4090",
+   "file": "nvidia-geforce-rtx-4090.webp",
+   "w": 1129,
+   "h": 540,
+   "box": {
+    "x0": 48,
+    "y0": 0,
+    "x1": 1128,
+    "y1": 470
+   },
+   "fans": [
+    {
+     "cx": 265.9,
+     "cy": 221,
+     "r": 201
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 5050",
+   "file": "nvidia-geforce-rtx-5050.webp",
+   "w": 817,
+   "h": 540,
+   "box": {
+    "x0": 58,
+    "y0": 6,
+    "x1": 809,
+    "y1": 471
+   },
+   "fans": [
+    {
+     "cx": 566.4,
+     "cy": 215.2,
+     "r": 186.9
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 5060 Ti 16 GB",
+   "file": "nvidia-geforce-rtx-5060-ti-16-gb.webp",
+   "w": 1088,
+   "h": 540,
+   "box": {
+    "x0": 57,
+    "y0": 4,
+    "x1": 1087,
+    "y1": 463
+   },
+   "fans": [
+    {
+     "cx": 300.2,
+     "cy": 213.2,
+     "r": 196.3
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 5060 Ti 8 GB",
+   "file": "nvidia-geforce-rtx-5060-ti-8-gb.webp",
+   "w": 1088,
+   "h": 540,
+   "box": {
+    "x0": 57,
+    "y0": 5,
+    "x1": 1087,
+    "y1": 463
+   },
+   "fans": [
+    {
+     "cx": 300.2,
+     "cy": 213.3,
+     "r": 196.3
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 5060",
+   "file": "nvidia-geforce-rtx-5060.webp",
+   "w": 1088,
+   "h": 540,
+   "box": {
+    "x0": 57,
+    "y0": 5,
+    "x1": 1087,
+    "y1": 463
+   },
+   "fans": [
+    {
+     "cx": 300.2,
+     "cy": 213.2,
+     "r": 196.3
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 5070 Ti",
+   "file": "nvidia-geforce-rtx-5070-ti.webp",
+   "w": 1091,
+   "h": 540,
+   "box": {
+    "x0": 55,
+    "y0": 0,
+    "x1": 1090,
+    "y1": 463
+   },
+   "fans": [
+    {
+     "cx": 265.2,
+     "cy": 209.1,
+     "r": 191.6
+    },
+    {
+     "cx": 878.6,
+     "cy": 214,
+     "r": 193.9
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 5070",
+   "file": "nvidia-geforce-rtx-5070-ti.webp",
+   "w": 1091,
+   "h": 540,
+   "box": {
+    "x0": 55,
+    "y0": 0,
+    "x1": 1090,
+    "y1": 463
+   },
+   "fans": [
+    {
+     "cx": 265.2,
+     "cy": 209.1,
+     "r": 191.6
+    },
+    {
+     "cx": 878.6,
+     "cy": 214,
+     "r": 193.9
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 5080",
+   "file": "nvidia-geforce-rtx-5080.webp",
+   "w": 1132,
+   "h": 540,
+   "box": {
+    "x0": 47,
+    "y0": 0,
+    "x1": 1131,
+    "y1": 475
+   },
+   "fans": [
+    {
+     "cx": 262.8,
+     "cy": 218.6,
+     "r": 211.9
+    },
+    {
+     "cx": 911.4,
+     "cy": 222.6,
+     "r": 206.3
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA GeForce RTX 5090",
+   "file": "nvidia-geforce-rtx-5090.webp",
+   "w": 1131,
+   "h": 540,
+   "box": {
+    "x0": 47,
+    "y0": 0,
+    "x1": 1130,
+    "y1": 475
+   },
+   "fans": [
+    {
+     "cx": 264,
+     "cy": 218.2,
+     "r": 207
+    },
+    {
+     "cx": 909,
+     "cy": 223,
+     "r": 208.4
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA RTX PRO 6000 Blackwell Workstation",
+   "file": "nvidia-rtx-pro-6000-blackwell-workstation.webp",
+   "w": 1115,
+   "h": 540,
+   "box": {
+    "x0": 48,
+    "y0": 8,
+    "x1": 1107,
+    "y1": 474
+   },
+   "fans": [
+    {
+     "cx": 260.6,
+     "cy": 220.9,
+     "r": 195.5
+    },
+    {
+     "cx": 895.1,
+     "cy": 220.5,
+     "r": 198
+    }
+   ]
+  }
+ ]
+}

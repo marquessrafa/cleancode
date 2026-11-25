@@ -173,7 +173,7 @@ export default function Protection() {
           </div>
         ))}
       </div>
-      <p className="mt-3 text-xs text-faint">{tr("Para remover uma extensão, use o menu Extensões do próprio navegador. É normal que bloqueadores de anúncio e gerenciadores de senha tenham acesso a todos os sites. Mesmo assim, desconfie das extensões que você não reconhece.")}</p>
+      <p className="mt-3 text-xs text-faint">{tr("Para remover uma extensão, use o menu Extensões do navegador. Desconfie das extensões que você não reconhece.")}</p>
     </PageBody>
   );
 }

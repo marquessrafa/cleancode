@@ -45,7 +45,7 @@ export default function Duplicates() {
 
   return (
     <PageBody>
-      <PageHeader title={t("Arquivos duplicados")} icon={<Copy size={18} />} description={t("Primeiro, o CleanCode junta os arquivos que têm o mesmo tamanho. Depois, ele compara o conteúdo desses arquivos com um código chamado hash (SHA-1) para confirmar que são iguais. Os arquivos que estão só na nuvem ficam de fora.")}
+      <PageHeader title={t("Arquivos duplicados")} icon={<Copy size={18} />} description={t("O CleanCode compara o conteúdo dos arquivos para confirmar que são iguais.")}
         actions={<>
           <span className="text-xs text-muted">{t("Tamanho mínimo")}</span>
           <Select className="w-28" value={minSize} onChange={setMin} options={[[4096, '4 KB'], [102400, '100 KB'], [1048576, '1 MB'], [10485760, '10 MB'], [104857600, '100 MB']].map(([v, l]) => ({ value: String(v), label: String(l) }))} />

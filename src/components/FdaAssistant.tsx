@@ -61,7 +61,7 @@ export function FdaAssistantHost() {
         <div className="flex flex-col items-center py-4 text-center">
           <CheckCircle2 size={44} className="text-accent" />
           <div className="mt-3 text-[15px] font-semibold">{t("Acesso liberado")}</div>
-          <p className="mt-1 max-w-[400px] text-[13px] text-muted">{t("Agora o CleanCode consegue analisar e limpar caches, registros de atividade, anexos e dados de navegadores. Se alguma pasta continuar como “Acesso negado”, feche o app e abra de novo.")}</p>
+          <p className="mt-1 max-w-[400px] text-[13px] text-muted">{t("Agora o CleanCode consegue analisar e limpar as pastas protegidas. Se alguma continuar com acesso negado, abra o app de novo.")}</p>
         </div>
       ) : (
         <div className="space-y-4">

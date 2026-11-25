@@ -53,8 +53,8 @@ export default function Uninstaller() {
     <PageBody>
       <PageHeader title={t("Desinstalador")} icon={<PackageX size={18} />}
         description={isMac
-          ? t("Mostra os apps de /Applications, de ~/Applications e da App Store. Os apps do sistema aparecem como protegidos. Você pode selecionar vários apps e desinstalar todos de uma vez. Tudo vai para a Lixeira e, se você quiser, as sobras em ~/Library também vão.")
-          : t("Mostra os programas registrados no Windows, de 32 e de 64 bits, e os apps da Microsoft Store. Você pode selecionar vários programas e desinstalar todos de uma vez. Antes, você confirma cada item.")}
+          ? t("Selecione um ou vários apps para desinstalar. Tudo vai para a Lixeira.")
+          : t("Selecione um ou vários programas para desinstalar. Você confirma cada item antes.")}
         actions={<>
           <Button icon={<Download size={14} />} onClick={() => cc.exportList(
             rows.map((a) => ({ name: a.name, publisher: a.publisher || '', version: a.version || '', source: sourceLabel(a), mtime: a.installDate, atime: a.lastUsed, usedFrom: a.lastUsedSource || '', size: a.size || 0, path: a.location || '' })),

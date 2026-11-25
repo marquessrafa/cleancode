@@ -93,7 +93,7 @@ export function FanWizard({ open, onClose, candidates, live, nameOf, onName }: {
       {phase === 'intro' && (
         <div className="space-y-3 text-[13px]">
           <p>{tr("O CleanCode vai acelerar uma ventoinha por vez, por 8 segundos. Enquanto isso, olhe ou escute o PC.")}</p>
-          <p className="text-muted">{tr("Depois de cada uma, você diz qual ventoinha acelerou. Se uma saída não obedecer, o CleanCode percebe sozinho pelo RPM e pula a pergunta.")}</p>
+          <p className="text-muted">{tr("Depois de cada uma, você diz qual ventoinha acelerou.")}</p>
           <p className="text-muted">{tr("O assistente só acelera as ventoinhas, e nunca desacelera. Cada ventoinha volta ao normal logo depois.")}</p>
           <div className="rounded-lg bg-[var(--surface-2)] p-3 text-muted">{tr("{0} ventoinhas para identificar. Isso leva mais ou menos {1} segundos.", total, total * 12)}</div>
           <div className="flex justify-end"><Button variant="primary" icon={<Ear size={14} />} disabled={!total} onClick={() => void boost(0)}>{tr("Começar")}</Button></div>
@@ -111,7 +111,7 @@ export function FanWizard({ open, onClose, candidates, live, nameOf, onName }: {
               <FanIcon size={46} className="text-[var(--accent)]" style={{ animation: 'spin .45s linear infinite' }} />
               <div className="text-[15px] font-semibold">{tr("Esta ventoinha está em 100% agora. Olhe ou escute o PC.")}</div>
               <div className="h-1.5 w-full max-w-[360px] overflow-hidden rounded-full bg-[var(--surface-2)]">
-                <div className="h-full rounded-full" style={{ width: `${progress * 100}%`, background: 'linear-gradient(90deg, oklch(from var(--accent) .78 .15 calc(h + 45)), var(--accent))' }} />
+                <div className="h-full rounded-full" style={{ width: `${progress * 100}%`, background: 'linear-gradient(90deg, oklch(from var(--accent) calc(l + 0.08) c h), var(--accent))' }} />
               </div>
               <div className="text-[12px] text-muted tabular-nums">{tr("{0} segundos", Math.max(0, Math.ceil((1 - progress) * BOOST_MS / 1000)))}</div>
             </div>

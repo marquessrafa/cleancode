@@ -27,7 +27,6 @@ import Browsers from './pages/Browsers';
 import AppDataPage from './pages/AppData';
 import GameMode from './pages/GameMode';
 import Hardware from './pages/Hardware';
-import Disks from './pages/Disks';
 import FansPage from './pages/Fans';
 import SettingsPage from './pages/Settings';
 import { NeedsScan } from './pages/common';
@@ -51,7 +50,6 @@ function Content({ page: forced }: { page?: string } = {}) {
   if (needs && !active) return <NeedsScan />;
   switch (page) {
     case 'overview': return <Overview />;
-    case 'disks': return <Disks />;
     case 'explorer': return <Explorer />;
     case 'visual': return <Visual />;
     case 'types': return <Types />;

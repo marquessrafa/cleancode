@@ -194,7 +194,7 @@ export default function Visual() {
   return (
     <div className="mx-auto flex h-full max-w-[1400px] flex-col">
       <div className="px-6 pt-6">
-        <PageHeader title={tr("Visualizações")} icon={<LayoutGrid size={18} />} description={tr("Mostra a pasta selecionada como um mapa de blocos (treemap), como um gráfico de pizza ou como um gráfico de barras. Para entrar em uma pasta, clique nela.")}
+        <PageHeader title={tr("Visualizações")} icon={<LayoutGrid size={18} />} description={tr("Mostra a pasta selecionada em blocos, em pizza ou em barras. Clique numa pasta para entrar nela.")}
           actions={<Segmented value={tab} onChange={setTab} options={[
             { value: 'treemap', label: <><LayoutGrid size={13} /> {tr("Treemap")}</> }, { value: 'pie', label: <><PieChart size={13} /> {tr("Pizza")}</> }, { value: 'bar', label: <><BarChart3 size={13} /> {tr("Barras")}</> },
           ]} />} />

@@ -37,7 +37,7 @@ export default function Browsers() {
     const risky = picked.flatMap((p) => p.items.filter((i) => i !== 'cache' && i !== 'gpu').map((i) => ({ p: p.profileId, i })));
     const r0 = await confirm({
       title: tr("Limpar os dados selecionados?"),
-      message: risky.length ? tr("Depois de apagados, o histórico, os cookies e as sessões não voltam. Sem os cookies, você vai precisar entrar de novo nas suas contas nos sites. O CleanCode não mexe nas senhas nem nos favoritos.") : tr("Você escolheu apenas o cache. Os navegadores baixam de novo o que precisarem."),
+      message: risky.length ? tr("O histórico, os cookies e as sessões apagados não voltam, e você vai precisar entrar de novo nos sites. As senhas e os favoritos ficam.") : tr("Você escolheu apenas o cache. Os navegadores baixam de novo o que precisarem."),
       confirmLabel: tr("Limpar"), danger: risky.length > 0,
     });
     if (!r0.ok) return;
@@ -68,7 +68,7 @@ export default function Browsers() {
   if (!data) {
     return (
       <Hero icon={<Globe size={46} />} title={tr("Navegadores")}
-        text={tr("Os navegadores acumulam gigabytes em cache, histórico, cookies e dados de sites. Nesta tela, você vê quanto cada perfil ocupa e limpa apenas o que quiser.")}
+        text={tr("Veja quanto cada perfil ocupa e limpe só o que quiser.")}
         bullets={[
           { icon: <Sparkles size={15} />, text: tr("Chrome, Edge, Brave, Opera, Vivaldi e Firefox") + (isMac ? tr(" e Safari") : '') },
           { icon: <Zap size={15} />, text: tr("Compacta os bancos de dados internos, o que deixa o navegador mais leve.") },

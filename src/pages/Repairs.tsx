@@ -12,12 +12,12 @@ import { Hero } from './maint';
 import { t } from '../lib/i18n';
 
 const CAT: Record<string, { label: string; text: string }> = isMac ? {
-  prefs: { label: t("Preferências corrompidas"), text: t("São arquivos de preferências (.plist) que o app não consegue ler. Depois que o arquivo vai para a Lixeira, o app cria um novo ao abrir.") },
+  prefs: { label: t("Preferências corrompidas"), text: t("São preferências (.plist) que o app não consegue ler. O app cria um arquivo novo ao abrir.") },
   launchagents: { label: t("Inicialização órfã"), text: t("São agentes que tentam abrir um programa que já foi apagado.") },
   shortcuts: { label: t("Links quebrados"), text: t("São atalhos na Mesa que apontam para arquivos que não existem mais.") },
   launchservices: { label: t("Manutenção"), text: t("São ações opcionais, para quando algo no sistema se comporta de forma estranha.") },
 } : {
-  startup: { label: t("Inicialização"), text: t("São programas que o Windows tenta abrir quando liga, mas que não existem mais. Eles podem causar mensagens de erro quando o computador liga.") },
+  startup: { label: t("Inicialização"), text: t("São programas que o Windows tenta abrir quando liga, mas que não existem mais.") },
   uninstall: { label: t("Programas fantasmas"), text: t("Aparecem como instalados nas Configurações do Windows, mas já foram removidos.") },
   apppaths: { label: t("Caminhos de apps"), text: t("São atalhos do comando Executar (Win+R) que apontam para programas apagados.") },
   fileassoc: { label: t("\"Abrir com\""), text: t("São programas removidos que continuam aparecendo na lista \"Abrir com\".") },
@@ -58,7 +58,7 @@ export default function Repairs() {
     const chosen = (items || []).filter((x) => sel.has(x.id));
     const r0 = await confirm({
       title: t("Corrigir {0} item(ns)?", ids.length),
-      message: isMac ? t("Os arquivos vão para a Lixeira, então você consegue colocar tudo de volta se precisar.") : t("Antes de mudar uma chave do registro, o CleanCode salva a chave em um arquivo .reg. Se precisar, você restaura tudo nesta mesma tela, na seção \"Backups\"."),
+      message: isMac ? t("Os arquivos vão para a Lixeira, então você consegue colocar tudo de volta se precisar.") : t("Antes de mudar o registro, o CleanCode salva um backup (.reg), que você restaura na seção \"Backups\"."),
       items: chosen.slice(0, 8).map((x) => ({ label: x.title, detail: CAT[x.category]?.label })),
       confirmLabel: t("Corrigir"),
     });
@@ -83,7 +83,7 @@ export default function Repairs() {
   if (!items) {
     return (
       <Hero icon={<Wrench size={46} />} title={isMac ? t("Reparos do sistema") : t("Registro do Windows")}
-        text={isMac ? t("Encontra preferências corrompidas e restos de programas que tentam abrir sozinhos. Esses problemas costumam fazer os apps travarem ao abrir.") : t("Encontra entradas do registro que apontam para programas e arquivos que não existem mais. Essas entradas costumam causar erros quando o PC liga, itens fantasmas e menus quebrados.")}
+        text={isMac ? t("Encontra preferências corrompidas e restos que fazem os apps travarem ao abrir.") : t("Encontra entradas do registro que apontam para programas e arquivos que não existem mais.")}
         bullets={isMac ? [
           { icon: <Bug size={15} />, text: t("Preferências corrompidas e inicialização órfã") },
           { icon: <Archive size={15} />, text: t("Tudo vai para a Lixeira.") },
@@ -153,7 +153,7 @@ export default function Repairs() {
               {errors.map((e, i) => <div key={i} className="flex items-center gap-3 text-[13px]"><span className="min-w-0 flex-1 truncate font-medium">{e.app}</span><span className="text-muted">{e.message}</span><span className="w-24 text-right text-[12px] text-muted">{fmtRelative(e.at)}</span></div>)}
             </div>
           )}
-          <div className="mt-2 text-[12px] text-muted">{isMac ? t("Se um app trava sempre, as preferências corrompidas desse app costumam aparecer na lista acima.") : t("Falhas repetidas costumam vir de programas que não foram desinstalados por completo. Por isso, confira os itens de inicialização e os serviços na lista acima.")}</div>
+          <div className="mt-2 text-[12px] text-muted">{isMac ? t("Se um app trava sempre, as preferências corrompidas desse app costumam aparecer na lista acima.") : t("Falhas repetidas costumam vir de programas mal desinstalados. Confira os itens de inicialização e os serviços acima.")}</div>
         </div>
         {!isMac && (
           <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
