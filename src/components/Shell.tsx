@@ -17,6 +17,7 @@ const NAV: { group: string; items: { page: Page; label: string; icon: React.Reac
   ] },
   {
     group: 'Análise de disco', items: [
+      { page: 'disks', label: tr("Discos"), icon: <HardDrive size={17} /> },
       { page: 'explorer', label: tr("Explorador"), icon: <FolderTree size={17} />, needsScan: true },
       { page: 'visual', label: tr("Visualizações"), icon: <LayoutGrid size={17} />, needsScan: true },
       { page: 'types', label: tr("Tipos de arquivo"), icon: <FileType2 size={17} />, needsScan: true },
@@ -206,22 +207,9 @@ export function Sidebar() {
 }
 
 export function TopBar() {
-  const { scans, active, setActive, closeScan, settings, setSettings, info, startScan, toast, navBack, navForward, canBack, canForward } = useApp();
+  const { scans, tabs, activeTab, activateTab, newTab, closeTab, settings, setSettings, info, toast, navBack, navForward, canBack, canForward } = useApp();
   const theme = settings?.theme || 'system';
   const nextTheme = theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system';
-  const pick = async () => { const p = await cc.pickFolder(); if (p) startScan(p); };
-  const [addOpen, setAddOpen] = useState(false);
-  const [drives, setDrives] = useState<import('../lib/api').Drive[] | null>(null);
-  const addRef = React.useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!addOpen) return;
-    cc.drives().then((d) => setDrives(d.filter((x) => x.total > 0))).catch(() => setDrives([]));
-    const h = (e: MouseEvent) => { if (!addRef.current?.contains(e.target as Node)) setAddOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, [addOpen]);
-  // disco: o mesmo que o "Analisar" da Visão geral
-  const scanDrive = (root: string) => { setAddOpen(false); startScan(root); };
   return (
     // Windows: espaço à direita para os botões do overlay; macOS: à esquerda para os botões de semáforo
     <header className="drag relative z-10 flex h-10 shrink-0 items-center" style={isMac ? { paddingLeft: 84, paddingRight: 12 } : { paddingLeft: 12, paddingRight: 150 }}>
@@ -236,51 +224,28 @@ export function TopBar() {
       {/* o contêiner continua arrastável; só as abas e botões são "no-drag" */}
       <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
         <div className="no-drag flex min-w-0 shrink items-center gap-1 overflow-x-auto">
-        {scans.map((s) => {
-          const on = s.id === active?.id;
-          const scanning = !s.done;
+        {tabs.map((tb) => {
+          const s = scans.find((x) => x.id === tb.scanId);
+          const on = tb.key === activeTab;
+          const scanning = !!s && !s.done;
           return (
             <div
-              key={s.id}
-              onClick={() => setActive(s.id)}
+              key={tb.key}
+              onClick={() => activateTab(tb.key)}
               className={cx('group flex h-7 max-w-[220px] shrink-0 cursor-pointer items-center gap-1.5 rounded-md border px-2 text-xs transition-all duration-150', on ? 'border-line bg-surface text-fg shadow-sm' : 'border-transparent text-muted hover:bg-hover hover:text-fg')}
-              title={s.root}
+              title={s ? s.root : tr("Aba sem análise. Escolha um disco na tela Discos.")}
             >
               {scanning ? <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-accent" /> : <HardDrive size={13} className="shrink-0" />}
-              <span className="truncate">{baseName(s.root) || s.root}</span>
-              {s.progress && <span className="text-faint tnum">{fmtSize(s.progress.size, 'auto', 0)}</span>}
-              <button className="ml-0.5 rounded p-0.5 opacity-0 transition-opacity hover:bg-line group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); closeScan(s.id); }} title={tr("Fechar varredura")}><X size={12} /></button>
+              <span className="truncate">{s ? baseName(s.root) || s.root : tr("Nova aba")}</span>
+              {s?.progress && <span className="text-faint tnum">{fmtSize(s.progress.size, 'auto', 0)}</span>}
+              <button className="ml-0.5 rounded p-0.5 opacity-0 transition-opacity hover:bg-line group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); closeTab(tb.key); }} title={tr("Fechar aba")}><X size={12} /></button>
             </div>
           );
         })}
-        <div ref={addRef} className="relative shrink-0">
-          <button onClick={() => setAddOpen((o) => !o)} title={tr("Analisar um disco ou uma pasta")} className={cx('flex h-7 w-7 items-center justify-center rounded-md transition-colors', addOpen ? 'bg-hover text-fg' : 'text-muted hover:bg-hover hover:text-fg')}><Plus size={15} /></button>
-        </div>
+        <button onClick={newTab} title={tr("Abrir uma aba nova e escolher um disco")} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-hover hover:text-fg"><Plus size={15} /></button>
         </div>
         <div className="h-full min-w-[40px] flex-1" />
       </div>
-      {addOpen && addRef.current && (() => {
-        const r = addRef.current!.getBoundingClientRect();
-        return (
-          <div className="no-drag anim-pop fixed z-[70] w-[300px] rounded-xl border border-line bg-surface p-1.5 shadow-2xl" style={{ left: Math.max(8, r.left - 8), top: r.bottom + 6 }} onMouseDown={(e) => e.stopPropagation()}>
-            <div className="px-2 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted">{tr("Analisar um disco")}</div>
-            {drives === null ? <div className="flex items-center gap-2 px-2 py-2 text-[12px] text-muted"><Loader2 size={13} className="animate-spin" />{tr("Lendo unidades…")}</div> : drives.map((d) => (
-              <button key={d.root} onClick={() => scanDrive(d.root)} className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left hover:bg-hover">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent"><HardDrive size={15} /></span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-medium">{d.label || d.root} <span className="font-normal text-muted">{d.root}</span></span>
-                  <span className="mt-1 block h-1 overflow-hidden rounded-full bg-line"><span className="block h-full rounded-full bg-accent" style={{ width: `${Math.round((d.used / d.total) * 100)}%` }} /></span>
-                  <span className="mt-0.5 block text-[11px] text-muted tnum">{fmtSize(d.free, 'auto', 0)} {tr("livres de")} {fmtSize(d.total, 'auto', 0)}</span>
-                </span>
-              </button>
-            ))}
-            <div className="my-1 h-px bg-line" />
-            <button onClick={() => { setAddOpen(false); pick(); }} className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-[13px] font-medium hover:bg-hover">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-hover text-muted"><FolderOpen size={15} /></span>{tr("Escolher uma pasta…")}
-            </button>
-          </div>
-        );
-      })()}
       <div className="no-drag flex items-center gap-1 pl-2">
         <UpdatePill />
         <UpdateCheckButton />

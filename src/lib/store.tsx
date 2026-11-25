@@ -13,8 +13,13 @@ export interface BgTask {
 }
 
 export type Page =
-  | 'overview' | 'explorer' | 'visual' | 'types' | 'age' | 'owners' | 'top' | 'duplicates' | 'search' | 'history'
+  | 'overview' | 'disks' | 'explorer' | 'visual' | 'types' | 'age' | 'owners' | 'top' | 'duplicates' | 'search' | 'history'
   | 'discover' | 'uninstall' | 'cleanup' | 'performance' | 'protection' | 'activity' | 'smartcare' | 'clutter' | 'settings' | 'repairs' | 'browsers' | 'game' | 'hardware' | 'fans' | 'appdata' | 'dossier';
+
+/** Aba do topo: a análise ligada a ela (null até você escolher um disco) e a última tela de Análise de disco aberta nela. */
+export interface TabState { key: number; scanId: number | null; page: Page | null }
+/** Telas que mudam de aba para aba (o grupo Análise de disco). As outras são as mesmas em todas as abas. */
+export const DISK_PAGES = new Set<Page>(['disks', 'explorer', 'visual', 'types', 'age', 'owners', 'top', 'duplicates', 'search', 'history']);
 
 export interface ScanState { id: number; root: string; progress: Progress | null; done: boolean; stopped?: boolean; selected: number; selectedPath: string; comparing?: string | null }
 export interface Toast { id: number; kind: 'ok' | 'error' | 'info'; text: string }
@@ -33,7 +38,8 @@ interface Ctx {
   /** histórico interno de uma tela (Explorador: pastas): voltar/avançar usa ele primeiro, depois o de telas */
   registerNav: (page: Page, n: PageNav | null) => void;
   scans: ScanState[]; active: ScanState | null; activeId: number | null; setActive: (id: number) => void;
-  startScan: (root: string) => Promise<number>; closeScan: (id: number) => void; stopScan: () => void; refreshScan: () => void;
+  tabs: TabState[]; activeTab: number | null; activateTab: (key: number) => void; newTab: () => void; closeTab: (key: number) => void;
+  startScan: (root: string, opts?: { here?: boolean }) => Promise<number>; closeScan: (id: number) => void; stopScan: () => void; refreshScan: () => void;
   select: (id: number, path?: string) => void; tick: number; bump: () => void;
   toast: (text: string, kind?: Toast['kind']) => void; toasts: Toast[];
   confirm: (o: ConfirmOpts) => Promise<{ ok: boolean; option?: string }>; confirmState: (ConfirmOpts & { resolve: (r: { ok: boolean; option?: string }) => void }) | null;
@@ -153,7 +159,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setPage('dossier');
   }, []);
   const [scans, setScans] = useState<ScanState[]>([]);
-  const [activeId, setActiveId] = useState<number | null>(null);
+  // abas do topo: cada uma tem a própria análise (ou nenhuma, até você escolher um disco na tela Discos) e lembra a última
+  // tela de Análise de disco aberta. Visão geral, Manutenção e Hardware são as mesmas em todas as abas.
+  const [tabs, setTabsState] = useState<TabState[]>([]);
+  const [activeTab, setActiveTabState] = useState<number | null>(null);
+  const tabsRef = useRef<TabState[]>([]);
+  const activeTabRef = useRef<number | null>(null);
+  const tabSeq = useRef(1);
+  const setTabs = (next: TabState[]) => { tabsRef.current = next; setTabsState(next); };
+  const setActiveTab = (key: number | null) => { activeTabRef.current = key; setActiveTabState(key); };
+  const activeId = tabs.find((t) => t.key === activeTab)?.scanId ?? null;
   const [tick, setTick] = useState(0);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [confirmState, setConfirm] = useState<Ctx['confirmState']>(null);
@@ -190,7 +205,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     cc.scanList().then((list) => {
       if (!list.length) return;
       setScans((ss) => (ss.length ? ss : list.map((s) => ({ id: s.id, root: s.root, progress: s.last, done: s.done, selected: 0, selectedPath: s.root }))));
-      setActiveId((a) => a ?? list[list.length - 1].id);
+      // cada análise recuperada volta numa aba própria
+      if (!tabsRef.current.length) {
+        setTabs(list.map((s) => ({ key: tabSeq.current++, scanId: s.id, page: null })));
+        setActiveTab(tabsRef.current[tabsRef.current.length - 1].key);
+      }
     });
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     const h = () => setSysDark(mq.matches);
@@ -242,11 +261,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   scanningRef.current = scans.some((s) => !s.done);
   const tickEff = tick;
 
-  const startScan = useCallback(async (root: string) => {
+  /**
+   * Começa uma análise. Se a aba aberta ainda não tem análise, ela fica ligada a esta. Com here, a análise troca a da
+   * aba aberta (a tela Discos e o Atualizar fazem isso). Nos outros casos, a análise abre numa aba nova.
+   */
+  const startScan = useCallback(async (root: string, opts?: { here?: boolean }) => {
     const id = await cc.scanStart(root);
     setScans((ss) => [...ss, { id, root, progress: null, done: false, selected: 0, selectedPath: root }]);
-    setActiveId(id);
-    setPage((p) => (p === 'overview' || p === 'discover' || p === 'uninstall' || p === 'settings' ? 'explorer' : p));
+    const cur = tabsRef.current.find((t) => t.key === activeTabRef.current);
+    if (cur && (cur.scanId === null || opts?.here)) {
+      const old = cur.scanId;
+      // a aba esquece a tela Discos: ao voltar para ela, abre o Explorador da análise nova
+      setTabs(tabsRef.current.map((t) => (t.key === cur.key ? { ...t, scanId: id, page: t.page === 'disks' ? null : t.page } : t)));
+      if (old !== null && old !== id) { cc.scanClose(old); setScans((ss) => ss.filter((s) => s.id !== old)); }
+    } else {
+      const key = tabSeq.current++;
+      setTabs([...tabsRef.current, { key, scanId: id, page: null }]);
+      setActiveTab(key);
+    }
+    setPage((p) => (p === 'overview' || p === 'discover' || p === 'uninstall' || p === 'settings' || p === 'disks' ? 'explorer' : p));
     setS((s) => (s ? { ...s, recent: [root, ...s.recent.filter((r) => r.toLowerCase() !== root.toLowerCase())].slice(0, 12) } : s));
     return id;
   }, []);
@@ -264,23 +297,58 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return cc.on.updateState((s) => setUpdate((old) => ({ ...s, defaultSource: s.defaultSource ?? old.defaultSource })));
   }, []);
 
-  const closeScan = useCallback((id: number) => {
-    cc.scanClose(id);
-    setScans((ss) => {
-      const rest = ss.filter((s) => s.id !== id);
-      setActiveId((a) => (a === id ? (rest.length ? rest[rest.length - 1].id : null) : a));
-      return rest;
-    });
+  /** Abre uma aba. Se a tela atual é de Análise de disco, ela guarda essa tela na aba que sai e abre a da aba que entra. */
+  const activateTab = useCallback((key: number) => {
+    const now = pageRef.current;
+    const onDisk = DISK_PAGES.has(now);
+    const next = tabsRef.current.map((t) => (t.key === activeTabRef.current && onDisk ? { ...t, page: now } : t));
+    setTabs(next);
+    setActiveTab(key);
+    const tab = next.find((t) => t.key === key);
+    if (onDisk && tab) setPage(tab.page || (tab.scanId === null ? 'disks' : now === 'disks' ? 'explorer' : now));
   }, []);
+  /** Aba nova, sem análise: abre a tela Discos para você escolher o que essa aba vai analisar. */
+  const newTab = useCallback(() => {
+    const now = pageRef.current;
+    const prev = tabsRef.current.map((t) => (t.key === activeTabRef.current && DISK_PAGES.has(now) ? { ...t, page: now } : t));
+    const key = tabSeq.current++;
+    setTabs([...prev, { key, scanId: null, page: 'disks' }]);
+    setActiveTab(key);
+    setPage('disks');
+  }, []);
+  /** Fecha uma aba e a análise dela. */
+  const closeTab = useCallback((key: number) => {
+    const tab = tabsRef.current.find((t) => t.key === key);
+    if (!tab) return;
+    if (tab.scanId !== null) { cc.scanClose(tab.scanId); setScans((ss) => ss.filter((s) => s.id !== tab.scanId)); }
+    const idx = tabsRef.current.indexOf(tab);
+    const rest = tabsRef.current.filter((t) => t.key !== key);
+    setTabs(rest);
+    if (activeTabRef.current === key) {
+      const neighbor = rest[Math.min(idx, rest.length - 1)];
+      setActiveTab(neighbor ? neighbor.key : null);
+      if (neighbor && DISK_PAGES.has(pageRef.current)) setPage(neighbor.page || (neighbor.scanId === null ? 'disks' : pageRef.current === 'disks' ? 'explorer' : pageRef.current));
+    }
+  }, []);
+  /** Fecha a aba que tem esta análise. */
+  const closeScan = useCallback((id: number) => {
+    const tab = tabsRef.current.find((t) => t.scanId === id);
+    if (tab) closeTab(tab.key);
+    else { cc.scanClose(id); setScans((ss) => ss.filter((s) => s.id !== id)); }
+  }, [closeTab]);
+  /** Abre a aba que tem esta análise (usado pela central de atividades). */
+  const setActive = useCallback((id: number) => {
+    const tab = tabsRef.current.find((t) => t.scanId === id);
+    if (tab && tab.key !== activeTabRef.current) activateTab(tab.key);
+  }, [activateTab]);
 
   const active = scans.find((s) => s.id === activeId) || null;
   const stopScan = useCallback(() => { if (active) cc.scanQuery(active.id, 'stop'); }, [active]);
+  // atualizar: analisa de novo a mesma pasta, na mesma aba
   const refreshScan = useCallback(async () => {
     if (!active) return;
-    const root = active.root;
-    closeScan(active.id);
-    await startScan(root);
-  }, [active, closeScan, startScan]);
+    await startScan(active.root, { here: true });
+  }, [active, startScan]);
   const select = useCallback((id: number, path?: string) => {
     setScans((ss) => ss.map((s) => (s.id === activeId ? { ...s, selected: id, selectedPath: path ?? s.selectedPath } : s)));
   }, [activeId]);
@@ -333,7 +401,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const value: Ctx = {
     update, installUpdate,
     tasks, findTask, startScanTask, cancelTask, updateTaskResult, clearFinishedTasks, startUninstall,
-    settings, setSettings, dark, page, go: setPage, dossier, openDossier, navBack, navForward, canBack, canForward, registerNav, scans, active, activeId, setActive: setActiveId,
+    settings, setSettings, dark, page, go: setPage, dossier, openDossier, navBack, navForward, canBack, canForward, registerNav, scans, active, activeId, setActive, tabs, activeTab, activateTab, newTab, closeTab,
     startScan, closeScan, stopScan, refreshScan, select, tick: tickEff, bump: () => setTick((t) => t + 1),
     toast, toasts, confirm, confirmState, info, setComparing, running, setRunning,
   };

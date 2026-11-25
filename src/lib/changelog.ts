@@ -5,6 +5,16 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.23', date: '2026-11-25', headline: 'Tela Discos e abas independentes',
+    groups: [
+      { title: 'Análise de disco', icon: 'wrench', items: [
+        'A tela nova Discos mostra todos os discos do computador. Nela, você escolhe o disco que a aba aberta vai analisar.',
+        'Agora cada aba do topo tem a própria análise. O botão + abre uma aba nova, e as telas de Análise de disco mostram o disco da aba que está aberta.',
+        'A Visão geral, a Manutenção e o Hardware continuam iguais em todas as abas.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.22', date: '2026-11-25', headline: 'Ventoinha da placa de vídeo AMD',
     groups: [
       { title: 'Ventoinhas', icon: 'chip', items: [
