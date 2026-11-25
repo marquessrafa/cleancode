@@ -28,7 +28,7 @@
 </div>
 
 <p align="center">
-  <img src="../screenshots/hero.webp" alt="El monitor de hardware de CleanCode muestra un MacBook en 3D mientras la cámara se mueve alrededor del modelo" width="100%" />
+  <img src="../screenshots/hero.webp" alt="El monitor de hardware de CleanCode muestra un PC de escritorio con caja de cristal en 3D mientras la cámara se mueve alrededor del modelo" width="100%" />
 </p>
 
 ---
@@ -110,6 +110,9 @@ CleanCode fue hecho para ser **seguro desde el principio**:
   <tr>
     <td width="50%" valign="top"><img src="../screenshots/hw-power.webp" alt="Pestaña Energía" width="100%" /><br /><strong>Energía</strong><br />Muestra cuántos vatios consume el ordenador y cuánta energía llega del cargador. También muestra el voltaje, la corriente y la salud de la batería.</td>
     <td width="50%" valign="top"><img src="../screenshots/hw-board.webp" alt="Pestaña Placa base" width="100%" /><br /><strong>Placa base y placa lógica</strong><br />Muestra el modelo de la placa, el chip, la versión del firmware (o de la BIOS, en un PC) y los voltajes. En un PC, también muestra los ventiladores y los módulos de memoria instalados.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="../screenshots/fans.webp" alt="Pantalla Ventiladores" width="100%" /><br /><strong>Ventiladores</strong><br />En Windows, eliges una velocidad fija o una curva de temperatura para cada ventilador de la placa base. Un asistente descubre qué ventilador es cada uno, y cada ventilador vuelve al modo automático cuando cierras CleanCode.</td>
   </tr>
 </table>
 
@@ -242,6 +245,12 @@ CleanCode fue hecho para ser **seguro desde el principio**:
   - cada pieza tiene un modelo 3D con acabado mate: tarjeta gráfica, procesador, memoria, placa base, SSD y energía;
   - en la visión general, el modelo es tu propio ordenador: un PC con caja de cristal, un MacBook o un portátil con Windows;
   - la cámara se mueve sola alrededor del modelo, y aparecen circuitos animados en el fondo.
+- **Ventiladores (Windows)**:
+  - eliges, para cada ventilador que acepta control, el modo automático, una velocidad fija o una curva que sigue una temperatura;
+  - si el procesador o la tarjeta gráfica llega a 90 °C, los ventiladores controlados pasan al 100% hasta que la temperatura baja a 85 °C;
+  - después de cada comando, CleanCode comprueba el valor y las RPM que informa la placa, y devuelve el ventilador al modo automático cuando no obedece;
+  - el asistente "Identificar los ventiladores" acelera un ventilador por vez y pregunta dónde está, y una guía explica qué hacer cuando un ventilador no obedece;
+  - el control del ventilador de la tarjeta gráfica llega en una próxima versión.
 
 </details>
 

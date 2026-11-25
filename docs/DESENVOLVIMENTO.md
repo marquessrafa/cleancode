@@ -52,6 +52,10 @@ pode ser preciso clicar com o botão direito › Abrir (ou liberar em Privacidad
 
 Para rodar várias cópias isoladas (testes), defina `CLEANCODE_PROFILE=<nome>`: cada perfil tem as próprias configurações e o próprio histórico.
 
+### Imagens do README
+
+As imagens animadas do README (`docs/screenshots/*.webp`) saem do próprio app, pelo script `scripts/readme-shots.cjs`. Ele percorre as telas, troca os dados pessoais por valores genéricos e grava cada tela como um WebP animado. Os passos estão no começo do script. Em resumo, você compila o app, abre o Electron com a porta de depuração e uma pasta para analisar (por exemplo, `C:\Windows`), e roda o script.
+
 ## Estrutura
 
 - `electron/main.ts`: janela, IPC, histórico, exportação, menu de contexto

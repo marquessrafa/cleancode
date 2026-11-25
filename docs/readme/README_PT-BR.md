@@ -28,7 +28,7 @@
 </div>
 
 <p align="center">
-  <img src="../screenshots/hero.webp" alt="O Monitor de hardware do CleanCode mostra um MacBook em 3D enquanto a câmera passeia ao redor do modelo" width="100%" />
+  <img src="../screenshots/hero.webp" alt="O Monitor de hardware do CleanCode mostra um PC com gabinete de vidro em 3D enquanto a câmera passeia ao redor do modelo" width="100%" />
 </p>
 
 ---
@@ -110,6 +110,9 @@ O CleanCode foi feito para ser **seguro desde o início**:
   <tr>
     <td width="50%" valign="top"><img src="../screenshots/hw-power.webp" alt="Aba Energia" width="100%" /><br /><strong>Energia</strong><br />Mostra quanto o computador consome em watts e quanto chega do carregador. Também mostra a tensão, a corrente e a saúde da bateria.</td>
     <td width="50%" valign="top"><img src="../screenshots/hw-board.webp" alt="Aba Placa-mãe" width="100%" /><br /><strong>Placa-mãe e placa lógica</strong><br />Mostra o modelo da placa, o chip, a versão do firmware (ou da BIOS, no PC) e as tensões. No PC, também mostra as ventoinhas e os pentes de memória instalados.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="../screenshots/fans.webp" alt="Tela Ventoinhas" width="100%" /><br /><strong>Ventoinhas</strong><br />No Windows, você escolhe uma velocidade fixa ou uma curva pela temperatura para cada ventoinha da placa-mãe. Um assistente descobre qual ventoinha é cada uma, e cada ventoinha volta ao modo automático quando você fecha o CleanCode.</td>
   </tr>
 </table>
 
@@ -242,6 +245,12 @@ O CleanCode foi feito para ser **seguro desde o início**:
   - cada peça tem um modelo 3D com acabamento fosco: placa de vídeo, processador, memória, placa-mãe, SSD e energia;
   - na visão geral, o modelo é o seu computador: um PC com gabinete de vidro, um MacBook ou um notebook com Windows;
   - a câmera se move sozinha ao redor do modelo, e circuitos animados aparecem ao fundo.
+- **Ventoinhas (Windows)**:
+  - você escolhe, para cada ventoinha que aceita controle, o modo automático, uma velocidade fixa ou uma curva que acompanha uma temperatura;
+  - se o processador ou a placa de vídeo chegar a 90 °C, as ventoinhas controladas vão para 100% até a temperatura cair para 85 °C;
+  - depois de cada comando, o CleanCode confere o valor e o RPM que a placa informa, e devolve a ventoinha ao modo automático quando ela não obedece;
+  - o assistente "Identificar as ventoinhas" acelera uma ventoinha por vez e pergunta onde ela fica, e um guia explica o que fazer quando uma ventoinha não obedece;
+  - o controle da ventoinha da placa de vídeo chega numa próxima versão.
 
 </details>
 

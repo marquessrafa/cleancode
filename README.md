@@ -28,7 +28,7 @@
 </div>
 
 <p align="center">
-  <img src="docs/screenshots/hero.webp" alt="The CleanCode hardware monitor shows a 3D MacBook while the camera moves around the model" width="100%" />
+  <img src="docs/screenshots/hero.webp" alt="The CleanCode hardware monitor shows a 3D desktop PC with a glass case while the camera moves around the model" width="100%" />
 </p>
 
 ---
@@ -110,6 +110,9 @@ CleanCode was built to be **safe from the start**:
   <tr>
     <td width="50%" valign="top"><img src="docs/screenshots/hw-power.webp" alt="Power tab" width="100%" /><br /><strong>Power</strong><br />Shows how many watts the computer uses and how much power comes from the charger. It also shows the voltage, the current and the battery health.</td>
     <td width="50%" valign="top"><img src="docs/screenshots/hw-board.webp" alt="Motherboard tab" width="100%" /><br /><strong>Motherboard and logic board</strong><br />Shows the board model, the chip, the firmware version (or the BIOS version, on a PC) and the voltages. On a PC, it also shows the fans and the installed memory modules.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="docs/screenshots/fans.webp" alt="Fans screen" width="100%" /><br /><strong>Fans</strong><br />On Windows, you choose a fixed speed or a temperature curve for each motherboard fan. An assistant finds out which fan is which, and each fan goes back to automatic mode when you close CleanCode.</td>
   </tr>
 </table>
 
@@ -242,6 +245,12 @@ CleanCode was built to be **safe from the start**:
   - each part has a 3D model with a matte finish: graphics card, processor, memory, motherboard, SSD and power;
   - on the overview, the model is your own computer: a desktop PC with a glass case, a MacBook or a Windows laptop;
   - the camera moves around the model on its own, and animated circuits appear in the background.
+- **Fans (Windows)**:
+  - you choose, for each fan that accepts control, the automatic mode, a fixed speed or a curve that follows a temperature;
+  - if the processor or the graphics card reaches 90 °C, the controlled fans go to 100% until the temperature drops to 85 °C;
+  - after each command, CleanCode checks the value and the RPM that the board reports, and it returns the fan to automatic mode when the fan does not obey;
+  - the "Identify the fans" assistant speeds up one fan at a time and asks where it is, and a guide explains what to do when a fan does not obey;
+  - control of the graphics card fan arrives in a future version.
 
 </details>
 
