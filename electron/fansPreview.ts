@@ -38,6 +38,8 @@ export function previewState(cfg: Record<string, FanConfig>): FanState {
       if (t) { pct = floor(Math.round(interp(c.points, t.value))); status = { mode: 'curve', pct, read: pct, error: null }; }
       else status = { mode: 'curve', pct: null, error: 'nosource' };
     }
+    // a Fan #5 simulada não segue o controle, como o CHA_FAN4 de um PC real: o RPM fica parado e a tela mostra a recusa
+    if (f.name === 'Fan #5' && status && !status.error && Math.abs((status.pct ?? f.auto) - f.auto) >= 25) { status = { ...status, pct: null, error: 'norpm' }; pct = f.auto; }
     return { id: f.id, name: f.name, hw: f.hw, kind: f.kind, pct, rpm: Math.round((f.max * pct) / 100), status, locked: f.kind === 'gpu' || undefined };
   });
   return { available: true, active: true, helperReady: true, controls, temps, emergency: false, preview: true };

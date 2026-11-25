@@ -305,6 +305,11 @@ static class Program
         // ventoinhas soltas há pouco: depois de 3 segundos, o registro anota o que a placa informa
         static readonly Dictionary<string, KeyValuePair<IControl, int>> Released = new Dictionary<string, KeyValuePair<IControl, int>>();
         const float Tolerance = 8f; const int MismatchLimit = 6;
+        // conferência pelo RPM: algumas ventoinhas aceitam o comando no registro, mas não mudam de velocidade (por exemplo, uma
+        // ventoinha controlada por outro aparelho, que só manda o RPM para a placa). Quando o pedido fica 25 pontos ou mais longe
+        // do valor de antes, a tarefa espera 8 segundos e confere se o RPM subiu (ou desceu) pelo menos 10%.
+        class RpmCheck { public float Pct; public float Rpm; public int Since; public bool Verified; }
+        static readonly Dictionary<string, RpmCheck> RpmRef = new Dictionary<string, RpmCheck>();
         static bool emergency, lastValid;
         const float HotOn = 90f, HotOff = 85f;
 
@@ -442,11 +447,32 @@ static class Program
                         else if (w.Mode == "curve" && Applied.TryGetValue(w.Id, out var before) && pct < before - 3) pct = before - 3;
                         float lo = Math.Max(0, ctl.MinSoftwareValue), hi = ctl.MaxSoftwareValue > lo ? Math.Min(100, ctl.MaxSoftwareValue) : 100;
                         pct = Math.Max(lo, Math.Min(hi, pct));
+                        bool changed = false;
                         if (!Applied.TryGetValue(w.Id, out var prev) || Math.Abs(prev - pct) >= 0.5f || ctl.ControlMode != ControlMode.Software)
                         {
+                            changed = true;
+                            if (!Touched.ContainsKey(w.Id) && read.HasValue && fanOf.TryGetValue(w.Id, out var fanBefore) && fanBefore.Value.HasValue)
+                                RpmRef[w.Id] = new RpmCheck { Pct = read.Value, Rpm = fanBefore.Value.Value };
                             ctl.SetSoftware(pct);
                             Applied[w.Id] = pct;
                             if (!Touched.ContainsKey(w.Id)) { Touched[w.Id] = ctl; Released.Remove(w.Id); Log("ventoinha " + w.Id + ": o CleanCode assumiu o controle (" + w.Mode + "); antes, a placa informava " + Pct(read) + " e " + Rpm(fanOf, w.Id)); }
+                        }
+                        // conferência pelo RPM (uma vez por ventoinha, depois de uma mudança grande)
+                        if (RpmRef.TryGetValue(w.Id, out var rc) && !rc.Verified && fanOf.TryGetValue(w.Id, out var fanNow) && fanNow.Value.HasValue)
+                        {
+                            rc.Since = changed ? 0 : rc.Since + 1;
+                            float rpmNow = fanNow.Value.Value, delta = pct - rc.Pct;
+                            if (rc.Since >= 8 && Math.Abs(delta) >= 25 && rc.Rpm > 0 && rpmNow > 0)
+                            {
+                                bool followed = delta > 0 ? rpmNow >= rc.Rpm * 1.10f : rpmNow <= rc.Rpm * 0.90f;
+                                if (!followed)
+                                {
+                                    Log("ventoinha " + w.Id + ": o pedido foi de " + Pct(rc.Pct) + " para " + Pct(pct) + ", mas o RPM foi de " + rc.Rpm.ToString("0", CultureInfo.InvariantCulture) + " para " + rpmNow.ToString("0", CultureInfo.InvariantCulture) + "; a ventoinha não segue o controle da placa e volta ao modo automático");
+                                    Refused[w.Id] = w.Sig; st.Error = "norpm"; RpmRef.Remove(w.Id);
+                                    continue; // fica fora de keep: a ventoinha é solta logo abaixo
+                                }
+                                rc.Verified = true;
+                            }
                         }
                         st.Pct = pct;
                         keep.Add(w.Id);
@@ -467,7 +493,7 @@ static class Program
             var ctl = Touched[id];
             var before = ctl.Sensor?.Value;
             try { ctl.SetDefault(); } catch (Exception e) { Log("ventoinha " + id + ": não voltou ao modo automático (" + e.Message + ")"); }
-            Touched.Remove(id); Applied.Remove(id); Mismatch.Remove(id);
+            Touched.Remove(id); Applied.Remove(id); Mismatch.Remove(id); RpmRef.Remove(id);
             Released[id] = new KeyValuePair<IControl, int>(ctl, 3);
             Log("ventoinha " + id + ": " + why + " (estava em " + Pct(before) + ")");
         }

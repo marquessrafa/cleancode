@@ -5,6 +5,16 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.21', date: '2026-11-25', headline: 'Assistente para identificar as ventoinhas',
+    groups: [
+      { title: 'Ventoinhas', icon: 'chip', items: [
+        'O assistente Identificar as ventoinhas acelera uma ventoinha por vez e pergunta onde ela fica. No final, cada saída ganha um nome, como Cooler do processador ou Gabinete, frente.',
+        'Agora o CleanCode também confere o RPM. Se a placa aceita o comando, mas a ventoinha não muda de velocidade, o CleanCode devolve a ventoinha ao modo automático e mostra Não responde.',
+        'O guia Quando uma ventoinha não obedece explica as causas mais comuns, como ventoinhas num hub de outra marca, e mostra como resolver cada uma.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.20', date: '2026-11-24', headline: 'Ventoinhas com tela nova e controle mais seguro',
     groups: [
       { title: 'Ventoinhas', icon: 'chip', items: [
