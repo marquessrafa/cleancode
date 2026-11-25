@@ -210,10 +210,11 @@ function LineChart({ series, w, h, grid, max }: { series: { data: number[]; colo
 function InfoCard({ icon, title, value, tone, text, link = tr("Saiba mais"), onLink, tint, delay = 0 }: { icon?: React.ReactNode; title: string; value?: React.ReactNode; tone?: string; text: React.ReactNode; link?: string; onLink?: () => void; tint?: string; delay?: number }) {
   return (
     <div className="anim-rise flex min-w-0 flex-col overflow-hidden rounded-2xl border border-[var(--p-line)]" style={{ animationDelay: `${delay}ms`, background: tint ? `linear-gradient(160deg, color-mix(in srgb, ${tint} 24%, transparent), var(--p-card) 75%)` : 'var(--p-card)' }}>
-      <div className="flex items-center gap-2.5 border-b border-[var(--p-line)] bg-[var(--p-card)] px-3.5 py-3">
+      {/* o título nunca encolhe por baixo do valor: quando os dois não cabem na mesma linha, o valor desce para a linha de baixo */}
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 border-b border-[var(--p-line)] bg-[var(--p-card)] px-3.5 py-3">
         {icon}
-        <span className="min-w-0 flex-1 text-[14px] font-semibold leading-tight">{title}</span>
-        {value !== undefined && <span className="shrink-0 text-[14px] font-semibold tabular-nums" style={{ color: tone }}>{value}</span>}
+        <span className="min-w-0 max-w-full shrink-0 grow break-words text-[14px] font-semibold leading-tight">{title}</span>
+        {value !== undefined && <span className="ml-auto max-w-full shrink-0 break-all text-right text-[14px] font-semibold tabular-nums" style={{ color: tone }}>{value}</span>}
       </div>
       <div className="flex flex-1 flex-col px-3.5 pb-3 pt-2.5">
         <p className="flex-1 text-[12.5px] leading-snug text-[var(--p-soft)]">{text}</p>
