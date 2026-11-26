@@ -2203,5 +2203,7 @@
  "O cartão da placa de vídeo fica da mesma altura dos outros cartões da linha.": "La tarjeta de la gráfica tiene la misma altura que las otras tarjetas de la fila.",
  "Depois de uma atualização, o CleanCode refaz a varredura de hardware sozinho, se você já tinha feito antes. O Windows pede a sua permissão uma vez.": "Después de una actualización, CleanCode rehace el análisis de hardware solo, si ya lo habías hecho antes. Windows pide tu permiso una vez.",
  "Um botão no Monitor de hardware mostra se a varredura foi feita, se ela teve erros ou se ainda falta fazer. Um clique no botão refaz a varredura.": "Un botón en el Monitor de hardware muestra si el análisis está hecho, si tuvo errores o si todavía falta hacerlo. Un clic en el botón rehace el análisis.",
- "O disco em 3D da Visão geral não é mais cortado quando a câmera se move.": "El disco en 3D de la Vista general ya no se corta cuando la cámara se mueve."
+ "O disco em 3D da Visão geral não é mais cortado quando a câmera se move.": "El disco en 3D de la Vista general ya no se corta cuando la cámara se mueve.",
+ "Curva da ventoinha sem espera ao trocar de modo": "Curva del ventilador sin espera al cambiar de modo",
+ "Quando você troca de modo ou de curva, a ventoinha vai na hora para a velocidade nova. Antes, a curva descia devagar e levava até 33 segundos para chegar ao valor certo.": "Cuando cambias de modo o de curva, el ventilador va de inmediato a la nueva velocidad. Antes, la curva bajaba despacio y tardaba hasta 33 segundos en llegar al valor correcto."
 }

@@ -5,6 +5,14 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.26', date: '2026-11-25', headline: 'Curva da ventoinha sem espera ao trocar de modo',
+    groups: [
+      { title: 'Ventoinhas', icon: 'chip', items: [
+        'Quando você troca de modo ou de curva, a ventoinha vai na hora para a velocidade nova. Antes, a curva descia devagar e levava até 33 segundos para chegar ao valor certo.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.25', date: '2026-11-25', headline: 'Varredura automática e ventoinhas na rotação real',
     groups: [
       { title: 'Ventoinhas', icon: 'chip', items: [

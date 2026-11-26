@@ -508,6 +508,8 @@ static class Program
         static readonly object L = new object();
         static readonly Dictionary<string, IControl> Touched = new Dictionary<string, IControl>();
         static readonly Dictionary<string, float> Applied = new Dictionary<string, float>();
+        // configuração (linha do pedido) que gerou o último valor aplicado: quando ela muda, a descida lenta da curva não vale
+        static readonly Dictionary<string, string> AppliedSig = new Dictionary<string, string>();
         static List<State> Status = new List<State>();
         // conferência: quantas leituras seguidas a placa informou um valor diferente do pedido, e as ventoinhas que a placa
         // recusou (com o pedido recusado; um pedido diferente tenta de novo)
@@ -658,7 +660,11 @@ static class Program
                         else { st.Error = "nosource"; continue; } // sem a temperatura: a ventoinha fica (ou volta) no modo automático
                         if (emergency) { pct = 100; st.Mode = "emergency"; }
                         // na curva, a velocidade sobe na hora e desce até 3 pontos por segundo, para a ventoinha não ficar oscilando
-                        else if (w.Mode == "curve" && Applied.TryGetValue(w.Id, out var before) && pct < before - 3) pct = before - 3;
+                        // quando a temperatura oscila. Numa troca de modo ou de curva, a velocidade nova entra na hora: sem isso,
+                        // sair de 100% fixo para uma curva em 0% levava uns 33 segundos.
+                        else if (w.Mode == "curve" && AppliedSig.TryGetValue(w.Id, out var sigBefore) && sigBefore == w.Sig
+                                 && Applied.TryGetValue(w.Id, out var before) && pct < before - 3) pct = before - 3;
+                        AppliedSig[w.Id] = w.Sig;
                         // placa AMD: o 0% precisa chegar até o ADLX (ele vira Zero RPM), então o mínimo da biblioteca não corta o pedido
                         float lo = amd ? 0 : Math.Max(0, ctl.MinSoftwareValue), hi = ctl.MaxSoftwareValue > lo ? Math.Min(100, ctl.MaxSoftwareValue) : 100;
                         pct = Math.Max(lo, Math.Min(hi, pct));
@@ -714,7 +720,7 @@ static class Program
                 else ctl.SetDefault();
             }
             catch (Exception e) { Log("ventoinha " + id + ": não voltou ao modo automático (" + e.Message + ")"); }
-            Touched.Remove(id); Applied.Remove(id); Mismatch.Remove(id); RpmRef.Remove(id);
+            Touched.Remove(id); Applied.Remove(id); AppliedSig.Remove(id); Mismatch.Remove(id); RpmRef.Remove(id);
             Released[id] = new KeyValuePair<IControl, int>(ctl, 3);
             Log("ventoinha " + id + ": " + why + " (estava em " + Pct(before) + ")");
         }

@@ -2397,5 +2397,7 @@
  "O cartão da placa de vídeo fica da mesma altura dos outros cartões da linha.": "The graphics card tile has the same height as the other tiles in its row.",
  "Depois de uma atualização, o CleanCode refaz a varredura de hardware sozinho, se você já tinha feito antes. O Windows pede a sua permissão uma vez.": "After an update, CleanCode redoes the hardware scan on its own if you had already done it before. Windows asks for your permission once.",
  "Um botão no Monitor de hardware mostra se a varredura foi feita, se ela teve erros ou se ainda falta fazer. Um clique no botão refaz a varredura.": "A button in the Hardware monitor shows whether the scan is done, had errors or still needs to be done. One click on the button redoes the scan.",
- "O disco em 3D da Visão geral não é mais cortado quando a câmera se move.": "The 3D disk in the Overview is no longer cut off when the camera moves."
+ "O disco em 3D da Visão geral não é mais cortado quando a câmera se move.": "The 3D disk in the Overview is no longer cut off when the camera moves.",
+ "Curva da ventoinha sem espera ao trocar de modo": "Fan curve without delay when you change mode",
+ "Quando você troca de modo ou de curva, a ventoinha vai na hora para a velocidade nova. Antes, a curva descia devagar e levava até 33 segundos para chegar ao valor certo.": "When you change the mode or the curve, the fan goes to the new speed right away. Before, the curve went down slowly and took up to 33 seconds to reach the right value."
 }
