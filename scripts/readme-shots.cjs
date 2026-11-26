@@ -8,7 +8,7 @@
 //
 // - O caminho no fim do comando do Electron faz o app analisar essa pasta (as telas de Análise de disco precisam de uma
 //   análise). Use uma pasta sem dados pessoais e sem a lista dos seus programas, como "C:\Windows".
-// - Privacidade (AGENTS.md, seção 5): antes de cada gravação, o script troca nomes de usuário, nome do computador,
+// - Privacidade (AGENTS.md, seção 6): antes de cada gravação, o script troca nomes de usuário, nome do computador,
 //   endereços IP e MAC por valores genéricos em todo o texto da tela, e continua trocando enquanto a tela muda.
 //   Textos desenhados em canvas não passam por essa troca, então o script desliga os rótulos do treemap.
 // - Cada cena vira um WebP animado: o Chromium grava cada quadro como WebP (Page.captureScreenshot), e o script junta os

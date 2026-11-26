@@ -447,12 +447,18 @@ static class Program
             int lo = g.Speed.Min, hi = g.Speed.Max > lo ? g.Speed.Max : 100, step = g.Speed.Step > 0 ? g.Speed.Step : 1;
             int speed = (int)Math.Round(Math.Max(lo, Math.Min(hi, pct)) / step) * step;
             speed = Math.Max(lo, Math.Min(hi, speed));
-            // 0% pedido (na velocidade fixa ou num ponto da curva) quer dizer Zero RPM: o driver para a ventoinha enquanto a
-            // placa está fria e volta a girar quando ela esquenta. A curva fica no mínimo que o driver aceita (o driver não
-            // aceita 0% na curva). Acima de 0%, o Zero RPM fica desligado, para a ventoinha girar na velocidade pedida.
-            bool zero = pct < 0.5f && g.HasZeroRpm;
-            if (g.HasZeroRpm) Fn<FnSetBool>(g.Fan, Fan_SetZeroRPM)(g.Fan, (byte)(zero ? 1 : 0));
-            if (zero) speed = lo;
+            // 0% pedido (na velocidade fixa ou num ponto da curva) quer dizer Zero RPM, do mesmo jeito que no modo automático:
+            // a curva original da placa volta e o Zero RPM fica ligado. Assim o driver para a ventoinha enquanto a placa está
+            // fria e só volta a girar quando ela esquenta. (Com a curva toda no mínimo, o driver ligava a ventoinha com a placa
+            // ainda morna.) Acima de 0%, o Zero RPM fica desligado, para a ventoinha girar na velocidade pedida.
+            if (pct < 0.5f && g.HasZeroRpm)
+            {
+                var orig = g.Original;
+                var err0 = WriteStates(g.Fan, (i, s) => i < orig.Count ? orig[i] : s);
+                Fn<FnSetBool>(g.Fan, Fan_SetZeroRPM)(g.Fan, 1);
+                return err0;
+            }
+            if (g.HasZeroRpm) Fn<FnSetBool>(g.Fan, Fan_SetZeroRPM)(g.Fan, 0);
             return WriteStates(g.Fan, (i, s) => new[] { speed, s[1] });
         }
 
@@ -653,7 +659,8 @@ static class Program
                         if (emergency) { pct = 100; st.Mode = "emergency"; }
                         // na curva, a velocidade sobe na hora e desce até 3 pontos por segundo, para a ventoinha não ficar oscilando
                         else if (w.Mode == "curve" && Applied.TryGetValue(w.Id, out var before) && pct < before - 3) pct = before - 3;
-                        float lo = Math.Max(0, ctl.MinSoftwareValue), hi = ctl.MaxSoftwareValue > lo ? Math.Min(100, ctl.MaxSoftwareValue) : 100;
+                        // placa AMD: o 0% precisa chegar até o ADLX (ele vira Zero RPM), então o mínimo da biblioteca não corta o pedido
+                        float lo = amd ? 0 : Math.Max(0, ctl.MinSoftwareValue), hi = ctl.MaxSoftwareValue > lo ? Math.Min(100, ctl.MaxSoftwareValue) : 100;
                         pct = Math.Max(lo, Math.Min(hi, pct));
                         bool changed = false;
                         if (!Applied.TryGetValue(w.Id, out var prev) || Math.Abs(prev - pct) >= 0.5f || (!amd && ctl.ControlMode != ControlMode.Software))

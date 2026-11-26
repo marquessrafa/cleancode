@@ -5,6 +5,24 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.25', date: '2026-11-25', headline: 'Varredura automática e ventoinhas na rotação real',
+    groups: [
+      { title: 'Ventoinhas', icon: 'chip', items: [
+        'Nas placas de vídeo AMD, o 0% agora devolve a curva original da placa e liga o Zero RPM. Assim, a ventoinha fica parada enquanto a placa está fria.',
+        'As ventoinhas da placa de vídeo giram na rotação real, com o borrão de movimento que uma câmera mostraria.',
+        'Os cartões das ventoinhas mostram o modo com um desenho animado: um robô para o Automático, uma linha reta para a Velocidade fixa e uma onda para a Curva.',
+        'O cartão da placa de vídeo fica da mesma altura dos outros cartões da linha.',
+      ] },
+      { title: 'Monitor de hardware', icon: 'panel', items: [
+        'Depois de uma atualização, o CleanCode refaz a varredura de hardware sozinho, se você já tinha feito antes. O Windows pede a sua permissão uma vez.',
+        'Um botão no Monitor de hardware mostra se a varredura foi feita, se ela teve erros ou se ainda falta fazer. Um clique no botão refaz a varredura.',
+      ] },
+      { title: 'Análise de disco', icon: 'wrench', items: [
+        'O disco em 3D da Visão geral não é mais cortado quando a câmera se move.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.24', date: '2026-11-25', headline: 'Ventoinhas com fotos, 3D e textos mais curtos',
     groups: [
       { title: 'Ventoinhas', icon: 'chip', items: [

@@ -241,6 +241,8 @@ export interface MetricsApi {
   /** Monta o relatório dos sensores (sem dados pessoais) para abrir uma issue no GitHub. */
   advancedReport?(checks?: HwCheck[]): Promise<string>;
   advancedDeactivate?(): Promise<{ ok: boolean; message: string }>;
+  /** Refaz a varredura sozinha depois de uma atualização, se ela já tinha sido feita antes (Windows). */
+  advancedAuto?(): Promise<void>;
   /** controle das ventoinhas (só Windows, com o monitoramento avançado ativo; ver win32/fans.ts) */
   fanState?(): Promise<FanState>;
   fanApply?(cfg: Record<string, FanConfig>): void;
@@ -283,7 +285,7 @@ export interface HwLive {
   sensors?: { kind: 'cpu' | 'gpu' | 'disk' | 'battery' | 'board' | 'ram' | 'psu'; group?: string; hw?: string; name: string; value: number; min?: number; max?: number; unit?: string }[];
   /** monitoramento avançado (Windows: LibreHardwareMonitor + driver PawnIO; Mac: IOReport) */
   /** cpuBlocked: por que o processador está sem temperatura e consumo (Windows; ver lhm.ts) */
-  advanced?: { available: boolean; active: boolean; source?: string; cpuBlocked?: 'driver' | 'admin' | 'crash' | 'nodata'; logPath?: string };
+  advanced?: { available: boolean; active: boolean; source?: string; cpuBlocked?: 'driver' | 'admin' | 'crash' | 'nodata'; logPath?: string; scan?: 'ok' | 'partial' | 'none' | 'running' };
   /** o que só aparece com o app aberto como administrador */
   needsAdmin?: string;
 }

@@ -154,7 +154,66 @@ export async function pawnioInstalled(): Promise<boolean> {
   }
   return false;
 }
-export async function activate(onStep: (step: number, info?: { driverPresent?: boolean }) => void = () => {}): Promise<{ ok: boolean; message: string; checks?: HwCheck[] }> {
+// ---------- estado da varredura (botão do Monitor de hardware) ----------
+/**
+ * - 'ok': a varredura terminou e todas as peças foram mapeadas;
+ * - 'partial': a varredura terminou, mas alguma peça ficou com aviso ou erro;
+ * - 'none': a varredura ainda não foi feita (ou a tarefa de administrador não está ativa);
+ * - 'running': a varredura está rodando agora.
+ * O resultado fica salvo em hwscan.json, na pasta de dados do app, para o botão continuar certo depois de reabrir o app.
+ */
+export type ScanStatus = 'ok' | 'partial' | 'none' | 'running';
+type ScanFile = { status?: 'ok' | 'partial'; at?: number; triedSha?: string };
+let scanData: ScanFile | null = null;
+const scanFile = () => path.join(app.getPath('userData'), 'hwscan.json');
+function scanLoad(): ScanFile {
+  if (!scanData) { try { scanData = JSON.parse(fs.readFileSync(scanFile(), 'utf8')); } catch { scanData = {}; } }
+  return scanData!;
+}
+function scanSave(p: ScanFile) {
+  scanData = { ...scanLoad(), ...p };
+  try { fs.writeFileSync(scanFile(), JSON.stringify(scanData)); } catch { /* */ }
+}
+const checksStatus = (c?: HwCheck[]): 'ok' | 'partial' => (c?.length && c.every((x) => x.status === 'ok') ? 'ok' : 'partial');
+let running: Promise<{ ok: boolean; message: string; checks?: HwCheck[] }> | null = null;
+let autoChecking = false, validating = false;
+export async function scanStatus(): Promise<ScanStatus> {
+  if (running || autoChecking) return 'running';
+  if (!(await advancedActive())) return 'none';
+  const s = scanLoad();
+  if (s.status) return s.status;
+  // ativado numa versão que ainda não guardava o resultado: confere as peças uma vez, em segundo plano
+  if (!dataAt) return helperSilent() ? 'partial' : 'running';
+  if (!validating) { validating = true; validate().then((c) => scanSave({ status: checksStatus(c), at: Date.now() })).catch(() => {}).finally(() => { validating = false; }); }
+  return 'running';
+}
+/**
+ * Refaz a varredura sozinha quando ela já foi feita antes e a atualização trouxe um programa dos sensores diferente.
+ * O programa roda como administrador, então o Windows pede a sua permissão uma vez. Se você recusar, o app não pergunta
+ * de novo nesta versão, e o botão do Monitor de hardware refaz a varredura quando você quiser.
+ */
+export async function autoRefresh() {
+  const exe = helperPath(); if (!exe || running) return;
+  autoChecking = true;
+  try {
+    if (!(await run('schtasks.exe', ['/Query', '/TN', TASK], 15000)).ok) return; // a varredura nunca foi feita
+    if (copyCurrent()) return;
+    const cur = sha(exe);
+    if (!cur || scanLoad().triedSha === cur) return;
+    scanSave({ triedSha: cur });
+  } finally { autoChecking = false; }
+  await activate();
+}
+/** Faz a varredura. Se outra já estiver rodando (por exemplo, a automática), espera por ela em vez de começar outra. */
+export function activate(onStep: (step: number, info?: { driverPresent?: boolean }) => void = () => {}): Promise<{ ok: boolean; message: string; checks?: HwCheck[] }> {
+  if (running) return running;
+  running = activateNow(onStep).then((r) => {
+    if (r.ok) scanSave({ status: checksStatus(r.checks), at: Date.now() });
+    return r;
+  }).finally(() => { running = null; });
+  return running;
+}
+async function activateNow(onStep: (step: number, info?: { driverPresent?: boolean }) => void): Promise<{ ok: boolean; message: string; checks?: HwCheck[] }> {
   onStep(0);
   const exe = helperPath();
   if (!exe) return { ok: false, message: t("O componente dos sensores não foi encontrado nesta instalação") };

@@ -18,7 +18,13 @@ export function driveKind(hw?: { bus?: string; media?: string }): DriveKind {
 
 const accentColor = () => new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#2fd6a0');
 
-export function DriveArt({ kind, label, className }: { kind: DriveKind; label?: string; className?: string }) {
+/**
+ * area: o espaço do disco dentro do cartão (largura em fração do cartão, encostado na direita, e as margens de cima e de
+ * baixo em pixels). O desenho ocupa o cartão inteiro, e a câmera só põe o disco no centro desse espaço. Assim, quando a
+ * câmera balança, as pontas do disco podem passar um pouco do espaço sem ser cortadas. Antes, o desenho ficava preso
+ * ao espaço, e as pontas sumiam numa borda invisível no meio do cartão.
+ */
+export function DriveArt({ kind, label, area = { w: 0.45, top: 40, bottom: 24 } }: { kind: DriveKind; label?: string; area?: { w: number; top: number; bottom: number } }) {
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = host.current!;
@@ -40,7 +46,7 @@ export function DriveArt({ kind, label, className }: { kind: DriveKind; label?: 
     // enquadra o modelo inteiro: centro e raio da caixa que envolve o modelo
     const bb = new THREE.Box3().setFromObject(model.group), center = bb.getCenter(new THREE.Vector3()), radius = bb.getSize(new THREE.Vector3()).length() / 2;
     const camera = new THREE.PerspectiveCamera(30, 1, 0.01, 50);
-    const dist = radius / Math.sin((camera.fov * Math.PI) / 360) * 0.78;
+    const tanHalf = Math.tan((camera.fov * Math.PI) / 360);
     let raf = 0, visible = true; const t0 = performance.now(); let last = t0;
     const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; }); io.observe(el);
     const live = { accent: accentColor(), disk: 0.25 } as any;
@@ -49,20 +55,27 @@ export function DriveArt({ kind, label, className }: { kind: DriveKind; label?: 
       if (!visible || document.hidden) return;
       const W = el.clientWidth, H = el.clientHeight; if (!W || !H) return;
       const size = renderer.getSize(new THREE.Vector2());
-      if (size.x !== W || size.y !== H) { renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix(); }
+      if (size.x !== W || size.y !== H) renderer.setSize(W, H, false);
+      // o disco ocupa o espaço do lado direito: a distância da câmera faz o modelo caber no lado menor desse espaço, e o
+      // deslocamento da vista leva o centro do modelo para o centro do espaço
+      const aw = W * area.w, ah = Math.max(1, H - area.top - area.bottom);
+      const dist = (radius * 0.78 * H) / (tanHalf * Math.min(aw, ah));
+      camera.aspect = W / H;
+      camera.setViewOffset(W, H, W / 2 - (W - aw / 2), H / 2 - (area.top + ah / 2), W, H);
       const t = (now - t0) / 1000, dt = Math.min(0.1, (now - last) / 1000); last = now;
       // movimento bem pequeno: a câmera balança uns 7 graus para cada lado e sobe e desce um pouco
       const az = -0.65 + Math.sin(t * 0.35) * 0.12, el2 = 0.5 + Math.sin(t * 0.23) * 0.05;
       camera.position.set(center.x + Math.sin(az) * Math.cos(el2) * dist, center.y + Math.sin(el2) * dist, center.z + Math.cos(az) * Math.cos(el2) * dist);
       camera.lookAt(center);
+      camera.updateProjectionMatrix();
       model.group.position.y = Math.sin(t * 0.8) * radius * 0.02;
       model.update?.(live, t, dt);
       renderer.render(scene, camera);
     };
     raf = requestAnimationFrame(frame);
     return () => { cancelAnimationFrame(raf); io.disconnect(); pmrem.dispose(); renderer.dispose(); renderer.domElement.remove(); };
-  }, [kind, label]);
-  return <div ref={host} className={className} style={{ position: 'absolute', pointerEvents: 'none' }} />;
+  }, [kind, label, area.w, area.top, area.bottom]);
+  return <div ref={host} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />;
 }
 
 export function CardParticles({ className }: { className?: string }) {

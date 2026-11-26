@@ -103,6 +103,9 @@ input, textarea, select { user-select: text; }
 
 @keyframes fade-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+/* desenhos do modo das ventoinhas (Fans.tsx): anda um período para a direita e recomeça sem salto */
+@keyframes mode-slide { from { transform: translateX(0); } to { transform: translateX(var(--d)); } }
+@media (prefers-reduced-motion: reduce) { .mode-icon g { animation: none !important; } }
 /* entrada em cascata: cada filho sobe e aparece, um pouco depois do anterior (painel das ventoinhas) */
 /* Ventoinhas: a placa grande some para baixo na tela estreita e para a direita na tela larga (1500 pixels ou mais) */
 .gpu-hero { -webkit-mask-image: linear-gradient(to bottom, #000 50%, transparent 96%); mask-image: linear-gradient(to bottom, #000 50%, transparent 96%); }

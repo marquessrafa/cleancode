@@ -235,7 +235,7 @@ async function hwLive(): Promise<HwLive> {
     const cpuPkgW = pick('cpu', 'power', /Package|CPU Package/i)?.value;
     const gpuW = pick('gpu', 'power', /GPU (Package|Power|Board)|Total/i)?.value;
     const value: HwLive = {
-      advanced: { available: !!Lhm.helperPath(), active: lhmActive, source: 'LibreHardwareMonitor', cpuBlocked: Lhm.cpuBlocked(lsnap, flat), logPath: Lhm.logPath(lhmActive) },
+      advanced: { available: !!Lhm.helperPath(), active: lhmActive, source: 'LibreHardwareMonitor', cpuBlocked: Lhm.cpuBlocked(lsnap, flat), logPath: Lhm.logPath(lhmActive), scan: await Lhm.scanStatus().catch(() => 'none' as const) },
       sensors: flat.length ? flat.map((x) => ({ kind: x.kind as any, group: x.group, hw: x.hw, name: x.name, value: x.value, min: x.min, max: x.max, unit: x.unit })) : sensors,
       needsAdmin: !lhmActive && !admin && disks.length > 0 && disks.every((d) => d.temp === undefined) && !flat.some((x) => x.kind === 'disk' && x.group === 'temp') ? tr("A temperatura de {0} só é informada pelo Windows com o app aberto como administrador.", disks.length === 1 ? 'o disco' : `cada um dos ${disks.length} discos`) : undefined,
       gpu: { util: pick('gpu', 'load', /GPU Core|^D3D 3D/i)?.value !== undefined ? Math.round(pick('gpu', 'load', /GPU Core|^D3D 3D/i)!.value) : typeof j.util === 'number' ? Math.round(j.util) : undefined, memUsed: (pick('gpu', 'data', /Memory Used|GPU Memory Used/i)?.value ?? 0) * 1048576 || j.mem || undefined, memTotal: (pick('gpu', 'data', /Memory Total/i)?.value ?? 0) * 1048576 || hw?.gpus[0]?.vram, temp: pick('gpu', 'temp', /GPU Core|GPU Temperature|^GPU$/i)?.value ?? gpuTemp, procs: (Array.isArray(j.procs) ? j.procs : j.procs ? [j.procs] : []).map((p: any) => ({ name: p.name || `PID ${p.pid}`, pid: p.pid, util: p.util })) },
@@ -290,5 +290,5 @@ async function disks(): Promise<DiskDetail[]> {
 }
 
 export const metrics: MetricsApi = { machineName, memory, battery, temperatures, network, devices, memoryDetail, batteryHealth, networkInfo, eject, hardware, hwLive, disks,
-  advancedActivate: (onStep) => Lhm.activate(onStep), advancedReport: (checks) => Lhm.report(checks), advancedDeactivate: () => Lhm.deactivate(),
+  advancedActivate: (onStep) => Lhm.activate(onStep), advancedReport: (checks) => Lhm.report(checks), advancedDeactivate: () => Lhm.deactivate(), advancedAuto: () => Lhm.autoRefresh(),
   fanState: () => Fans.state(), fanApply: (cfg) => Fans.apply(cfg), fanTest: (id, pct) => Fans.test(id, pct) };

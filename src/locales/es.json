@@ -2187,5 +2187,21 @@
  "órfão": "huérfano",
  "última modificação": "última modificación",
  "último acesso": "último acceso",
- "“Analisar com CleanCode” no menu do": "“Analizar con CleanCode” en el menú de"
+ "“Analisar com CleanCode” no menu do": "“Analizar con CleanCode” en el menú de",
+ "Fazendo a varredura": "Haciendo el análisis",
+ "O CleanCode está mapeando os sensores. Se o Windows pedir permissão, clique em Sim.": "CleanCode está mapeando los sensores. Si Windows pide permiso, haz clic en Sí.",
+ "Varredura feita": "Análisis hecho",
+ "Todas as peças foram mapeadas. Clique para fazer a varredura de novo.": "Todas las piezas fueron mapeadas. Haz clic para hacer el análisis de nuevo.",
+ "Varredura com erros": "Análisis con errores",
+ "A varredura terminou, mas algumas peças ficaram sem dados. Clique para ver o resultado e fazer a varredura de novo.": "El análisis terminó, pero algunas piezas quedaron sin datos. Haz clic para ver el resultado y hacer el análisis de nuevo.",
+ "Varredura não feita": "Análisis no hecho",
+ "Clique para mapear os sensores. O Windows pede a sua permissão de administrador uma vez.": "Haz clic para mapear los sensores. Windows pide tu permiso de administrador una vez.",
+ "Varredura automática e ventoinhas na rotação real": "Análisis automático y ventiladores a la velocidad real",
+ "Nas placas de vídeo AMD, o 0% agora devolve a curva original da placa e liga o Zero RPM. Assim, a ventoinha fica parada enquanto a placa está fria.": "En las tarjetas gráficas AMD, el 0% ahora devuelve la curva original de la tarjeta y activa el Zero RPM. Así, el ventilador queda parado mientras la tarjeta está fría.",
+ "As ventoinhas da placa de vídeo giram na rotação real, com o borrão de movimento que uma câmera mostraria.": "Los ventiladores de la tarjeta gráfica giran a la velocidad real, con el desenfoque de movimiento que mostraría una cámara.",
+ "Os cartões das ventoinhas mostram o modo com um desenho animado: um robô para o Automático, uma linha reta para a Velocidade fixa e uma onda para a Curva.": "Las tarjetas de los ventiladores muestran el modo con un dibujo animado: un robot para Automático, una línea recta para Velocidad fija y una onda para Curva.",
+ "O cartão da placa de vídeo fica da mesma altura dos outros cartões da linha.": "La tarjeta de la gráfica tiene la misma altura que las otras tarjetas de la fila.",
+ "Depois de uma atualização, o CleanCode refaz a varredura de hardware sozinho, se você já tinha feito antes. O Windows pede a sua permissão uma vez.": "Después de una actualización, CleanCode rehace el análisis de hardware solo, si ya lo habías hecho antes. Windows pide tu permiso una vez.",
+ "Um botão no Monitor de hardware mostra se a varredura foi feita, se ela teve erros ou se ainda falta fazer. Um clique no botão refaz a varredura.": "Un botón en el Monitor de hardware muestra si el análisis está hecho, si tuvo errores o si todavía falta hacerlo. Un clic en el botón rehace el análisis.",
+ "O disco em 3D da Visão geral não é mais cortado quando a câmera se move.": "El disco en 3D de la Vista general ya no se corta cuando la cámara se mueve."
 }

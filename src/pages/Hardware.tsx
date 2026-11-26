@@ -2,7 +2,7 @@
 // com valor atual, mínimo, máximo, média e minigráfico de cada sensor Valores medidos desde que você abriu esta tela.
 // Windows: LibreHardwareMonitor (com o driver PawnIO, quando ativado). Mac: IOReport + sensores do chip.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Cpu, Gpu, MemoryStick, CircuitBoard, Zap, Thermometer, LayoutGrid, HardDrive, Download, ShieldCheck, Loader2, Activity, Fan } from 'lucide-react';
+import { Cpu, Gpu, MemoryStick, CircuitBoard, Zap, Thermometer, LayoutGrid, HardDrive, Download, ShieldCheck, Loader2, Fan, Check, AlertTriangle, X } from 'lucide-react';
 import { cc, isMac, HardwareInfo, HardwareLive, DiskDetail } from '../lib/api';
 import { fmtSize } from '../lib/format';
 import { Button, cx } from '../components/ui';
@@ -12,7 +12,7 @@ import Viewer3D, { LiveInput } from '../hw3d/Viewer';
 import { gpuModel, cpuModel, ramModel, boardModel, ssdModel, powerModel, pcModel, laptopModel } from '../hw3d/models';
 import { socModel, gpuChipModel, soDimmModel, solderedMemModel, macLogicBoardModel, laptopBoardModel, onboardFlashModel } from '../hw3d/mobile';
 import { t as tr, LOCALE } from '../lib/i18n';
-import { AdvancedSetupModal, OPEN_ADVANCED, needsAdvanced } from '../components/AdvancedSetupModal';
+import { AdvancedSetupModal, OPEN_ADVANCED } from '../components/AdvancedSetupModal';
 
 type Tab = 'overview' | 'cpu' | 'gpu' | 'ram' | 'board' | 'storage' | 'power' | 'sensors';
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
@@ -27,6 +27,27 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 ];
 const GROUP_LABEL: Record<string, string> = { temp: tr("Temperaturas"), volt: tr("Tensões"), current: tr("Correntes"), power: tr("Consumo"), clock: tr("Frequências"), load: tr("Uso"), fan: tr("Ventoinhas"), control: tr("Controle das ventoinhas"), level: 'Níveis', data: tr("Dados"), throughput: tr("Transferência"), energy: tr("Energia"), factor: tr("Fatores"), time: tr("Tempo"), limit: tr("Limites (de fábrica)") };
 const GROUP_ORDER = ['temp', 'power', 'volt', 'current', 'clock', 'load', 'fan', 'control', 'level', 'data', 'throughput', 'energy', 'factor', 'time', 'limit'];
+/**
+ * Botão da varredura de hardware (Windows). Ele mostra se a varredura foi feita e refaz a varredura com um clique:
+ * check quando ela terminou, exclamação quando alguma peça ficou com aviso ou erro, e X quando ela ainda não foi feita.
+ */
+function ScanButton({ live }: { live: HardwareLive | null }) {
+  const adv = live?.live?.advanced;
+  if (isMac || !adv?.available) return null;
+  const st = adv.scan || (adv.active ? 'ok' : 'none');
+  const look = {
+    running: { icon: <Loader2 size={13} className="animate-spin" />, label: tr("Fazendo a varredura"), tip: tr("O CleanCode está mapeando os sensores. Se o Windows pedir permissão, clique em Sim."), cls: 'bg-[var(--accent-soft)] text-[var(--accent)]' },
+    ok: { icon: <Check size={13} />, label: tr("Varredura feita"), tip: tr("Todas as peças foram mapeadas. Clique para fazer a varredura de novo."), cls: 'bg-[var(--accent-soft)] text-[var(--accent)] hover:brightness-110' },
+    partial: { icon: <AlertTriangle size={13} />, label: tr("Varredura com erros"), tip: tr("A varredura terminou, mas algumas peças ficaram sem dados. Clique para ver o resultado e fazer a varredura de novo."), cls: 'bg-[color-mix(in_srgb,#f59e0b_18%,transparent)] text-[#f59e0b] hover:brightness-110' },
+    none: { icon: <X size={13} />, label: tr("Varredura não feita"), tip: tr("Clique para mapear os sensores. O Windows pede a sua permissão de administrador uma vez."), cls: 'bg-[var(--accent)] text-[var(--on-accent)] hover:brightness-110' },
+  }[st];
+  return (
+    <button disabled={st === 'running'} title={look.tip} onClick={() => window.dispatchEvent(new Event(OPEN_ADVANCED))}
+      className={cx('flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-semibold', look.cls)}>
+      {look.icon}{look.label}
+    </button>
+  );
+}
 const KIND_LABEL: Record<string, string> = { cpu: tr("Processador"), gpu: isMac ? 'GPU' : tr("Placa de vídeo"), ram: tr("Memória"), board: isMac ? tr("Placa lógica") : tr("Placa-mãe"), disk: tr("Armazenamento"), battery: tr("Bateria"), psu: tr("Energia") };
 const n = (v?: number, d = 1) => (v === undefined || v === null || isNaN(v) ? '—' : v.toLocaleString(LOCALE, { maximumFractionDigits: d }));
 const fmtVal = (v: number | undefined, unit = '') => {
@@ -240,9 +261,7 @@ export default function Hardware() {
           <h1 className="text-xl font-semibold">{tr("Monitor de hardware")}</h1>
           <p className="truncate text-[13px] text-muted">{info ? [info.board.system || info.board.model, cpuShort, tr("{0} de RAM", fmtSize(info.memory.total, 'auto', 0)), info.gpus[0]?.name].filter(Boolean).join(' · ') : tr("Lendo o hardware…")}</p>
         </div>
-        {needsAdvanced(live)
-          ? <button onClick={() => window.dispatchEvent(new Event(OPEN_ADVANCED))} className="flex items-center gap-1.5 rounded-full bg-[var(--accent)] px-3 py-1 text-[12px] font-semibold text-[var(--on-accent)] hover:brightness-110"><ShieldCheck size={13} />{tr("Mapear os sensores")}</button>
-          : L?.advanced?.active && <span className="flex items-center gap-1.5 rounded-full bg-[var(--accent-soft)] px-3 py-1 text-[12px] font-semibold text-[var(--accent)]"><Activity size={13} />{L.advanced.source}</span>}
+        <ScanButton live={live} />
         <AdvancedSetupModal live={live} />
       </div>
       {/* abas e aviso ficam por cima do 3D, que vaza para cima delas em fade */}

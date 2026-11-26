@@ -84,7 +84,23 @@ O app funciona em português do Brasil, inglês e espanhol.
 - As notas de versão (`release-notes/<versão>.md`) seguem o mesmo estilo. Explique primeiro o que
   mudou para quem usa o app. Depois, se for útil, explique como a mudança funciona por dentro.
 
-## 5. Privacidade
+## 5. Respostas na conversa
+
+Estas regras valem para as respostas que o agente dá na conversa com o dono do projeto.
+
+1. **Responda curto e direto.** Use poucas palavras e frases curtas. Assim, a conversa gasta menos
+   tokens, que são as unidades de texto que o modelo cobra.
+2. **Só explique mais quando for preciso.** Dê detalhes apenas quando a pessoa precisar deles para
+   entender ou para decidir alguma coisa.
+3. **Fale simples, sem tecniquês.** Use palavras do dia a dia. Se um termo técnico for necessário,
+   explique o termo em poucas palavras.
+4. **Não deixe de avisar.** Mesmo com respostas curtas, avise antes de apagar, mover ou mudar algo
+   que não dá para desfazer.
+
+Estas regras não mudam o item 1. Textos do app, documentos, commits e changelog continuam com frases
+completas.
+
+## 6. Privacidade
 
 - Não coloque nome de usuário, e-mail, nome de rede Wi-Fi, endereços IP ou nomes de projetos pessoais
   em capturas de tela, commits ou documentos públicos.

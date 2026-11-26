@@ -38,13 +38,15 @@ export function AdvancedSetupModal({ live }: { live: HardwareLive | null }) {
   const busyRef = useRef(false);
 
   // abre sozinho uma vez por sessão, quando a tela de hardware percebe que os sensores avançados não estão ativos
+  // (não abre enquanto a varredura automática, depois de uma atualização, está rodando)
+  const autoRunning = live?.live?.advanced?.scan === 'running';
   useEffect(() => {
-    if (!need || open) return;
+    if (!need || open || autoRunning) return;
     let seen = ''; try { seen = sessionStorage.getItem(seenKey) || ''; } catch { /* */ }
     if (seen) return;
     try { sessionStorage.setItem(seenKey, '1'); } catch { /* */ }
     setPhase('intro'); setOpen(true);
-  }, [need]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [need, autoRunning]); // eslint-disable-line react-hooks/exhaustive-deps
   // e sempre pelo botão do topo da tela
   useEffect(() => {
     const h = () => { if (!busyRef.current) { setPhase('intro'); setResult(null); } setOpen(true); };

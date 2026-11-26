@@ -43,7 +43,7 @@ function loadImage(file: string) {
   return p;
 }
 
-/** Ângulo da ventoinha: gira na rotação real (rpm/60 voltas por segundo); o RPM mostrado chega devagar ao lido. */
+/** Ângulo da ventoinha: gira na rotação real (rpm/60 voltas por segundo); o RPM mostrado chega ao lido em menos de 1 segundo. */
 /** maxStep (opcional): o máximo que as pás andam em cada imagem da tela. Em rotação alta, a pá daria quase uma volta
  *  entre duas imagens e o borrão viraria um disco parado. O passo precisa ficar abaixo da metade do espaço entre duas
  *  pás; senão o olho vê as pás andando para trás aos trancos (o efeito da roda de carroça). blur aumenta o rastro em
@@ -51,14 +51,18 @@ function loadImage(file: string) {
 export function spinner(initial: number, maxStep = Infinity, blur = 1, spreadMax = Math.PI * 2) {
   let rpm = initial, angle = Math.random() * 6;
   return (target: number, dt: number) => {
-    rpm += (target - rpm) * Math.min(1, dt * 1.5);
+    rpm += (target - rpm) * Math.min(1, dt * 3);
     const w = (Math.max(0, rpm) / 60) * Math.PI * 2;
     const step = Math.min(w * dt, maxStep);
     angle -= step;
     return { angle, spread: Math.min(step * blur, spreadMax, Math.PI * 2) };
   };
 }
-const SAMPLES = 16;
+// A placa de vídeo gira na velocidade real, sem limite de passo. O borrão cobre todo o caminho que a pá anda entre duas
+// imagens da tela, como numa câmera. Assim, em rotação alta a ventoinha vira um disco borrado, igual a uma ventoinha de
+// verdade, e o olho não vê as pás andando para trás. Com 32 cópias, o borrão fica liso mesmo quando a pá anda quase uma volta.
+const SAMPLES = 32;
+const realSpin = (rpm: number) => spinner(rpm, Infinity, 1, Math.PI * 2);
 
 // ---------- fundo tecnológico atrás da placa grande ----------
 // Uma malha de pontos em ondas, na cor de destaque, que some perto das laterais.
@@ -98,7 +102,7 @@ export function GpuHero({ card, rpm, height = 190 }: { card: GpuCard; rpm?: numb
   useEffect(() => {
     const cv = ref.current!; const g = cv.getContext('2d')!;
     let raf = 0, alive = true, visible = true, last = performance.now();
-    const spin = spinner(rpmRef.current, 0.22, 2.3, 0.5);
+    const spin = realSpin(rpmRef.current);
     const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; });
     io.observe(cv);
     const rgb = accentRgb(cv), t0 = performance.now();
@@ -232,7 +236,7 @@ export function GpuTileArt({ card, rpm }: { card: GpuCard; rpm?: number }) {
       renderer.setPixelRatio(Math.min(2, devicePixelRatio));
       renderer.outputColorSpace = THREE.SRGBColorSpace;
     }
-    const e: TileEntry = { cv: ref.current!, rpm: () => rpmRef.current, visible: true, spin: spinner(rpmRef.current, 0.22, 2.3, 0.5) };
+    const e: TileEntry = { cv: ref.current!, rpm: () => rpmRef.current, visible: true, spin: realSpin(rpmRef.current) };
     let alive = true;
     buildView(card).then((v) => { if (alive) e.view = v; });
     const io = new IntersectionObserver(([x]) => { e.visible = x.isIntersecting; });

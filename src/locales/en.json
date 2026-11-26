@@ -2381,5 +2381,21 @@
  "órfão": "orphan",
  "última modificação": "last modified",
  "último acesso": "last accessed",
- "“Analisar com CleanCode” no menu do": "“Analyze with CleanCode” in the menu of"
+ "“Analisar com CleanCode” no menu do": "“Analyze with CleanCode” in the menu of",
+ "Fazendo a varredura": "Scanning",
+ "O CleanCode está mapeando os sensores. Se o Windows pedir permissão, clique em Sim.": "CleanCode is mapping the sensors. If Windows asks for permission, click Yes.",
+ "Varredura feita": "Scan done",
+ "Todas as peças foram mapeadas. Clique para fazer a varredura de novo.": "All parts were mapped. Click to scan again.",
+ "Varredura com erros": "Scan with errors",
+ "A varredura terminou, mas algumas peças ficaram sem dados. Clique para ver o resultado e fazer a varredura de novo.": "The scan finished, but some parts have no data. Click to see the result and scan again.",
+ "Varredura não feita": "Scan not done",
+ "Clique para mapear os sensores. O Windows pede a sua permissão de administrador uma vez.": "Click to map the sensors. Windows asks for your administrator permission once.",
+ "Varredura automática e ventoinhas na rotação real": "Automatic scan and fans at their real speed",
+ "Nas placas de vídeo AMD, o 0% agora devolve a curva original da placa e liga o Zero RPM. Assim, a ventoinha fica parada enquanto a placa está fria.": "On AMD graphics cards, 0% now restores the card's original curve and turns on Zero RPM. This way, the fan stays stopped while the card is cool.",
+ "As ventoinhas da placa de vídeo giram na rotação real, com o borrão de movimento que uma câmera mostraria.": "The graphics card fans spin at their real speed, with the motion blur that a camera would show.",
+ "Os cartões das ventoinhas mostram o modo com um desenho animado: um robô para o Automático, uma linha reta para a Velocidade fixa e uma onda para a Curva.": "The fan cards show the mode with an animated drawing: a robot for Automatic, a straight line for Fixed speed and a wave for Curve.",
+ "O cartão da placa de vídeo fica da mesma altura dos outros cartões da linha.": "The graphics card tile has the same height as the other tiles in its row.",
+ "Depois de uma atualização, o CleanCode refaz a varredura de hardware sozinho, se você já tinha feito antes. O Windows pede a sua permissão uma vez.": "After an update, CleanCode redoes the hardware scan on its own if you had already done it before. Windows asks for your permission once.",
+ "Um botão no Monitor de hardware mostra se a varredura foi feita, se ela teve erros ou se ainda falta fazer. Um clique no botão refaz a varredura.": "A button in the Hardware monitor shows whether the scan is done, had errors or still needs to be done. One click on the button redoes the scan.",
+ "O disco em 3D da Visão geral não é mais cortado quando a câmera se move.": "The 3D disk in the Overview is no longer cut off when the camera moves."
 }

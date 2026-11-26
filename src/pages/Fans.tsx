@@ -6,7 +6,7 @@
 // Layout: topo com degradê e resumo; cartões pequenos (um por ventoinha, com o anel de velocidade); painel de edição
 // da ventoinha escolhida (modo, velocidade fixa, curva, bomba e teste).
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { ShieldCheck, AlertTriangle, Loader2, FlaskConical, Pencil, Check, Info, Thermometer, Cpu, Gpu, Droplets, Plus, Minus, ChevronDown, Sparkles, Wand2 } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, Loader2, FlaskConical, Pencil, Check, Info, Thermometer, Cpu, Gpu, Droplets, Plus, Minus, ChevronDown, Sparkles, Wand2, Bot } from 'lucide-react';
 import { FanWizard } from './FanWizard';
 import { FanHelp } from './FanHelp';
 import { cc, FanConfig, FanControlInfo, FanState, FanTempSource } from '../lib/api';
@@ -306,6 +306,62 @@ function fanStatus(fan: FanControlInfo, mode: Mode): { tone: 'ok' | 'warn' | 'da
 const TONE: Record<string, string> = { ok: 'var(--accent)', warn: 'var(--warn)', danger: 'var(--danger)', idle: 'var(--faint)' };
 const MODE_LABEL: Record<Mode, string> = { auto: tr("Automático"), fixed: tr("Velocidade fixa"), curve: tr("Curva") };
 
+// ---------- desenho do modo no canto do cartão ----------
+// Robô para o modo automático, uma linha reta para a velocidade fixa e uma linha ondulada para a curva. Os desenhos se
+// movem devagar: na linha reta, as bolinhas andam sobre a linha; na curva, a onda anda para o lado com as bolinhas nos
+// picos e nos vales. A onda só desliza, sem mudar de forma, e as duas linhas têm a mesma espessura. As pontas somem num
+// degradê, para as bolinhas entrarem e saírem da linha sem cortes. O nome do modo aparece ao passar o mouse.
+function ModeIcon({ mode, color }: { mode: Mode; color: string }) {
+  const id = useId().replace(/:/g, '');
+  const label = MODE_LABEL[mode];
+  if (mode === 'auto') return <span title={label} aria-label={label} className="flex h-4 items-center" style={{ color }}><Bot size={16} strokeWidth={1.9} /></span>;
+  const W = 30, H = 14, mid = H / 2, x0 = 2, x1 = W - 2;
+  // período do movimento: a distância entre duas bolinhas iguais. Ao andar um período, o desenho fica igual ao do começo
+  // e a animação recomeça sem salto.
+  let period: number, line: string, dots: [number, number][];
+  if (mode === 'curve') {
+    // 4 ondulações (dois picos e dois vales) dentro da largura. Cada ondulação é um meio círculo, então os picos e os
+    // vales têm um raio redondo, sem ponta. A onda é desenhada um período a mais para a esquerda, para deslizar.
+    const half = (x1 - x0) / 4, R = half / 2;
+    period = half * 2;
+    let d = `M${x0 - period} ${mid}`;
+    dots = [];
+    for (let k = -2; k < 4; k++) {
+      const up = k % 2 === 0; // par: pico (meio círculo para cima); ímpar: vale
+      d += ` A${R} ${R} 0 0 ${up ? 1 : 0} ${x0 + half * (k + 1)} ${mid}`;
+      dots.push([x0 + half * (k + 0.5), up ? mid - R : mid + R]);
+    }
+    line = d;
+  } else {
+    period = (x1 - x0) / 2;
+    line = `M${x0} ${mid} L${x1} ${mid}`;
+    dots = [-1, 0, 1, 2].map((k) => [x0 + period * k, mid]);
+  }
+  const move = { animation: 'mode-slide 1.8s linear infinite', ['--d' as any]: `${period}px` } as React.CSSProperties;
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label} className="mode-icon shrink-0" style={{ color }}>
+      <title>{label}</title>
+      <defs>
+        <linearGradient id={`f${id}`} x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0" stopColor="#fff" stopOpacity="0" /><stop offset="0.14" stopColor="#fff" /><stop offset="0.86" stopColor="#fff" /><stop offset="1" stopColor="#fff" stopOpacity="0" />
+        </linearGradient>
+        <mask id={`m${id}`} maskUnits="userSpaceOnUse" x="0" y="0" width={W} height={H}><rect x="0" y="0" width={W} height={H} fill={`url(#f${id})`} /></mask>
+      </defs>
+      <g mask={`url(#m${id})`}>
+        {mode === 'curve'
+          ? <g style={move}><path d={line} fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />{dots.map(([x, yy], i) => <circle key={i} cx={x} cy={yy} r={1.9} fill="currentColor" />)}</g>
+          : <><path d={line} fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" /><g style={move}>{dots.map(([x, yy], i) => <circle key={i} cx={x} cy={yy} r={1.9} fill="currentColor" />)}</g></>}
+      </g>
+    </svg>
+  );
+}
+/** Etiqueta do cartão: o desenho do modo, ou um texto quando a ventoinha tem um aviso (erro, proteção ou "Em breve"). */
+function TileBadge({ fan, mode, s }: { fan: FanControlInfo; mode: Mode; s: ReturnType<typeof fanStatus> }) {
+  const text = fan.locked || s.tone === 'warn' || s.tone === 'danger' || (mode !== 'auto' && !fan.status);
+  if (text) return <span title={s.long} className="shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-semibold" style={{ color: TONE[s.tone], background: `color-mix(in srgb, ${TONE[s.tone]} 14%, transparent)` }}>{s.short}</span>;
+  return <ModeIcon mode={mode} color={mode === 'auto' ? 'var(--muted)' : 'var(--accent)'} />;
+}
+
 // ---------- cartão pequeno de uma ventoinha ----------
 function FanTile({ fan, cfg, active, onClick }: { fan: FanControlInfo; cfg?: FanConfig; active: boolean; onClick: () => void }) {
   const mode = fan.locked ? 'auto' : cfg?.mode || 'auto';
@@ -315,14 +371,14 @@ function FanTile({ fan, cfg, active, onClick }: { fan: FanControlInfo; cfg?: Fan
     // placa de vídeo com foto: a placa em 3D no lado esquerdo, sumindo num degradê antes do nome e do RPM
     const fill = active ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)';
     return (
-      <button onClick={onClick} className={cx('group relative h-[84px] overflow-hidden rounded-xl border text-left transition-all duration-200', active ? 'border-[color-mix(in_srgb,var(--accent)_60%,transparent)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_14%,transparent)]' : 'border-[var(--line)] hover:border-[color-mix(in_srgb,var(--accent)_35%,var(--line))]')}
+      <button onClick={onClick} className={cx('group relative min-h-[84px] overflow-hidden rounded-xl border text-left transition-all duration-200', active ? 'border-[color-mix(in_srgb,var(--accent)_60%,transparent)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_14%,transparent)]' : 'border-[var(--line)] hover:border-[color-mix(in_srgb,var(--accent)_35%,var(--line))]')}
         style={{ background: fill }}>
         <GpuTileArt card={card} rpm={fan.rpm} />
         <div className="pointer-events-none absolute inset-0" style={{ background: `linear-gradient(90deg, transparent 0%, transparent 34%, color-mix(in srgb, ${fill} 88%, transparent) 50%, ${fill} 60%)` }} />
         <div className="absolute bottom-2 left-[44%] right-2.5 top-2 flex flex-col">
           <div className="flex items-start gap-1.5">
             <span className="min-w-0 flex-1 break-words text-[12.5px] font-semibold leading-tight">{fanName(fan, cfg)}</span>
-            <span className="shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-semibold" style={{ color: TONE[s.tone], background: `color-mix(in srgb, ${TONE[s.tone]} 14%, transparent)` }}>{mode === 'auto' || s.tone === 'warn' || s.tone === 'danger' ? s.short : MODE_LABEL[mode]}</span>
+            <TileBadge fan={fan} mode={mode} s={s} />
           </div>
           <div className="text-[10.5px] text-muted">{cfg?.label ? fan.name : kindLabel(fan.kind)}</div>
           <div className="mt-auto flex items-baseline gap-1.5">
@@ -350,7 +406,7 @@ function FanTile({ fan, cfg, active, onClick }: { fan: FanControlInfo; cfg?: Fan
         </div>
       </div>
       <div className="flex flex-col items-end gap-1 self-start">
-        <span className="rounded-full px-2 py-0.5 text-[10.5px] font-semibold" style={{ color: TONE[s.tone], background: `color-mix(in srgb, ${TONE[s.tone]} 14%, transparent)` }}>{mode === 'auto' || s.tone === 'warn' || s.tone === 'danger' ? s.short : MODE_LABEL[mode]}</span>
+        <TileBadge fan={fan} mode={mode} s={s} />
         <span className="text-[11px] tabular-nums text-muted">{fmt(fan.pct)}%</span>
       </div>
     </button>

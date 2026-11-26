@@ -822,6 +822,8 @@ app.whenReady().then(() => {
   applyMonitor();
 });
 app.whenReady().then(() => { try { system.cleanupUpdate?.(); } catch { /* */ } });
+// varredura de hardware: se ela já foi feita e a atualização trouxe um programa dos sensores novo, refaz sozinha
+app.whenReady().then(() => { if (!PREVIEW_FANS) system.metrics.advancedAuto?.().catch(() => {}); });
 // ventoinhas: volta a aplicar as configurações salvas (velocidade fixa ou curva) quando o app abre
 app.whenReady().then(() => { try { if (!PREVIEW_FANS) system.metrics.fanApply?.(settings.fans); } catch { /* */ } });
 app.on('before-quit', () => {

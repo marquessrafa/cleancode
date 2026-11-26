@@ -76,7 +76,7 @@ export default function Overview() {
                 {big && <>
                   <CardParticles />
                   <div className="card-sheen pointer-events-none absolute inset-0" />
-                  <DriveArt kind={driveKind(h)} label={h?.model} className="bottom-[24px] right-0 top-[40px] w-[45%]" />
+                  <DriveArt kind={driveKind(h)} label={h?.model} />
                 </>}
                 <div className="relative flex items-start gap-3">
                   <div className={cx('flex shrink-0 items-center justify-center rounded-xl text-[var(--on-accent)] shadow-md', big ? 'h-16 w-16' : 'h-11 w-11')} style={{ background: 'linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #000))' }}><Icon size={big ? 30 : 20} /></div>
