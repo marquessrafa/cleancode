@@ -2402,5 +2402,20 @@
  "Quando você troca de modo ou de curva, a ventoinha vai na hora para a velocidade nova. Antes, a curva descia devagar e levava até 33 segundos para chegar ao valor certo.": "When you change the mode or the curve, the fan goes to the new speed right away. Before, the curve went down slowly and took up to 33 seconds to reach the right value.",
  "Atualização no Windows igual à do Mac": "Windows update looks the same as on Mac",
  "No Windows, a janela de instalação da atualização agora tem o mesmo desenho do popup do app e abre no mesmo lugar dele. Antes, uma segunda janela, com outro visual, aparecia por cima do popup.": "On Windows, the update install window now has the same design as the app popup and opens in the same place. Before, a second window with a different look appeared on top of the popup.",
- "Não desligue o computador": "Do not turn off the computer"
+ "Não desligue o computador": "Do not turn off the computer",
+ "Ver jogos": "See games",
+ "Jogo sem desinstalador ({0})": "Game without an uninstaller ({0})",
+ "Pasta de jogo": "Game folder",
+ "Os jogos sem desinstalador vão para a Lixeira, com a pasta inteira. Você consegue recuperar esses jogos até esvaziar a Lixeira.": "Games without an uninstaller go to the Recycle Bin, with the whole folder. You can recover these games until you empty the Recycle Bin.",
+ "{0} · a pasta vai para a Lixeira": "{0} · the folder goes to the Recycle Bin",
+ "A pasta foi para a Lixeira": "The folder went to the Recycle Bin",
+ "Jogos das lojas, como Steam, Epic e GOG, e jogos encontrados em qualquer pasta, como ports, recomps e jogos sem instalador": "Games from stores, such as Steam, Epic and GOG, and games found in any folder, such as ports, recomps and games without an installer",
+ "Jogos no mapa e no Desinstalador": "Games on the map and in the Uninstaller",
+ "O mapa do armazenamento ganhou a categoria Jogos. Cada jogo conta uma vez só e sai de Aplicativos, Documentos, Downloads e das outras categorias.": "The storage map has a new Games category. Each game counts only once and leaves Apps, Documents, Downloads and the other categories.",
+ "O botão de Downloads no mapa abre a pasta Downloads na árvore do Explorador.": "The Downloads button on the map opens the Downloads folder in the Explorer tree.",
+ "No cartão do disco selecionado, os números de espaço ficam um embaixo do outro quando a janela é estreita, sem quebrar linha.": "On the selected disk card, the space numbers stack one below the other when the window is narrow, without breaking lines.",
+ "Os nomes das categorias do mapa não são mais cortados.": "The map category names are no longer cut off.",
+ "O Desinstalador ganhou o filtro Jogos, e o botão Ver jogos do mapa abre o Desinstalador já filtrado.": "The Uninstaller has a new Games filter, and the See games button on the map opens the Uninstaller already filtered.",
+ "O CleanCode encontra jogos em qualquer pasta dos discos, como ports, recomps, pastas com romfs e exefs e jogos instalados sem loja.": "CleanCode finds games in any folder on your disks, such as ports, recomps, folders with romfs and exefs and games installed without a store.",
+ "Um jogo sem desinstalador vai para a Lixeira com a pasta inteira, depois que você confirma. Você consegue recuperar o jogo até esvaziar a Lixeira.": "A game without an uninstaller goes to the Recycle Bin with its whole folder, after you confirm. You can recover the game until you empty the Recycle Bin."
 }

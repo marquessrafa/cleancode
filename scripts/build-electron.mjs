@@ -31,6 +31,7 @@ await build({
     appdataWorker: 'electron/appdataWorker.ts',
     clutterWorker: 'electron/clutterWorker.ts',
     storageWorker: 'electron/storageWorker.ts',
+    gameFinderWorker: 'electron/gameFinderWorker.ts',
   },
   outdir: 'dist-electron',
 });

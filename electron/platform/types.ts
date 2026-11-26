@@ -50,7 +50,10 @@ export interface NativeFs {
 
 export interface AppEntry {
   id: string;
-  source: 'win32' | 'store' | 'mac';
+  /** folder: jogo sem desinstalador, encontrado pela busca de jogos (desinstalar manda a pasta para a Lixeira) */
+  source: 'win32' | 'store' | 'mac' | 'folder';
+  /** é um jogo (pasta de jogo de loja, jogo encontrado pela busca ou desinstalador do Steam) */
+  game?: boolean;
   name: string;
   version?: string;
   publisher?: string;

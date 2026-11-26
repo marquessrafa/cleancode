@@ -2,7 +2,7 @@
 // segmentada, com o atalho certo para cada categoria (desinstalar apps, revisar Downloads, limpar caches…).
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  AppWindow, Code2, Cpu, Download, FileText, FolderCog, FolderTree, HardDrive, Image, Loader2, Mail, Archive, RefreshCw, Trash2, ArrowRight, Lightbulb,
+  AppWindow, Code2, Cpu, Download, FileText, FolderCog, FolderTree, HardDrive, Image, Loader2, Mail, Archive, RefreshCw, Trash2, ArrowRight, Lightbulb, Gamepad2,
 } from 'lucide-react';
 import { useApp } from '../lib/store';
 import type { Page } from '../lib/store';
@@ -15,19 +15,30 @@ import { t } from '../lib/i18n';
 interface Seg { id: string; label: string; size: number; color: string; icon: React.ReactNode; hint: string; done: boolean; action?: () => void; actionLabel?: string; tree?: string }
 
 const COLORS: Record<string, string> = {
-  apps: '#6366f1', docs: '#3b82f6', downloads: '#06b6d4', media: '#ec4899', dev: '#f59e0b',
+  apps: '#6366f1', games: '#22c55e', docs: '#3b82f6', downloads: '#06b6d4', media: '#ec4899', dev: '#f59e0b',
   caches: '#f97316', appdata: '#8b5cf6', mail: '#14b8a6', trash: '#ef4444', system: '#64748b',
 };
 const ICONS: Record<string, React.ReactNode> = {
-  apps: <AppWindow size={15} />, docs: <FileText size={15} />, downloads: <Download size={15} />, media: <Image size={15} />, dev: <Code2 size={15} />,
+  apps: <AppWindow size={15} />, games: <Gamepad2 size={15} />, docs: <FileText size={15} />, downloads: <Download size={15} />, media: <Image size={15} />, dev: <Code2 size={15} />,
   caches: <Archive size={15} />, appdata: <FolderCog size={15} />, mail: <Mail size={15} />, trash: <Trash2 size={15} />, system: <Cpu size={15} />,
 };
 const HINTS: Record<string, string> = {
-  apps: t("Programas instalados"), docs: t("Documentos e Mesa"), downloads: t("Arquivos baixados"), media: t("Imagens, filmes e músicas da sua pasta pessoal"),
+  apps: t("Programas instalados"), games: t("Jogos das lojas, como Steam, Epic e GOG, e jogos encontrados em qualquer pasta, como ports, recomps e jogos sem instalador"), docs: t("Documentos e Mesa"), downloads: t("Arquivos baixados"), media: t("Imagens, filmes e músicas da sua pasta pessoal"),
   dev: t("Ferramentas de programação, como SDKs, simuladores, caches de pacotes (npm, Gradle e Cargo) e Docker"), caches: t("O sistema e os apps criam esses arquivos de novo quando precisam"),
   appdata: t("Configurações e dados que os apps guardam no seu perfil"), mail: t("Mensagens e anexos guardados no Mac"), trash: t("Itens apagados que ainda ocupam espaço"),
   system: isMac ? t("O macOS, os arquivos do sistema, a memória virtual, os instantâneos e tudo o que fica fora das pastas acima") : t("O Windows, o arquivo de paginação, o arquivo de hibernação, os pontos de restauração e tudo o que fica fora das pastas acima"),
 };
+
+/** A pasta mais funda que contém todas as pastas da lista. Se ela for só a raiz do disco, devolve a primeira pasta. */
+function commonDir(paths: string[]): string | undefined {
+  if (paths.length < 2) return paths[0];
+  const parts = paths.map((p) => p.split(/[\\/]/));
+  const out: string[] = [];
+  for (let i = 0; parts.every((x) => i < x.length - 1 && x[i].toLowerCase() === parts[0][i].toLowerCase()); i++) out.push(parts[0][i]);
+  if (out.length <= 1) return paths[0];
+  const sep = paths[0].includes('\\') ? '\\' : '/';
+  return out.join(sep) || sep;
+}
 
 export function StorageMapCard({ drives, apps }: { drives: Drive[] | null; apps: AppEntry[] | null }) {
   const { settings, go, startScan } = useApp();
@@ -38,7 +49,9 @@ export function StorageMapCard({ drives, apps }: { drives: Drive[] | null; apps:
     let alive = true;
     cc.storageMap().then((m) => alive && setMap(m)).catch(() => {});
     const off = cc.on.storageProgress((m) => alive && setMap({ ...m, cats: m.cats.map((c) => ({ ...c })) }));
-    return () => { alive = false; off(); };
+    // a busca de jogos em todos os discos terminou: mede o mapa de novo, com as pastas dos jogos novos
+    const offGames = cc.on.gamesFound(() => { cc.storageMap().then((m) => alive && setMap(m)).catch(() => {}); });
+    return () => { alive = false; off(); offGames(); };
   }, []);
 
   // disco do sistema (o mapa mede as pastas do usuário que ficam nele)
@@ -50,7 +63,9 @@ export function StorageMapCard({ drives, apps }: { drives: Drive[] | null; apps:
   }, [drives, map]);
   const others = (drives || []).filter((d) => d.total > 0 && d !== sys);
 
-  const appsSize = useMemo(() => (apps || []).filter((a) => (isMac ? a.canUninstall : true)).reduce((s, a) => s + (a.size || 0), 0), [apps]);
+  // os jogos contam só em Jogos: um jogo que também aparece na lista de programas (por exemplo, um jogo do Steam) e os
+  // jogos sem desinstalador ficam fora de Aplicativos
+  const appsSize = useMemo(() => (apps || []).filter((a) => (isMac ? a.canUninstall : true) && !a.game).reduce((s, a) => s + (a.size || 0), 0), [apps]);
   const go2 = (p: Page) => () => go(p);
   const scan = (p?: string) => (p ? async () => { await startScan(p); go('explorer'); } : undefined);
 
@@ -59,10 +74,13 @@ export function StorageMapCard({ drives, apps }: { drives: Drive[] | null; apps:
     const list: Seg[] = map.cats.map((c) => {
       const size = c.id === 'apps' ? appsSize : c.size;
       const done = c.id === 'apps' ? !!apps : c.done;
-      const base = { id: c.id, label: c.label, size, done, color: COLORS[c.id] || '#94a3b8', icon: ICONS[c.id], hint: HINTS[c.id] || '', tree: c.paths[0] };
+      // jogos: a árvore abre na pasta que reúne todos eles (por exemplo, steamapps\common); sem pasta em comum, no primeiro
+      const tree = c.id === 'games' ? commonDir(c.paths) : c.paths[0];
+      const base = { id: c.id, label: c.label, size, done, color: COLORS[c.id] || '#94a3b8', icon: ICONS[c.id], hint: HINTS[c.id] || '', tree };
       switch (c.id) {
         case 'apps': return { ...base, action: () => openUninstaller(go, 'size:false'), actionLabel: t("Ver maiores") };
-        case 'downloads': return { ...base, action: go2('clutter'), actionLabel: t("Revisar") };
+        case 'games': return { ...base, action: () => openUninstaller(go, 'size:false', 'games'), actionLabel: t("Ver jogos") };
+        case 'downloads': return { ...base, action: scan(tree), actionLabel: t("Abrir na árvore") };
         case 'docs': case 'media': return { ...base, action: go2('clutter'), actionLabel: t("Duplicados e grandes") };
         case 'dev': case 'caches': case 'trash': return { ...base, action: go2('cleanup'), actionLabel: t("Limpar") };
         case 'appdata': return { ...base, action: go2('appdata'), actionLabel: t("Analisar") };
@@ -145,7 +163,7 @@ export function StorageMapCard({ drives, apps }: { drives: Drive[] | null; apps:
               <div className="flex items-center gap-2">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md" style={{ background: `color-mix(in srgb, ${s.color} 16%, transparent)`, color: s.color }}>{s.icon}</span>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-[12.5px] font-medium text-fg" title={s.hint}>{t(s.label)}</div>
+                  <div className="break-words text-[12.5px] font-medium leading-tight text-fg" title={s.hint}>{t(s.label)}</div>
                   <div className="text-[11px] text-muted tnum">{s.done ? t("{0} do disco{1}", fmtPct(s.size / total, 1), map?.cats.find((c) => c.id === s.id)?.partial ? ' (parcial)' : '') : t("medindo…")}</div>
                 </div>
                 <div className={cx('text-right text-[14px] font-semibold tnum', s.done ? 'text-fg' : 'text-faint')}>{s.done ? fmtSize(s.size, units) : <span className="inline-block h-3.5 w-12 animate-pulse rounded bg-[var(--line)] align-middle" />}</div>

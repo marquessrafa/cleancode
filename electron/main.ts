@@ -26,7 +26,8 @@ import * as Protection from './protection';
 import * as Clutter from './clutter';
 import { appDossier, gameDossier } from './dossier';
 import { onlineDossier } from './dossierOnline';
-import { storageMap } from './storageMap';
+import { storageMap, storageMapStale } from './storageMap';
+import { foundGames, foundGamesCached, forgetFoundGame, onGamesFound, type FoundGame } from './gameFinder';
 import { t as tr, LOCALE } from './i18n';
 
 declare const __UPDATE_SOURCE__: string; // definidas no build (scripts/build-electron.mjs)
@@ -1062,23 +1063,67 @@ ipcMain.handle('shell:contextMenuStatus', () => system.contextMenu.status());
 ipcMain.handle('shell:contextMenu', (_e, enable: boolean) =>
   system.contextMenu.set(enable, { exe: process.execPath, packaged: app.isPackaged, appDir: path.join(__dirname, '..') }));
 
+// ---------- jogos (lojas e qualquer pasta) ----------
+// Os jogos das lojas vêm do Modo Jogo (Steam, Epic, GOG e as pastas escolhidas). Os outros vêm da busca em todos os
+// discos (gameFinder.ts), que roda em segundo plano. Quando ela termina, o mapa e o Desinstalador recebem a lista nova.
+let storeGamesCache: { at: number; dirs: string[] } | null = null;
+async function storeGameDirs(): Promise<string[]> {
+  if (storeGamesCache && Date.now() - storeGamesCache.at < 5 * 60000) return storeGamesCache.dirs;
+  const dirs = (await system.game.games(settings.gameDirs).catch(() => [])).map((g) => g.dir || '').filter(Boolean);
+  storeGamesCache = { at: Date.now(), dirs };
+  return dirs;
+}
+/** Pastas de jogos agora: as das lojas e a última lista da busca (que começa em segundo plano, se precisar). */
+async function gameDirsNow(): Promise<{ store: string[]; found: FoundGame[] }> {
+  const store = await storeGameDirs();
+  void foundGames(store);
+  return { store, found: foundGamesCached() };
+}
+onGamesFound(() => {
+  storageMapStale();
+  for (const w of BrowserWindow.getAllWindows()) { try { w.webContents.send('games:found'); } catch { /* */ } }
+});
+const lowPath = (p: string) => p.toLowerCase().replace(/[\\/]+$/, '');
+const within = (p: string, dir: string) => { const a = lowPath(p), b = lowPath(dir); return a === b || a.startsWith(b + '\\') || a.startsWith(b + '/'); };
+/**
+ * Marca os programas que são jogos (pela pasta ou pelo desinstalador do Steam) e põe na lista os jogos sem desinstalador
+ * (encontrados pela busca), como itens do tipo "folder". Desinstalar um desses itens manda a pasta para a Lixeira.
+ */
+function withGames(list: AppEntry[], g: { store: string[]; found: FoundGame[] }): AppEntry[] {
+  const dirs = [...g.store, ...g.found.map((f) => f.dir)];
+  const out: AppEntry[] = list.filter((a) => a.source !== 'folder').map((a) => ({ ...a, game: !!(a.location && dirs.some((d) => within(a.location!, d))) || /steam:\/\/uninstall/i.test(a.uninstall || '') }));
+  for (const f of g.found) {
+    if (out.some((a) => a.location && (within(a.location, f.dir) || within(f.dir, a.location)))) continue;
+    // o tamanho já calculado numa leitura anterior continua valendo
+    const old = list.find((a) => a.id === 'folder:' + f.dir);
+    out.push({ id: 'folder:' + f.dir, source: 'folder', name: f.name, publisher: tr("Jogo sem desinstalador ({0})", f.kind), location: f.dir, canUninstall: true, game: true, size: old?.size, sizeSource: old?.sizeSource } as AppEntry);
+  }
+  return out;
+}
+
 // ---------- aplicativos ----------
 let appsCache: AppEntry[] | null = null;
 let sizeWorker: Worker | null = null;
+const sizing = new Set<string>(); // itens com o tamanho sendo calculado agora
 ipcMain.handle('apps:list', async (e, refresh: boolean) => {
   if (!appsCache || refresh) appsCache = await system.listApps();
-  // calcula tamanhos ausentes em segundo plano
-  const missing = appsCache.filter((a) => !a.size && a.location && fs.existsSync(a.location)).map((a) => ({ id: a.id, path: a.location! }));
-  if (missing.length && !sizeWorker) {
+  appsCache = withGames(appsCache, await gameDirsNow());
+  // calcula tamanhos ausentes em segundo plano. Itens que chegam depois (por exemplo, os jogos que a busca encontrou
+  // enquanto o cálculo anterior rodava) ganham um cálculo próprio, em vez de ficarem sem tamanho.
+  const missing = appsCache.filter((a) => !a.size && !sizing.has(a.id) && a.location && fs.existsSync(a.location)).map((a) => ({ id: a.id, path: a.location! }));
+  if (missing.length) {
     const sender = e.sender;
-    sizeWorker = new Worker(path.join(__dirname, 'sizeWorker.js'), { workerData: { items: missing } });
-    sizeWorker.on('message', (m: any) => {
-      if (m.done) { sizeWorker?.terminate(); sizeWorker = null; return; }
+    for (const m of missing) sizing.add(m.id);
+    const w = new Worker(path.join(__dirname, 'sizeWorker.js'), { workerData: { items: missing } });
+    sizeWorker = w;
+    const end = () => { w.terminate(); for (const m of missing) sizing.delete(m.id); if (sizeWorker === w) sizeWorker = null; };
+    w.on('message', (m: any) => {
+      if (m.done) return end();
       const a = appsCache?.find((x) => x.id === m.id);
       if (a) { a.size = m.size; a.sizeSource = 'calculado'; }
       if (!sender.isDestroyed()) sender.send('apps:size', m);
     });
-    sizeWorker.on('error', () => { sizeWorker = null; });
+    w.on('error', end);
   }
   return appsCache.map(({ exes, ...a }) => a);
 });
@@ -1133,7 +1178,10 @@ ipcMain.handle('apps:uninstall', async (e, ids: string[], silent: boolean) => {
     const a = appsCache?.find((x) => x.id === id);
     if (!a) { results.push({ id, ok: false, message: tr("Não encontrado") }); continue; }
     if (!e.sender.isDestroyed()) e.sender.send('apps:uninstallProgress', { id, status: 'running' });
-    const r = await system.uninstallApp(a, silent);
+    // jogo sem desinstalador: a pasta vai para a Lixeira (dá para recuperar até esvaziar a Lixeira)
+    const r = a.source === 'folder' && a.location
+      ? await shell.trashItem(a.location).then(() => { forgetFoundGame(a.location!); return { ok: true, message: tr("A pasta foi para a Lixeira") }; }, (err) => ({ ok: false, message: String(err?.message || err) }))
+      : await system.uninstallApp(a, silent);
     results.push({ id, ...r });
     if (r.ok && appsCache) appsCache = appsCache.filter((x) => x.id !== id);
     if (r.ok) logActivity({ kind: 'uninstall', name: a.name, freed: a.size || 0 });
@@ -1162,7 +1210,9 @@ ipcMain.handle('dossier:local', async (_e, t: { kind: 'app'; app: AppEntry } | {
 // mapa do armazenamento da Visão geral (categorias medidas num worker; progresso por evento)
 ipcMain.handle('storage:map', (e, refresh?: boolean) => {
   const sender = e.sender;
-  return storageMap((m) => { if (!sender.isDestroyed()) sender.send('storage:progress', m); }, !!refresh);
+  // as pastas dos jogos: as das lojas (a mesma busca do Modo Jogo) e as encontradas em qualquer pasta dos discos
+  const gameDirs = async () => { const g = await gameDirsNow(); return [...g.store, ...g.found.map((f) => f.dir)]; };
+  return storageMap((m) => { if (!sender.isDestroyed()) sender.send('storage:progress', m); }, !!refresh, gameDirs);
 });
 // Gatekeeper do macOS (lento): o dossiê pede depois de aparecer
 const gkCache = new Map<string, Promise<any>>();

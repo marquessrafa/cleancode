@@ -6,7 +6,7 @@ import { fmtSize, fmtDate, fmtRelative, fmtNum } from '../lib/format';
 import { DataTable } from '../components/DataTable';
 import { Badge, Button, Card, Input, openContextMenu, PageHeader, Segmented, Select, Stat } from '../components/ui';
 import { PageBody } from './common';
-import { AppIcon, appFolder, RecentInstalls, sourceLabel, useApps, useRemoveEntry, useUninstall, useUninstallSort, prefetchDossier, cancelPrefetch } from './appsShared';
+import { AppIcon, appFolder, RecentInstalls, sourceLabel, useApps, useRemoveEntry, useUninstall, useUninstallSort, useUninstallFilter, prefetchDossier, cancelPrefetch } from './appsShared';
 import { t } from '../lib/i18n';
 
 export default function Uninstaller() {
@@ -14,7 +14,7 @@ export default function Uninstaller() {
   const units = settings!.units;
   const { apps, loading, reload, remove } = useApps();
   const [q, setQ] = useState('');
-  const [src, setSrc] = useState<'all' | 'win32' | 'store' | 'mac'>('all');
+  const [src, setSrc] = useUninstallFilter();
   const [sort, setSort] = useUninstallSort();
   const [sel, setSel] = useState<Set<string | number>>(new Set());
   const un = useUninstall((ids) => { remove(ids); setSel(new Set()); });
@@ -22,7 +22,7 @@ export default function Uninstaller() {
   const orphanCount = (apps || []).filter((a) => a.orphan).length;
 
   const rows = useMemo(() => (apps || []).filter((a) =>
-    (src === 'all' || a.source === src) &&
+    (src === 'all' || (src === 'games' ? !!a.game : a.source === src)) &&
     (!q || `${a.name} ${a.publisher || ''}`.toLowerCase().includes(q.toLowerCase()))), [apps, q, src]);
   const selRows = rows.filter((a) => sel.has(a.id));
   const totalSize = (apps || []).reduce((s, a) => s + (a.size || 0), 0);
@@ -86,7 +86,7 @@ export default function Uninstaller() {
       <Card pad={false}>
         <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2">
           <Input className="w-72" icon={<Search size={14} />} placeholder={t("Buscar por nome ou fabricante")} value={q} onChange={(e) => setQ(e.target.value)} />
-          <Segmented value={src} onChange={setSrc} options={isMac ? [{ value: 'all', label: t("Todos") }, { value: 'mac', label: t("Apps") }, { value: 'store', label: t("App Store") }] : [{ value: 'all', label: t("Todos") }, { value: 'win32', label: t("Win32") }, { value: 'store', label: t("Store") }]} />
+          <Segmented value={src} onChange={setSrc} options={isMac ? [{ value: 'all', label: t("Todos") }, { value: 'mac', label: t("Apps") }, { value: 'store', label: t("App Store") }, { value: 'games', label: t("Jogos") }] : [{ value: 'all', label: t("Todos") }, { value: 'win32', label: t("Win32") }, { value: 'store', label: t("Store") }, { value: 'games', label: t("Jogos") }]} />
           <Select className="w-52" value={`${sort.key}:${sort.asc}`} onChange={(v) => { const [k, a] = v.split(':'); setSort({ key: k, asc: a === 'true' }); }} options={[
             { value: 'size:false', label: t("Maiores primeiro") }, { value: 'installDate:false', label: t("Instalados mais recentes") }, { value: 'installDate:true', label: t("Mais antigos primeiro") },
             { value: 'lastUsed:true', label: t("Menos usados primeiro") }, { value: 'name:true', label: t("Nome (A–Z)") },

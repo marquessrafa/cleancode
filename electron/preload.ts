@@ -153,6 +153,7 @@ contextBridge.exposeInMainWorld('cc', {
     updateState: (cb: (d: any) => void) => on('update:state', cb),
     advancedStep: (cb: (d: any) => void) => on('hardware:advancedStep', cb),
     appSize: (cb: (d: any) => void) => on('apps:size', cb),
+    gamesFound: (cb: () => void) => on('games:found', cb),
     uninstallProgress: (cb: (d: any) => void) => on('apps:uninstallProgress', cb),
   },
 });

@@ -5,6 +5,22 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.28', date: '2026-11-26', headline: 'Jogos no mapa e no Desinstalador',
+    groups: [
+      { title: 'Visão geral', icon: 'panel', items: [
+        'O mapa do armazenamento ganhou a categoria Jogos. Cada jogo conta uma vez só e sai de Aplicativos, Documentos, Downloads e das outras categorias.',
+        'O botão de Downloads no mapa abre a pasta Downloads na árvore do Explorador.',
+        'No cartão do disco selecionado, os números de espaço ficam um embaixo do outro quando a janela é estreita, sem quebrar linha.',
+        'Os nomes das categorias do mapa não são mais cortados.',
+      ] },
+      { title: 'Desinstalador', icon: 'wrench', items: [
+        'O Desinstalador ganhou o filtro Jogos, e o botão Ver jogos do mapa abre o Desinstalador já filtrado.',
+        'O CleanCode encontra jogos em qualquer pasta dos discos, como ports, recomps, pastas com romfs e exefs e jogos instalados sem loja.',
+        'Um jogo sem desinstalador vai para a Lixeira com a pasta inteira, depois que você confirma. Você consegue recuperar o jogo até esvaziar a Lixeira.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.27', date: '2026-11-25', headline: 'Atualização no Windows igual à do Mac',
     groups: [
       { title: 'Atualizações', icon: 'download', items: [

@@ -71,7 +71,7 @@ export default function Overview() {
             const scanning = active && active.root.toLowerCase() === d.root.toLowerCase();
             const big = !!scanning && picked;
             return (
-              <div key={d.root} className={cx('group relative flex flex-col overflow-hidden rounded-xl border bg-surface transition-all duration-300 hover:-translate-y-0.5 hover:border-accent hover:shadow-lg', big ? 'col-span-2 row-span-2 border-accent p-6' : 'border-line p-4', picked && !big && 'drive-muted')} style={{ animation: `fade-up .3s ${i * 50}ms both`, background: `linear-gradient(150deg, color-mix(in srgb, var(--accent) ${big ? 16 : 9}%, var(--surface)), var(--surface) 60%)` }}>
+              <div key={d.root} className={cx('group relative flex flex-col overflow-hidden rounded-xl border bg-surface transition-all duration-300 hover:-translate-y-0.5 hover:border-accent hover:shadow-lg', big ? '@container col-span-2 row-span-2 border-accent p-6' : 'border-line p-4', picked && !big && 'drive-muted')} style={{ animation: `fade-up .3s ${i * 50}ms both`, background: `linear-gradient(150deg, color-mix(in srgb, var(--accent) ${big ? 16 : 9}%, var(--surface)), var(--surface) 60%)` }}>
                 {/* cartão grande: partículas, um brilho leve passando na diagonal e o disco em 3D no lado direito */}
                 {big && <>
                   <CardParticles />
@@ -90,10 +90,15 @@ export default function Overview() {
                   <div className="text-right"><div className={cx('font-semibold tnum leading-none', big ? 'text-[34px]' : 'text-[18px]')} style={{ color: tone }}>{fmtPct(pct, 0)}</div><div className="text-[11px] text-muted">{t("usado")}</div></div>
                 </div>
                 <div className="relative mt-2"><DriveBadges hw={h} loading={hw.loading} /></div>
-                {/* no cartão grande, o espaço usado, o livre e o total aparecem em números grandes */}
-                {big && <div className="relative mt-auto grid w-[53%] grid-cols-3 gap-3 pt-4">
+                {/* no cartão grande, o espaço usado, o livre e o total aparecem em números grandes, à esquerda do disco 3D.
+                    O cartão mede a própria largura: largo, os três números ficam lado a lado; estreito, eles ficam um embaixo
+                    do outro, com o valor menor logo depois do nome, no meio da altura do espaço livre e alinhado à esquerda do cartão */}
+                {big && <div className="relative my-auto grid w-[53%] grid-cols-[max-content_max-content] content-center items-baseline justify-start gap-x-4 gap-y-0.5 py-4 @[600px]:mt-auto @[600px]:mb-0 @[600px]:grid-cols-3 @[600px]:justify-stretch @[600px]:gap-3 @[600px]:pb-0">
                   {[[t('Espaço usado'), fmtSize(d.used, units)], [t('Espaço livre'), fmtSize(d.free, units)], [t('Total'), fmtSize(d.total, units)]].map(([k, v]) => (
-                    <div key={k} className="min-w-0"><div className="text-[12px] text-muted">{k}</div><div className="whitespace-nowrap text-[20px] font-semibold tnum leading-tight text-fg">{v}</div></div>
+                    <div key={k} className="contents @[600px]:block @[600px]:min-w-0">
+                      <div className="whitespace-nowrap text-[12px] text-muted">{k}</div>
+                      <div className="whitespace-nowrap text-[15px] font-semibold tnum leading-tight text-fg @[600px]:text-[20px]">{v}</div>
+                    </div>
                   ))}
                 </div>}
                 <ProgressBar value={pct} tone={tone} className={cx('relative', big ? 'mt-4 h-3' : 'mt-2 h-2')} />

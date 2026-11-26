@@ -31,6 +31,8 @@ export function useApps() {
       cache = n; return n;
     });
   }), []);
+  // a busca de jogos terminou: lê a lista de novo, com os jogos novos
+  useEffect(() => cc.on.gamesFound(() => load(false)), [load]);
   const remove = (ids: string[]) => setApps((a) => { const n = a?.filter((x) => !ids.includes(x.id)) || null; cache = n; return n; });
   return { apps, loading, reload: () => load(true), remove };
 }
@@ -52,7 +54,8 @@ export function AppIcon({ app, size = 36 }: { app: AppEntry; size?: number }) {
   );
 }
 
-export const sourceLabel = (a: AppEntry) => (a.source === 'mac' ? a.origin || 'Aplicativos'
+export const sourceLabel = (a: AppEntry) => (a.source === 'folder' ? tr("Pasta de jogo")
+  : a.source === 'mac' ? a.origin || 'Aplicativos'
   : a.source === 'store' ? (isMac ? 'App Store' : 'Microsoft Store / MSIX')
   : `Win32 ${a.arch === '32' ? '32 bits' : '64 bits'} · ${a.hive === 'HKCU' ? tr("usuário") : tr("máquina")}`);
 /** caminho curto para exibir (~/Library/...) */
@@ -121,8 +124,8 @@ export function useUninstall(onDone: (removed: string[]) => void) {
     }
     const r = await confirm({
       title: list.length === 1 ? tr("Desinstalar {0}?", list[0].name) : tr("Desinstalar {0} programas?", list.length),
-      message: <>{tr("Os desinstaladores rodam um de cada vez. Alguns abrem a própria janela, e outros pedem permissão de administrador. O espaço estimado a liberar é de")} <b>{fmtSize(total)}</b>.</>,
-      items: list.map((a) => ({ label: `${a.name}${a.version ? ' ' + a.version : ''}`, detail: a.size ? fmtSize(a.size) : undefined })),
+      message: <>{tr("Os desinstaladores rodam um de cada vez. Alguns abrem a própria janela, e outros pedem permissão de administrador. O espaço estimado a liberar é de")} <b>{fmtSize(total)}</b>.{list.some((a) => a.source === 'folder') && <> {tr("Os jogos sem desinstalador vão para a Lixeira, com a pasta inteira. Você consegue recuperar esses jogos até esvaziar a Lixeira.")}</>}</>,
+      items: list.map((a) => ({ label: `${a.name}${a.version ? ' ' + a.version : ''}`, detail: a.source === 'folder' ? tr("{0} · a pasta vai para a Lixeira", a.size ? fmtSize(a.size) : '—') : a.size ? fmtSize(a.size) : undefined })),
       options: [
         { key: 'normal', label: tr("Usar o desinstalador de cada programa"), hint: tr("Esta é a opção mais segura, porque você acompanha cada etapa.") },
         { key: 'silent', label: tr("Silencioso quando disponível"), hint: tr("Usa o modo silencioso do fabricante, quando ele existe. Nesse modo, o desinstalador não faz perguntas.") },
@@ -193,10 +196,25 @@ export function RecentInstalls({ apps, n = 8, compact }: { apps: AppEntry[] | nu
 // abrir o Desinstalador já ordenado (Visão geral: "Ver todos" de maiores ou de recentes)
 let pendingSort: string | null = null;
 const SORT_EVENT = 'cc:uninstall-sort';
-export function openUninstaller(go: (p: 'uninstall') => void, sort: 'size:false' | 'installDate:false') {
-  pendingSort = sort;
+// filtro pedido por outra tela (o mapa do armazenamento abre o Desinstalador já filtrado em jogos)
+export type UninstallFilter = 'all' | 'win32' | 'store' | 'mac' | 'games';
+let pendingFilter: UninstallFilter | null = null;
+const FILTER_EVENT = 'cc:uninstall-filter';
+export function openUninstaller(go: (p: 'uninstall') => void, sort: 'size:false' | 'installDate:false', filter: UninstallFilter = 'all') {
+  pendingSort = sort; pendingFilter = filter;
   window.dispatchEvent(new CustomEvent(SORT_EVENT, { detail: sort }));
+  window.dispatchEvent(new CustomEvent(FILTER_EVENT, { detail: filter }));
   go('uninstall');
+}
+/** Filtro do Desinstalador que respeita o pedido de outra tela. */
+export function useUninstallFilter() {
+  const [f, setF] = useState<UninstallFilter>(() => { const p = pendingFilter; pendingFilter = null; return p || 'all'; });
+  useEffect(() => {
+    const h = (e: Event) => { pendingFilter = null; setF((e as CustomEvent).detail); };
+    window.addEventListener(FILTER_EVENT, h);
+    return () => window.removeEventListener(FILTER_EVENT, h);
+  }, []);
+  return [f, setF] as const;
 }
 const parseSort = (v: string) => { const [key, a] = v.split(':'); return { key, asc: a === 'true' }; };
 /** Ordenação do Desinstalador que respeita o pedido da Visão geral. */

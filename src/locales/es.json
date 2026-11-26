@@ -2208,5 +2208,20 @@
  "Quando você troca de modo ou de curva, a ventoinha vai na hora para a velocidade nova. Antes, a curva descia devagar e levava até 33 segundos para chegar ao valor certo.": "Cuando cambias de modo o de curva, el ventilador va de inmediato a la nueva velocidad. Antes, la curva bajaba despacio y tardaba hasta 33 segundos en llegar al valor correcto.",
  "Atualização no Windows igual à do Mac": "Actualización en Windows igual que en Mac",
  "No Windows, a janela de instalação da atualização agora tem o mesmo desenho do popup do app e abre no mesmo lugar dele. Antes, uma segunda janela, com outro visual, aparecia por cima do popup.": "En Windows, la ventana de instalación de la actualización ahora tiene el mismo diseño que la ventana emergente de la app y se abre en el mismo lugar. Antes, una segunda ventana, con otro aspecto, aparecía encima de la ventana emergente.",
- "Não desligue o computador": "No apagues la computadora"
+ "Não desligue o computador": "No apagues la computadora",
+ "Ver jogos": "Ver juegos",
+ "Jogo sem desinstalador ({0})": "Juego sin desinstalador ({0})",
+ "Pasta de jogo": "Carpeta de juego",
+ "Os jogos sem desinstalador vão para a Lixeira, com a pasta inteira. Você consegue recuperar esses jogos até esvaziar a Lixeira.": "Los juegos sin desinstalador van a la Papelera, con la carpeta entera. Puedes recuperar estos juegos hasta que vacíes la Papelera.",
+ "{0} · a pasta vai para a Lixeira": "{0} · la carpeta va a la Papelera",
+ "A pasta foi para a Lixeira": "La carpeta fue a la Papelera",
+ "Jogos das lojas, como Steam, Epic e GOG, e jogos encontrados em qualquer pasta, como ports, recomps e jogos sem instalador": "Juegos de tiendas, como Steam, Epic y GOG, y juegos encontrados en cualquier carpeta, como ports, recomps y juegos sin instalador",
+ "Jogos no mapa e no Desinstalador": "Juegos en el mapa y en el Desinstalador",
+ "O mapa do armazenamento ganhou a categoria Jogos. Cada jogo conta uma vez só e sai de Aplicativos, Documentos, Downloads e das outras categorias.": "El mapa del almacenamiento ganó la categoría Juegos. Cada juego cuenta una sola vez y sale de Aplicaciones, Documentos, Descargas y las demás categorías.",
+ "O botão de Downloads no mapa abre a pasta Downloads na árvore do Explorador.": "El botón de Descargas en el mapa abre la carpeta Descargas en el árbol del Explorador.",
+ "No cartão do disco selecionado, os números de espaço ficam um embaixo do outro quando a janela é estreita, sem quebrar linha.": "En la tarjeta del disco seleccionado, los números de espacio quedan uno debajo del otro cuando la ventana es estrecha, sin cortar líneas.",
+ "Os nomes das categorias do mapa não são mais cortados.": "Los nombres de las categorías del mapa ya no se cortan.",
+ "O Desinstalador ganhou o filtro Jogos, e o botão Ver jogos do mapa abre o Desinstalador já filtrado.": "El Desinstalador ganó el filtro Juegos, y el botón Ver juegos del mapa abre el Desinstalador ya filtrado.",
+ "O CleanCode encontra jogos em qualquer pasta dos discos, como ports, recomps, pastas com romfs e exefs e jogos instalados sem loja.": "CleanCode encuentra juegos en cualquier carpeta de los discos, como ports, recomps, carpetas con romfs y exefs y juegos instalados sin tienda.",
+ "Um jogo sem desinstalador vai para a Lixeira com a pasta inteira, depois que você confirma. Você consegue recuperar o jogo até esvaziar a Lixeira.": "Un juego sin desinstalador va a la Papelera con la carpeta entera, después de que confirmas. Puedes recuperar el juego hasta que vacíes la Papelera."
 }

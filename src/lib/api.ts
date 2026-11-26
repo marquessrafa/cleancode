@@ -27,7 +27,7 @@ export interface DriveHardware {
   model: string; brand?: string; firmware?: string; health?: string; diskSize?: number; removable?: boolean;
 }
 export interface AppEntry {
-  id: string; source: 'win32' | 'store' | 'mac'; name: string; version?: string; publisher?: string; installDate?: number;
+  id: string; source: 'win32' | 'store' | 'mac' | 'folder'; game?: boolean; name: string; version?: string; publisher?: string; installDate?: number;
   size?: number; sizeSource?: string; location?: string; lastUsed?: number; lastUsedSource?: string; runCount?: number;
   uninstall?: string; quiet?: string; icon?: string; hive?: string; arch?: string; regPath?: string;
   packageFullName?: string; family?: string; msi?: boolean; canUninstall: boolean; background?: boolean; orphan?: boolean; exes?: string[];
@@ -292,6 +292,8 @@ interface CC {
     updateState(cb: (s: UpdateState) => void): () => void;
     advancedStep(cb: (d: { step: number; driverPresent?: boolean }) => void): () => void;
     appSize(cb: (d: { id: string; size: number }) => void): () => void;
+    /** a busca de jogos em todos os discos terminou */
+    gamesFound(cb: () => void): () => void;
     uninstallProgress(cb: (d: { id: string; status: string; message?: string }) => void): () => void;
   };
 }
