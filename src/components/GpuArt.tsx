@@ -30,6 +30,12 @@ export function matchGpu(hw: string, cards: GpuCard[]): GpuCard | null {
   }
   return best;
 }
+/** Todas as placas com foto (usado pela galeria da prévia das ventoinhas). */
+export function useGpuCatalog(): GpuCard[] | null {
+  const [list, setList] = useState<GpuCard[] | null>(null);
+  useEffect(() => { let alive = true; loadCatalog().then((cs) => alive && setList(cs)); return () => { alive = false; }; }, []);
+  return list;
+}
 export function useGpuCard(hw: string | undefined): GpuCard | null {
   const [card, setCard] = useState<GpuCard | null>(null);
   useEffect(() => { let alive = true; if (!hw) { setCard(null); return; } loadCatalog().then((cs) => alive && setCard(matchGpu(hw, cs))); return () => { alive = false; }; }, [hw]);

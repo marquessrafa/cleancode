@@ -17,6 +17,7 @@ import { OPEN_ADVANCED } from '../components/AdvancedSetupModal';
 import { GpuHero, GpuTileArt, useGpuCard } from '../components/GpuArt';
 import { FanSpinner, FanTrioHero } from '../components/FanArt';
 import { PumpArt } from '../components/PumpArt';
+import { GpuGallery } from '../components/GpuGallery';
 import { t as tr, LOCALE } from '../lib/i18n';
 
 type Points = [number, number][];
@@ -176,6 +177,8 @@ export default function FansPage() {
             <HowItWorks />
             <FanHelp general />
             <GpuCredit hw={controls.find((f) => f.kind === 'gpu')?.hw} />
+            {/* só na prévia simulada: todas as placas com foto, girando, com um controle de RPM */}
+            {state.preview && <GpuGallery />}
           </>
         )}
       </div>

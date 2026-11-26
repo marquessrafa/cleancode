@@ -2225,5 +2225,10 @@
  "O CleanCode encontra jogos em qualquer pasta dos discos, como ports, recomps, pastas com romfs e exefs e jogos instalados sem loja.": "CleanCode encuentra juegos en cualquier carpeta de los discos, como ports, recomps, carpetas con romfs y exefs y juegos instalados sin tienda.",
  "Um jogo sem desinstalador vai para a Lixeira com a pasta inteira, depois que você confirma. Você consegue recuperar o jogo até esvaziar a Lixeira.": "Un juego sin desinstalador va a la Papelera con la carpeta entera, después de que confirmas. Puedes recuperar el juego hasta que vacíes la Papelera.",
  "Cartões das ventoinhas sem piscar": "Tarjetas de ventiladores sin parpadeo",
- "Nos cartões da tela Ventoinhas, o texto Aplicando não fica mais aparecendo e sumindo. O cartão mostra o desenho do modo o tempo todo.": "En las tarjetas de la pantalla Ventiladores, el texto Aplicando ya no aparece y desaparece. La tarjeta muestra el dibujo del modo todo el tiempo."
+ "Nos cartões da tela Ventoinhas, o texto Aplicando não fica mais aparecendo e sumindo. O cartão mostra o desenho do modo o tempo todo.": "En las tarjetas de la pantalla Ventiladores, el texto Aplicando ya no aparece y desaparece. La tarjeta muestra el dibujo del modo todo el tiempo.",
+ "Galeria das placas de vídeo": "Galería de tarjetas gráficas",
+ "A prévia mostra as {0} placas com foto. O controle de RPM vale para todas as placas ao mesmo tempo.": "La vista previa muestra las {0} tarjetas con foto. El control de RPM vale para todas las tarjetas al mismo tiempo.",
+ "Buscar placa": "Buscar tarjeta",
+ "Rotação das ventoinhas": "Velocidad de los ventiladores",
+ "{0} ventoinha(s)": "{0} ventilador(es)"
 }
