@@ -2223,5 +2223,7 @@
  "Os nomes das categorias do mapa não são mais cortados.": "Los nombres de las categorías del mapa ya no se cortan.",
  "O Desinstalador ganhou o filtro Jogos, e o botão Ver jogos do mapa abre o Desinstalador já filtrado.": "El Desinstalador ganó el filtro Juegos, y el botón Ver juegos del mapa abre el Desinstalador ya filtrado.",
  "O CleanCode encontra jogos em qualquer pasta dos discos, como ports, recomps, pastas com romfs e exefs e jogos instalados sem loja.": "CleanCode encuentra juegos en cualquier carpeta de los discos, como ports, recomps, carpetas con romfs y exefs y juegos instalados sin tienda.",
- "Um jogo sem desinstalador vai para a Lixeira com a pasta inteira, depois que você confirma. Você consegue recuperar o jogo até esvaziar a Lixeira.": "Un juego sin desinstalador va a la Papelera con la carpeta entera, después de que confirmas. Puedes recuperar el juego hasta que vacíes la Papelera."
+ "Um jogo sem desinstalador vai para a Lixeira com a pasta inteira, depois que você confirma. Você consegue recuperar o jogo até esvaziar a Lixeira.": "Un juego sin desinstalador va a la Papelera con la carpeta entera, después de que confirmas. Puedes recuperar el juego hasta que vacíes la Papelera.",
+ "Cartões das ventoinhas sem piscar": "Tarjetas de ventiladores sin parpadeo",
+ "Nos cartões da tela Ventoinhas, o texto Aplicando não fica mais aparecendo e sumindo. O cartão mostra o desenho do modo o tempo todo.": "En las tarjetas de la pantalla Ventiladores, el texto Aplicando ya no aparece y desaparece. La tarjeta muestra el dibujo del modo todo el tiempo."
 }

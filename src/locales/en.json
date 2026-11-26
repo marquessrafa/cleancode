@@ -2417,5 +2417,7 @@
  "Os nomes das categorias do mapa não são mais cortados.": "The map category names are no longer cut off.",
  "O Desinstalador ganhou o filtro Jogos, e o botão Ver jogos do mapa abre o Desinstalador já filtrado.": "The Uninstaller has a new Games filter, and the See games button on the map opens the Uninstaller already filtered.",
  "O CleanCode encontra jogos em qualquer pasta dos discos, como ports, recomps, pastas com romfs e exefs e jogos instalados sem loja.": "CleanCode finds games in any folder on your disks, such as ports, recomps, folders with romfs and exefs and games installed without a store.",
- "Um jogo sem desinstalador vai para a Lixeira com a pasta inteira, depois que você confirma. Você consegue recuperar o jogo até esvaziar a Lixeira.": "A game without an uninstaller goes to the Recycle Bin with its whole folder, after you confirm. You can recover the game until you empty the Recycle Bin."
+ "Um jogo sem desinstalador vai para a Lixeira com a pasta inteira, depois que você confirma. Você consegue recuperar o jogo até esvaziar a Lixeira.": "A game without an uninstaller goes to the Recycle Bin with its whole folder, after you confirm. You can recover the game until you empty the Recycle Bin.",
+ "Cartões das ventoinhas sem piscar": "Fan cards without flickering",
+ "Nos cartões da tela Ventoinhas, o texto Aplicando não fica mais aparecendo e sumindo. O cartão mostra o desenho do modo o tempo todo.": "On the Fans screen cards, the Applying text no longer keeps appearing and disappearing. The card shows the mode drawing all the time."
 }

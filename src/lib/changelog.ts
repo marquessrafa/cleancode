@@ -5,6 +5,14 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.29', date: '2026-11-26', headline: 'Cartões das ventoinhas sem piscar',
+    groups: [
+      { title: 'Ventoinhas', icon: 'chip', items: [
+        'Nos cartões da tela Ventoinhas, o texto Aplicando não fica mais aparecendo e sumindo. O cartão mostra o desenho do modo o tempo todo.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.28', date: '2026-11-26', headline: 'Jogos no mapa e no Desinstalador',
     groups: [
       { title: 'Visão geral', icon: 'panel', items: [

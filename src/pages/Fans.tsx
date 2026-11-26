@@ -357,7 +357,9 @@ function ModeIcon({ mode, color }: { mode: Mode; color: string }) {
 }
 /** Etiqueta do cartão: o desenho do modo, ou um texto quando a ventoinha tem um aviso (erro, proteção ou "Em breve"). */
 function TileBadge({ fan, mode, s }: { fan: FanControlInfo; mode: Mode; s: ReturnType<typeof fanStatus> }) {
-  const text = fan.locked || s.tone === 'warn' || s.tone === 'danger' || (mode !== 'auto' && !fan.status);
+  // "Aplicando" não vira texto no cartão: o estado da ventoinha chega vazio por um instante em várias leituras, e o
+  // texto ficava aparecendo e sumindo. Nesse caso, o cartão continua mostrando o desenho do modo.
+  const text = fan.locked || s.tone === 'warn' || s.tone === 'danger';
   if (text) return <span title={s.long} className="shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-semibold" style={{ color: TONE[s.tone], background: `color-mix(in srgb, ${TONE[s.tone]} 14%, transparent)` }}>{s.short}</span>;
   return <ModeIcon mode={mode} color={mode === 'auto' ? 'var(--muted)' : 'var(--accent)'} />;
 }
