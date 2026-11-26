@@ -399,7 +399,7 @@ export interface SystemApi {
   updateSteps?: string[];
   /** instala acompanhando as etapas (onStep = índice em updateSteps). 'relaunch': já instalou, falta reabrir;
    *  'handoff': uma janelinha própria assume a instalação e reabre o app (o app precisa fechar agora) */
-  installUpdateLive?(file: string, onStep: (i: number) => void, ui: { accent: string; dark: boolean; version: string }): Promise<'relaunch' | 'handoff'>;
+  installUpdateLive?(file: string, onStep: (i: number) => void, ui: UpdateUi): Promise<'relaunch' | 'handoff'>;
   /** limpa sobras da atualização anterior (ex.: o .app antigo no macOS) */
   cleanupUpdate?(): void;
 }
@@ -435,4 +435,17 @@ export interface DossierOnline {
   /** versão mais recente conhecida (para comparar com a instalada) */
   latest?: string;
   error?: string;
+}
+
+/**
+ * Aparência do popup de atualização, para a janela de instalação do Windows ficar igual a ele.
+ * - colors: cores do tema em hex (#rrggbb), lidas da tela do app;
+ * - rect: posição e largura do cartão do popup na tela, em pixels lógicos (os mesmos do Windows);
+ * - subtitle: a linha embaixo do título (novidade principal, tamanho e data).
+ */
+export interface UpdateUi {
+  accent: string; dark: boolean; version: string;
+  colors?: Partial<Record<'surface' | 'line' | 'lineStrong' | 'fg' | 'muted' | 'faint' | 'track' | 'accent' | 'onAccent' | 'danger', string>>;
+  rect?: { x: number; y: number; w: number };
+  subtitle?: string;
 }

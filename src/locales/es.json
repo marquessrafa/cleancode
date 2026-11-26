@@ -2205,5 +2205,8 @@
  "Um botão no Monitor de hardware mostra se a varredura foi feita, se ela teve erros ou se ainda falta fazer. Um clique no botão refaz a varredura.": "Un botón en el Monitor de hardware muestra si el análisis está hecho, si tuvo errores o si todavía falta hacerlo. Un clic en el botón rehace el análisis.",
  "O disco em 3D da Visão geral não é mais cortado quando a câmera se move.": "El disco en 3D de la Vista general ya no se corta cuando la cámara se mueve.",
  "Curva da ventoinha sem espera ao trocar de modo": "Curva del ventilador sin espera al cambiar de modo",
- "Quando você troca de modo ou de curva, a ventoinha vai na hora para a velocidade nova. Antes, a curva descia devagar e levava até 33 segundos para chegar ao valor certo.": "Cuando cambias de modo o de curva, el ventilador va de inmediato a la nueva velocidad. Antes, la curva bajaba despacio y tardaba hasta 33 segundos en llegar al valor correcto."
+ "Quando você troca de modo ou de curva, a ventoinha vai na hora para a velocidade nova. Antes, a curva descia devagar e levava até 33 segundos para chegar ao valor certo.": "Cuando cambias de modo o de curva, el ventilador va de inmediato a la nueva velocidad. Antes, la curva bajaba despacio y tardaba hasta 33 segundos en llegar al valor correcto.",
+ "Atualização no Windows igual à do Mac": "Actualización en Windows igual que en Mac",
+ "No Windows, a janela de instalação da atualização agora tem o mesmo desenho do popup do app e abre no mesmo lugar dele. Antes, uma segunda janela, com outro visual, aparecia por cima do popup.": "En Windows, la ventana de instalación de la actualización ahora tiene el mismo diseño que la ventana emergente de la app y se abre en el mismo lugar. Antes, una segunda ventana, con otro aspecto, aparecía encima de la ventana emergente.",
+ "Não desligue o computador": "No apagues la computadora"
 }

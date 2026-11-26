@@ -66,7 +66,7 @@ export function UpdateModal() {
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/55 p-6 backdrop-blur-sm anim-fade" onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>
-      <div className="relative flex max-h-[86vh] w-full max-w-[580px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl anim-pop">
+      <div data-upd-card className="relative flex max-h-[86vh] w-full max-w-[580px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl anim-pop">
         {/* brilho na cor de destaque no topo */}
         <div className="pointer-events-none absolute inset-x-0 top-0 h-40" style={{ background: 'radial-gradient(70% 100% at 50% 0%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%)' }} />
         {!busy && <button className="absolute right-3 top-3 z-10 rounded-md p-1.5 text-muted hover:bg-[var(--hover)] hover:text-fg" onClick={close} title={tr("Fechar")}><X size={16} /></button>}
@@ -83,7 +83,7 @@ export function UpdateModal() {
               {phase === 'restart' ? tr("Atualizado") : phase === 'install' ? tr("Instalando") : phase === 'download' ? tr("Baixando") : phase === 'error' ? tr("Não deu certo") : tr("Nova versão disponível")}
             </div>
             <div className="truncate text-[21px] font-semibold tracking-tight text-fg">{tr("CleanCode")} {info.version}</div>
-            <div className="truncate text-[12.5px] text-muted">{top?.headline ? tr(top.headline) : tr("Melhorias e correções")}{info.size ? ` · ${fmtSize(info.size)}` : ''}{top?.date || info.date ? ` · ${fmtDay(top?.date || info.date)}` : ''}</div>
+            <div data-upd-sub className="truncate text-[12.5px] text-muted">{top?.headline ? tr(top.headline) : tr("Melhorias e correções")}{info.size ? ` · ${fmtSize(info.size)}` : ''}{top?.date || info.date ? ` · ${fmtDay(top?.date || info.date)}` : ''}</div>
           </div>
         </div>
 
@@ -161,7 +161,8 @@ export function UpdateModal() {
             <Button variant="primary" icon={update.status === 'ready' ? <RotateCcw size={14} /> : <Download size={14} />} onClick={start}>{update.status === 'ready' ? tr("Reiniciar e atualizar") : tr("Atualizar agora")}</Button>
           </>}
           {phase === 'download' && <Button variant="ghost" onClick={() => setOpen(false)}>{tr("Continuar em segundo plano")}</Button>}
-          {phase === 'install' && <span className="text-[12px] text-muted">{tr("Não feche o CleanCode")}</span>}
+          {/* no Windows, a janela de instalação assume com este mesmo rodapé depois que o app fecha */}
+          {phase === 'install' && <span className="text-[12px] text-muted">{isMac ? tr("Não feche o CleanCode") : tr("Não desligue o computador")}</span>}
           {phase === 'restart' && <span className="flex items-center gap-2 text-[12.5px] font-medium text-accent"><Loader2 size={14} className="animate-spin" /> {tr("Reiniciando")}</span>}
           {phase === 'error' && <>
             <Button variant="ghost" onClick={close}>{tr("Fechar")}</Button>

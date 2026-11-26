@@ -4,7 +4,7 @@ import { execFile, spawn } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import type { SystemApi, MonitorEvent } from '../types';
+import type { SystemApi, MonitorEvent, UpdateUi } from '../types';
 import { listApps, uninstallApp, removeEntry } from './apps';
 import { driveHardware } from './hardware';
 import { metrics } from './metrics';
@@ -70,12 +70,81 @@ const CTX_PROBE = 'HKCU\\Software\\Classes\\Directory\\shell\\CleanCode';
 
 /** Janelinha de instalação (WPF): espera o app fechar, roda o instalador silencioso e reabre o app no fim. */
 /** Textos da janela de instalação no idioma do app, em JSON e base64 (o script do PowerShell lê o parâmetro -Texts). */
-const updateTexts = () => Buffer.from(JSON.stringify({
-  top: t("Atualizando o CleanCode"), head: t("Instalando a versão {0}"), sub: t("Não desligue o computador. O CleanCode abre de novo sozinho quando terminar."),
-  s1: t("Preparando o instalador"), s2: t("Instalando"), s3: t("Reabrindo o CleanCode"),
-  done: t("Atualizado para a versão {0}"), opening: t("Abrindo o CleanCode…"), fail: t("Não foi possível atualizar"),
-  failSub: t("O CleanCode vai abrir na versão atual."), canceled: t("A instalação foi cancelada."), code: t("O instalador terminou com o código {0}."),
+const updateTexts = (version: string) => Buffer.from(JSON.stringify({
+  done: t("Atualizado"), fail: t("Não deu certo"), noteDone: t("Tudo pronto. O CleanCode {0} está instalado e vai reiniciar agora.", version),
+  footDone: t("Reiniciando"), failSub: t("O CleanCode vai abrir na versão atual."), canceled: t("A instalação foi cancelada."),
+  code: t("O instalador terminou com o código {0}."),
 }), 'utf8').toString('base64');
+
+// ---------- janela de instalação: o mesmo desenho do popup de atualização do app ----------
+// A janela é montada aqui, com as cores do tema e os textos já traduzidos, e o script do PowerShell só controla as etapas.
+const xmlq = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&apos;').replace(/"/g, '&quot;');
+const hex = (c: string | undefined, d: string) => (c && /^#[0-9a-f]{6}$/i.test(c) ? c : d);
+/** Largura do cartão do popup (max-w-[580px] em UpdateModal.tsx) e a margem em volta dele, onde fica a sombra. */
+const UPD_W = 580, UPD_M = 24;
+function updateXaml(ui: UpdateUi, steps: string[]) {
+  const dark = ui.dark, c = ui.colors || {};
+  const C = {
+    surface: hex(c.surface, dark ? '#171717' : '#ffffff'), line: hex(c.line, dark ? '#2a2a2a' : '#e6e6e8'), lineStrong: hex(c.lineStrong, dark ? '#3a3a3a' : '#d4d4d8'),
+    fg: hex(c.fg, dark ? '#ededed' : '#1c1c1e'), muted: hex(c.muted, dark ? '#a1a1a1' : '#6b6b73'), faint: hex(c.faint, dark ? '#707070' : '#9a9aa3'),
+    track: hex(c.track, dark ? '#1f1f1f' : '#f4f4f5'), accent: hex(c.accent || ui.accent, '#34d399'), onAccent: hex(c.onAccent, '#ffffff'), danger: hex(c.danger, dark ? '#f87171' : '#dc2626'),
+  };
+  const W = Math.round(ui.rect?.w || UPD_W), barW = W - 56;
+  const glow = '#2E' + C.accent.slice(1); // destaque com 18% de opacidade, como o brilho do topo do popup
+  const deep = '#' + [1, 3, 5].map((i) => Math.round(parseInt(C.accent.slice(i, i + 2), 16) * 0.55).toString(16).padStart(2, '0')).join('');
+  const spin = (name: string, size: number, color: string, hidden = true) => `<Viewbox x:Name='${name}' Width='${size}' Height='${size}' RenderTransformOrigin='0.5,0.5'${hidden ? " Visibility='Collapsed'" : ''}><Viewbox.RenderTransform><RotateTransform/></Viewbox.RenderTransform><Canvas Width='18' Height='18'><Path Data='M 9,1.6 A 7.4,7.4 0 1 1 1.6,9' Stroke='${color}' StrokeThickness='2.4' StrokeStartLineCap='Round' StrokeEndLineCap='Round'/></Canvas></Viewbox>`;
+  const check = (name: string, size: number, color: string, w: number) => `<Viewbox x:Name='${name}' Width='${size}' Height='${size}' Visibility='Collapsed'><Canvas Width='18' Height='18'><Path Data='M 3.5,9.6 L 7.4,13.4 L 14.6,5' Stroke='${color}' StrokeThickness='${w}' StrokeStartLineCap='Round' StrokeEndLineCap='Round' StrokeLineJoin='Round'/></Canvas></Viewbox>`;
+  const cross = (name: string, size: number, color: string) => `<Viewbox x:Name='${name}' Width='${size}' Height='${size}' Visibility='Collapsed'><Canvas Width='18' Height='18'><Path Data='M 5,5 L 13,13 M 13,5 L 5,13' Stroke='${color}' StrokeThickness='2.6' StrokeStartLineCap='Round' StrokeEndLineCap='Round'/></Canvas></Viewbox>`;
+  // uma etapa: círculo (ponto quando falta, girando quando está em andamento, check quando terminou, x quando falhou) e o nome
+  const row = (n: number, text: string) => `
+          <Grid Margin='0,0,0,10'>
+            <Grid.ColumnDefinitions><ColumnDefinition Width='24'/><ColumnDefinition Width='*'/></Grid.ColumnDefinitions>
+            <Border x:Name='C${n}' Width='24' Height='24' CornerRadius='12' BorderThickness='1' BorderBrush='${C.line}' Background='Transparent'>
+              <Grid><Ellipse x:Name='D${n}' Width='6' Height='6' Fill='${C.lineStrong}'/>${spin('P' + n, 13, C.accent)}${check('K' + n, 13, C.onAccent, 3)}${cross('X' + n, 11, '#ffffff')}</Grid>
+            </Border>
+            <TextBlock x:Name='T${n}' Grid.Column='1' Margin='12,0,0,0' VerticalAlignment='Center' FontSize='13.5' Foreground='${C.faint}' Text='${xmlq(text)}'/>
+          </Grid>`;
+  return `<Window xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'
+  WindowStyle='None' AllowsTransparency='True' Background='Transparent' Width='${W + UPD_M * 2}' SizeToContent='Height' ResizeMode='NoResize'
+  WindowStartupLocation='${ui.rect ? 'Manual' : 'CenterScreen'}' Topmost='True' ShowInTaskbar='True' Title='CleanCode'
+  FontFamily='Segoe UI Variable Text, Segoe UI' UseLayoutRounding='True'>
+  <Border Margin='${UPD_M}' CornerRadius='16' Background='${C.surface}' BorderBrush='${C.line}' BorderThickness='1'>
+    <Border.Effect><DropShadowEffect BlurRadius='28' ShadowDepth='8' Direction='270' Opacity='0.5'/></Border.Effect>
+    <Grid>
+      <Border CornerRadius='16,16,0,0' Height='160' VerticalAlignment='Top'>
+        <Border.Background><RadialGradientBrush Center='0.5,0' GradientOrigin='0.5,0' RadiusX='0.7' RadiusY='1'><GradientStop Color='${glow}' Offset='0'/><GradientStop Color='#00000000' Offset='0.7'/></RadialGradientBrush></Border.Background>
+      </Border>
+      <StackPanel>
+        <Grid Margin='28,28,28,16'>
+          <Grid.ColumnDefinitions><ColumnDefinition Width='56'/><ColumnDefinition Width='*'/></Grid.ColumnDefinitions>
+          <Border Width='56' Height='56' CornerRadius='16'>
+            <Border.Background><LinearGradientBrush StartPoint='0,0' EndPoint='1,1'><GradientStop Color='${C.accent}' Offset='0'/><GradientStop Color='${deep}' Offset='1'/></LinearGradientBrush></Border.Background>
+            <Border.Effect><DropShadowEffect Color='${C.accent}' BlurRadius='26' ShadowDepth='6' Direction='270' Opacity='0.45'/></Border.Effect>
+            <Grid>${spin('HSpin', 26, C.onAccent, false)}${check('HCheck', 28, C.onAccent, 2.6)}${cross('HFail', 24, C.onAccent)}</Grid>
+          </Border>
+          <StackPanel Grid.Column='1' Margin='16,0,0,0' VerticalAlignment='Center'>
+            <TextBlock x:Name='Tag' FontSize='11.5' FontWeight='SemiBold' Foreground='${C.accent}' Text='${xmlq(t("Instalando").toUpperCase())}'/>
+            <TextBlock FontSize='21' FontWeight='SemiBold' Foreground='${C.fg}' TextTrimming='CharacterEllipsis' Text='${xmlq('CleanCode ' + ui.version)}'/>
+            <TextBlock FontSize='12.5' Foreground='${C.muted}' TextTrimming='CharacterEllipsis' Text='${xmlq(ui.subtitle || '')}'/>
+          </StackPanel>
+        </Grid>
+        <StackPanel Margin='28,12,28,8'>${steps.map((x, i) => row(i + 1, x)).join('')}
+          <Border x:Name='Track' Height='6' CornerRadius='3' Background='${C.track}' Margin='0,10,0,0' ClipToBounds='True' Width='${barW}' HorizontalAlignment='Left'>
+            <Border x:Name='Fill' Width='${Math.round(barW / 3)}' CornerRadius='3' Background='${C.accent}' HorizontalAlignment='Left'><Border.RenderTransform><TranslateTransform/></Border.RenderTransform></Border>
+          </Border>
+          <TextBlock x:Name='Note' FontSize='12.5' Foreground='${C.muted}' TextWrapping='Wrap' Margin='0,12,0,0' Text='${xmlq(t("O CleanCode vai fechar, instalar a versão nova e abrir de novo sozinho."))}'/>
+        </StackPanel>
+        <Border BorderBrush='${C.line}' BorderThickness='0,1,0,0' Padding='28,16'>
+          <StackPanel Orientation='Horizontal' HorizontalAlignment='Right' Height='32'>
+            ${spin('FootSpin', 14, C.accent)}
+            <TextBlock x:Name='Foot' Margin='8,0,0,0' VerticalAlignment='Center' FontSize='12' Foreground='${C.muted}' Text='${xmlq(t("Não desligue o computador"))}'/>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </Grid>
+  </Border>
+</Window>`;
+}
 
 /** Aspas para a linha de comando do Windows (regras do CommandLineToArgvW). */
 const winQuote = (a: string) => (/[\s"]/.test(a) ? '"' + a.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, '$1$1') + '"' : a);
@@ -101,13 +170,14 @@ $r = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ 
   }));
 }
 
-// Janela de instalação no Windows (WPF, no mesmo estilo do popup do app). Ela é iniciada fora do job do app e:
+// Janela de instalação no Windows (WPF, com o mesmo desenho do popup do app e no mesmo lugar dele). Ela é iniciada fora do
+// job do app e:
 // 1) avisa o app que abriu (arquivo de "pronto"); só então o app fecha;
 // 2) espera fechar todos os processos que rodam da pasta do app (Electron e o helper de sensores);
 // 3) roda o instalador em silêncio, mostrando as mesmas etapas do popup;
 // 4) reabre o CleanCode quando a instalação termina (ou na versão atual, se ela falhar).
 // Cada passo vai para %TEMP%\cleancode-update.log. Sem WPF, instala do jeito clássico (o instalador reabre o app).
-const UPDATE_PS1 = String.raw`param([int]$ParentPid, [string]$Installer, [string]$InstArgs, [string]$Exe, [string]$AppDir, [string]$Version, [string]$Accent, [string]$Dark, [string]$Texts, [string]$ReadyFile, [string]$LogFile)
+const UPDATE_PS1 = String.raw`param([int]$ParentPid, [string]$Installer, [string]$InstArgs, [string]$Exe, [string]$AppDir, [string]$Version, [string]$XamlFile, [int]$Left = -99999, [int]$Top = 0, [string]$Fg = '#ffffff', [string]$Danger = '#f87171', [string]$Texts, [string]$ReadyFile, [string]$LogFile)
 $ErrorActionPreference = 'Stop'
 function Log([string]$m) { try { Add-Content -LiteralPath $LogFile -Value ((Get-Date).ToString('HH:mm:ss.fff') + '  ' + $m) -Encoding UTF8 } catch {} }
 function Ready { try { New-Item -ItemType File -Force -Path $ReadyFile | Out-Null } catch {} }
@@ -127,59 +197,58 @@ function AppProcs {
 $script:started = $false
 try {
   Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
-  $bg = if ($Dark -eq '1') { '#F2161A1F' } else { '#F7FFFFFF' }
-  $fg = if ($Dark -eq '1') { '#FFFFFFFF' } else { '#FF15171B' }
-  $muted = if ($Dark -eq '1') { '#FF9AA0A8' } else { '#FF5F6670' }
-  $faint = if ($Dark -eq '1') { '#66FFFFFF' } else { '#66000000' }
-  $track = if ($Dark -eq '1') { '#22FFFFFF' } else { '#1A000000' }
-  # cor da seta sobre o destaque: preta quando o destaque é claro (por exemplo, o branco no tema escuro)
-  $rgb = [Convert]::ToInt32($Accent.TrimStart('#'), 16); $lum = 0.299 * (($rgb -shr 16) -band 255) + 0.587 * (($rgb -shr 8) -band 255) + 0.114 * ($rgb -band 255)
-  $onAccent = if ($lum -gt 190) { '#FF111111' } else { '#FFFFFFFF' }
-  $xaml = @"
-<Window xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'
-  WindowStyle='None' AllowsTransparency='True' Background='Transparent' Width='470' SizeToContent='Height' ResizeMode='NoResize'
-  WindowStartupLocation='CenterScreen' Topmost='True' ShowInTaskbar='True' Title='CleanCode'>
-  <Border CornerRadius='18' Background='$bg' BorderBrush='#33FFFFFF' BorderThickness='1' Padding='30,26' Margin='16'>
-    <Border.Effect><DropShadowEffect BlurRadius='30' ShadowDepth='6' Opacity='0.45'/></Border.Effect>
-    <StackPanel>
-      <StackPanel Orientation='Horizontal'>
-        <Border Width='34' Height='34' CornerRadius='9' Background='$Accent'><TextBlock Text='&#x2191;' Foreground='$onAccent' FontSize='20' FontWeight='Bold' HorizontalAlignment='Center' VerticalAlignment='Center'/></Border>
-        <TextBlock x:Name='TopLine' Foreground='$muted' FontSize='13' Margin='12,0,0,0' VerticalAlignment='Center'/>
-      </StackPanel>
-      <TextBlock x:Name='Head' Foreground='$fg' FontSize='21' FontWeight='SemiBold' Margin='0,16,0,0'/>
-      <TextBlock x:Name='Sub' Foreground='$muted' FontSize='13' TextWrapping='Wrap' Margin='0,6,0,16'/>
-      <StackPanel Orientation='Horizontal' Margin='0,0,0,8'><TextBlock x:Name='I1' Width='24' FontSize='14' Foreground='$Accent'/><TextBlock x:Name='S1' FontSize='13.5' Foreground='$fg'/></StackPanel>
-      <StackPanel Orientation='Horizontal' Margin='0,0,0,8'><TextBlock x:Name='I2' Width='24' FontSize='14' Foreground='$faint'/><TextBlock x:Name='S2' FontSize='13.5' Foreground='$faint'/></StackPanel>
-      <StackPanel Orientation='Horizontal' Margin='0,0,0,16'><TextBlock x:Name='I3' Width='24' FontSize='14' Foreground='$faint'/><TextBlock x:Name='S3' FontSize='13.5' Foreground='$faint'/></StackPanel>
-      <ProgressBar x:Name='Bar' IsIndeterminate='True' Height='6' Foreground='$Accent' Background='$track' BorderThickness='0'/>
-    </StackPanel>
-  </Border>
-</Window>
-"@
-  $win = [Windows.Markup.XamlReader]::Parse($xaml)
-  $title = $win.FindName('Head'); $sub = $win.FindName('Sub'); $bar = $win.FindName('Bar')
-  $win.FindName('TopLine').Text = (L 'top' 'Atualizando o CleanCode')
-  $title.Text = (L 'head' 'Instalando a versão {0}') -f $Version
-  $sub.Text = (L 'sub' 'Não desligue o computador. O CleanCode abre de novo sozinho quando terminar.')
-  $win.FindName('S1').Text = (L 's1' 'Preparando o instalador'); $win.FindName('S2').Text = (L 's2' 'Instalando'); $win.FindName('S3').Text = (L 's3' 'Reabrindo o CleanCode')
-  $accentBrush = (New-Object Windows.Media.BrushConverter).ConvertFromString($Accent)
-  $fgBrush = (New-Object Windows.Media.BrushConverter).ConvertFromString($fg)
-  # etapa: 0 = em andamento (ponto), 1 = concluída (check), 2 = falhou (x)
-  function SetStep([int]$n, [int]$state) {
-    $i = $win.FindName('I' + $n); $s = $win.FindName('S' + $n)
-    $i.Text = @([string][char]0x25CF, [string][char]0x2713, [string][char]0x2715)[$state]
-    $i.Foreground = $accentBrush; $s.Foreground = $fgBrush
+  # a janela vem pronta do app (updateXaml): o mesmo desenho do popup, com as cores do tema e os textos traduzidos
+  $win = [Windows.Markup.XamlReader]::Parse([IO.File]::ReadAllText($XamlFile, [Text.Encoding]::UTF8))
+  Remove-Item -LiteralPath $XamlFile -Force -ErrorAction SilentlyContinue
+  # abre exatamente onde estava o popup do app (a margem da sombra fica em volta do cartão)
+  if ($Left -ne -99999) { $win.Left = $Left; $win.Top = $Top }
+  $bc = New-Object Windows.Media.BrushConverter
+  function B([string]$c) { $bc.ConvertFromString($c) }
+  $F = { param($n) $win.FindName($n) }
+  $accentB = (& $F 'Fill').Background; $transB = B '#00000000'
+  $lineB = (& $F 'C1').BorderBrush; $faintB = (& $F 'T1').Foreground; $fgB = B $Fg; $dangerB = B $Danger
+  function Spin($el, [double]$sec) {
+    $a = New-Object Windows.Media.Animation.DoubleAnimation(0, 360, [TimeSpan]::FromSeconds($sec))
+    $a.RepeatBehavior = [Windows.Media.Animation.RepeatBehavior]::Forever
+    $el.RenderTransform.BeginAnimation([Windows.Media.RotateTransform]::AngleProperty, $a)
   }
-  SetStep 1 0
+  function Show($el, [bool]$on) { $el.Visibility = $(if ($on) { 'Visible' } else { 'Collapsed' }) }
+  # etapa: 0 = falta, 1 = em andamento, 2 = concluída, 3 = falhou
+  function SetStep([int]$n, [int]$s) {
+    if (-not (& $F ('C' + $n))) { return }
+    Show (& $F ('D' + $n)) ($s -eq 0); Show (& $F ('P' + $n)) ($s -eq 1); Show (& $F ('K' + $n)) ($s -eq 2); Show (& $F ('X' + $n)) ($s -eq 3)
+    if ($s -eq 1) { Spin (& $F ('P' + $n)) 0.9 }
+    $c = & $F ('C' + $n)
+    $c.BorderBrush = $(if ($s -eq 1) { $accentB } elseif ($s -ge 2) { $transB } else { $lineB })
+    $c.Background = $(if ($s -eq 2) { $accentB } elseif ($s -eq 3) { $dangerB } else { $transB })
+    $t = & $F ('T' + $n); $t.Foreground = $(if ($s -eq 0) { $faintB } else { $fgB }); $t.FontWeight = $(if ($s -eq 1) { 'Medium' } else { 'Normal' })
+  }
+  Spin (& $F 'HSpin') 0.9
+  # barra em andamento: um pedaço na cor de destaque passa de um lado para o outro, como no popup
+  $fill = & $F 'Fill'; $barW = (& $F 'Track').Width
+  $slide = New-Object Windows.Media.Animation.DoubleAnimation((-$fill.Width), $barW, [TimeSpan]::FromSeconds(1.4))
+  $slide.RepeatBehavior = [Windows.Media.Animation.RepeatBehavior]::Forever
+  $fill.RenderTransform.BeginAnimation([Windows.Media.TranslateTransform]::XProperty, $slide)
+  SetStep 1 1
   $win.Add_ContentRendered({ Ready; Log 'janela aberta' })
   $win.Add_MouseLeftButtonDown({ try { $win.DragMove() } catch {} })
   $script:phase = 'wait'; $script:proc = $null; $script:t0 = Get-Date; $script:closeAt = $null; $script:killed = $false
   $finish = {
     param($ok, $msg)
-    $bar.IsIndeterminate = $false; $bar.Value = 100
-    if ($ok) { SetStep 2 1; SetStep 3 0; $title.Text = (L 'done' 'Atualizado para a versão {0}') -f $Version; $sub.Text = (L 'opening' 'Abrindo o CleanCode…') }
-    else { SetStep 2 2; SetStep 3 0; $title.Text = (L 'fail' 'Não foi possível atualizar'); $sub.Text = $msg + ' ' + (L 'failSub' 'O CleanCode vai abrir na versão atual.') }
-    try { Start-Process -FilePath $Exe -ArgumentList '--updated'; Log 'app reaberto'; SetStep 3 1 } catch { Log ('falha ao reabrir: ' + $_.Exception.Message) }
+    $fill.RenderTransform.BeginAnimation([Windows.Media.TranslateTransform]::XProperty, $null)
+    $fill.RenderTransform.X = 0; $fill.Width = $barW
+    Show (& $F 'HSpin') $false
+    if ($ok) {
+      SetStep 2 2; SetStep 3 1; Show (& $F 'HCheck') $true
+      (& $F 'Tag').Text = (L 'done' 'Atualizado').ToUpper(); (& $F 'Note').Text = (L 'noteDone' 'Tudo pronto.')
+      $foot = & $F 'Foot'; $foot.Text = (L 'footDone' 'Reiniciando'); $foot.Foreground = $accentB; $foot.FontWeight = 'Medium'
+      Show (& $F 'FootSpin') $true; Spin (& $F 'FootSpin') 0.9
+    } else {
+      SetStep 2 3; SetStep 3 1; Show (& $F 'HFail') $true; $fill.Background = $dangerB
+      (& $F 'Tag').Text = (L 'fail' 'Não deu certo').ToUpper(); (& $F 'Tag').Foreground = $dangerB
+      (& $F 'Note').Text = $msg + ' ' + (L 'failSub' 'O CleanCode vai abrir na versão atual.')
+    }
+    try { Start-Process -FilePath $Exe -ArgumentList '--updated'; Log 'app reaberto'; SetStep 3 2 } catch { Log ('falha ao reabrir: ' + $_.Exception.Message) }
     $script:closeAt = (Get-Date).AddSeconds($(if ($ok) { 2.5 } else { 7 }))
     $script:phase = 'done'
   }
@@ -193,7 +262,7 @@ try {
         $elapsed = ((Get-Date) - $script:t0).TotalSeconds
         if ($left.Count -gt 0 -and $elapsed -gt 25 -and -not $script:killed) { Log ('encerrando ' + $left.Count + ' processo(s) que sobraram'); $left | Stop-Process -Force -ErrorAction SilentlyContinue; $script:killed = $true; return }
         if ($left.Count -eq 0 -or $elapsed -gt 40) {
-          SetStep 1 1; SetStep 2 0
+          SetStep 1 2; SetStep 2 1
           Log ('rodando o instalador: ' + $InstArgs)
           $script:proc = Start-Process -FilePath $Installer -ArgumentList $InstArgs -PassThru
           $null = $script:proc.Handle  # sem isso, o ExitCode do Start-Process volta vazio
@@ -314,17 +383,21 @@ const win32: SystemApi = {
     const pf = [process.env.ProgramW6432, process.env.ProgramFiles, process.env['ProgramFiles(x86)']].filter(Boolean).map((p) => p!.toLowerCase() + '\\');
     const perMachine = pf.some((p) => (dir.toLowerCase() + '\\').startsWith(p));
     const instArgs = ['/S', '--updated', perMachine ? '/allusers' : '/currentuser', `/D=${dir}`].join(' '); // /D precisa ser o último e sem aspas
-    const accent = /^#[0-9a-f]{6}$/i.test(ui.accent) ? ui.accent : '#34d399';
     const version = ui.version.replace(/[^0-9a-z.\-]/gi, '');
     const stamp = Date.now();
     const script = path.join(os.tmpdir(), `cleancode-update-${stamp}.ps1`);
     const ready = path.join(os.tmpdir(), `cleancode-update-${stamp}.ready`);
+    const xaml = path.join(os.tmpdir(), `cleancode-update-${stamp}.xaml`);
+    fs.writeFileSync(xaml, updateXaml({ ...ui, version }, this.updateSteps || []), 'utf8');
+    // posição da janela: o canto do cartão do popup menos a margem da sombra
+    const pos = ui.rect ? ['-Left', String(Math.round(ui.rect.x - UPD_M)), '-Top', String(Math.round(ui.rect.y - UPD_M))] : [];
+    const fg = hex(ui.colors?.fg, ui.dark ? '#ededed' : '#1c1c1e'), danger = hex(ui.colors?.danger, ui.dark ? '#f87171' : '#dc2626');
     const log = path.join(os.tmpdir(), 'cleancode-update.log');
     try { fs.writeFileSync(log, ''); } catch { /* */ }
     fs.writeFileSync(script, '﻿' + UPDATE_PS1, 'utf8');
     const cmd = ['powershell.exe', '-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', script,
       '-ParentPid', String(process.pid), '-Installer', file, '-InstArgs', instArgs, '-Exe', process.execPath, '-AppDir', dir + '\\', '-Version', version,
-      '-Accent', accent, '-Dark', ui.dark ? '1' : '0', '-Texts', updateTexts(), '-ReadyFile', ready, '-LogFile', log].map(winQuote).join(' ');
+      '-XamlFile', xaml, ...pos, '-Fg', fg, '-Danger', danger, '-Texts', updateTexts(version), '-ReadyFile', ready, '-LogFile', log].map(winQuote).join(' ');
     // a janela de instalação nasce fora do job do app; o app só fecha depois que ela aparece na tela
     const pid = await launchOutsideJob(cmd);
     let shown = false;
@@ -338,7 +411,7 @@ const win32: SystemApi = {
       if (!(await launchOutsideJob(fallback))) { const inst = spawn(file, ['/S', '--updated', '--force-run', perMachine ? '/allusers' : '/currentuser', `/D=${dir}`], { detached: true, stdio: 'ignore', windowsHide: true, windowsVerbatimArguments: true }); inst.unref(); }
     }
     try { fs.unlinkSync(ready); } catch { /* */ }
-    onStep(1);
+    // a etapa seguinte fica com a janela de instalação, que continua exatamente de onde o popup parou
     return 'handoff' as const;
   },
   installUpdate(file, quit, relaunch) {

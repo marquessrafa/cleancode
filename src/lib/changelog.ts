@@ -5,6 +5,14 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.27', date: '2026-11-25', headline: 'Atualização no Windows igual à do Mac',
+    groups: [
+      { title: 'Atualizações', icon: 'download', items: [
+        'No Windows, a janela de instalação da atualização agora tem o mesmo desenho do popup do app e abre no mesmo lugar dele. Antes, uma segunda janela, com outro visual, aparecia por cima do popup.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.26', date: '2026-11-25', headline: 'Curva da ventoinha sem espera ao trocar de modo',
     groups: [
       { title: 'Ventoinhas', icon: 'chip', items: [

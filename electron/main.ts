@@ -647,8 +647,31 @@ async function demoInstall() {
   return true;
 }
 
+/**
+ * Lê na tela do app as cores do tema e a posição do cartão do popup de atualização (no Windows, a janela de instalação
+ * usa esses dados para abrir igual ao popup e no mesmo lugar). As cores viram hex: o navegador desenha cada cor num
+ * pixel e lê o resultado, então valores como color-mix também funcionam.
+ */
+async function popupLook(wc: Electron.WebContents) {
+  try {
+    const win = BrowserWindow.fromWebContents(wc);
+    const r = await wc.executeJavaScript(`(() => {
+      const cs = getComputedStyle(document.documentElement), g = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+      const hex = (v) => { g.clearRect(0, 0, 1, 1); g.fillStyle = '#000'; g.fillStyle = v; g.fillRect(0, 0, 1, 1); const d = g.getImageData(0, 0, 1, 1).data; return '#' + [d[0], d[1], d[2]].map((x) => x.toString(16).padStart(2, '0')).join(''); };
+      const v = (n) => hex(cs.getPropertyValue(n).trim() || '#000');
+      const el = document.querySelector('[data-upd-card]'), b = el && el.getBoundingClientRect();
+      const sub = el && el.querySelector('[data-upd-sub]');
+      return { colors: { surface: v('--surface'), line: v('--line'), lineStrong: v('--line-strong'), fg: v('--fg'), muted: v('--muted'), faint: v('--faint'), track: v('--surface-2'), accent: v('--accent'), onAccent: v('--on-accent'), danger: v('--danger') },
+        rect: b ? { x: b.left, y: b.top, w: b.width } : null, subtitle: sub ? sub.textContent : '' };
+    })()`);
+    const z = wc.getZoomFactor(), cb = win?.getContentBounds();
+    const rect = r.rect && cb && win?.isVisible() ? { x: cb.x + r.rect.x * z, y: cb.y + r.rect.y * z, w: r.rect.w * z } : undefined;
+    return { colors: r.colors, rect, subtitle: r.subtitle || undefined };
+  } catch { return {}; }
+}
+
 // atualizar pelo popup central: baixa (se ainda não baixou), instala acompanhando as etapas e só reinicia no fim
-ipcMain.handle('update:start', async () => {
+ipcMain.handle('update:start', async (e) => {
   const info = updateState.info;
   if (!info) throw new Error(tr("Nenhuma atualização disponível"));
   if (DEMO_UPDATE) return demoInstall();
@@ -664,14 +687,20 @@ ipcMain.handle('update:start', async () => {
     const dark = isDarkTheme();
     const file = readyFile!;
     readyFile = null; // o arquivo agora é da instalação em andamento (não instalar de novo ao sair)
-    const r = await live.call(system, file, (i) => pushUpdate({ step: i }), { accent: accentHex(dark), dark, version: info.version });
+    const look = await popupLook(e.sender);
+    const r = await live.call(system, file, (i) => pushUpdate({ step: i }), { accent: accentHex(dark), dark, version: info.version, ...look });
     if (r === 'relaunch') {
       pushUpdate({ status: 'restarting', step: steps.length });
       setTimeout(() => {
         app.relaunch({ args: [...process.argv.slice(1).filter((a) => a !== '--updated' && a !== '--hidden'), '--updated'] });
         quitApp();
       }, 1500);
-    } else setTimeout(quitApp, 900); // a janelinha do instalador assume e reabre o app no fim
+    } else {
+      // a janela de instalação já está na tela, no mesmo lugar e com o mesmo desenho do popup: o app some agora,
+      // para as duas não aparecerem juntas, e fecha logo depois
+      for (const w of BrowserWindow.getAllWindows()) { try { w.hide(); } catch { /* */ } }
+      setTimeout(quitApp, 300);
+    }
     return true;
   } catch (err: any) {
     pushUpdate({ status: 'error', error: String(err?.message || err) });
