@@ -213,6 +213,7 @@ interface CC {
   panelReady(): Promise<boolean>;
   panelMouse(ignore: boolean): Promise<boolean>;
   panelHide(): Promise<boolean>;
+  panelBlanked(): Promise<boolean>;
   panelToggle(): Promise<boolean>;
   panelOpenMain(page?: string): Promise<boolean>;
   /** macOS: tem "Acesso Total ao Disco"? null no Windows */
@@ -288,6 +289,7 @@ interface CC {
     cleanProgress(cb: (d: { done: number; total: number; freed: number; current: string }) => void): () => void;
     speedProgress(cb: (p: SpeedProgress) => void): () => void;
     panelShown(cb: () => void): () => void;
+    panelHiding(cb: () => void): () => void;
     settingsChanged(cb: (s: Settings) => void): () => void;
     updateState(cb: (s: UpdateState) => void): () => void;
     advancedStep(cb: (d: { step: number; driverPresent?: boolean }) => void): () => void;

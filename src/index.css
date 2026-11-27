@@ -105,6 +105,11 @@ input, textarea, select { user-select: text; }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 /* desenhos do modo das ventoinhas (Fans.tsx): anda um período para a direita e recomeça sem salto */
 @keyframes mode-slide { from { transform: translateX(0); } to { transform: translateX(var(--d)); } }
+@keyframes tank-wave { to { transform: translateX(var(--len)); } }
+.tank-wave { animation: tank-wave 5s linear infinite; }
+@keyframes cpu-scan { from { transform: translateY(0); } to { transform: translateY(170px); } }
+.cpu-scan { animation: cpu-scan 2s linear infinite; }
+@keyframes panel-slide { 0%, 12% { transform: translateX(0); } 88%, 100% { transform: translateX(var(--slide)); } }
 @media (prefers-reduced-motion: reduce) { .mode-icon g { animation: none !important; } }
 /* entrada em cascata: cada filho sobe e aparece, um pouco depois do anterior (painel das ventoinhas) */
 /* Ventoinhas: a placa grande some para baixo na tela estreita e para a direita na tela larga (1500 pixels ou mais) */
@@ -155,11 +160,12 @@ body.panel-body, body.panel-body #root { background: transparent !important; hei
   --p-danger: #f87171;
   --p-fg: #f5f5f7;
   --p-muted: rgba(235, 235, 245, .62);
-  --p-line: rgba(255, 255, 255, .10);
+  /* bordas: a cor de destaque, fraca e igual em todos os lados */
+  --p-line: color-mix(in srgb, var(--accent) 20%, transparent);
   --p-card: rgba(255, 255, 255, .065);
   --p-card-hover: rgba(255, 255, 255, .11);
   --p-track: rgba(255, 255, 255, .08);
-  --p-edge: rgba(255, 255, 255, .13);
+  --p-edge: color-mix(in srgb, var(--accent) 32%, transparent);
   --p-soft: rgba(245, 245, 247, .82);
   --p-link: color-mix(in srgb, var(--accent) 55%, #ffffff);
   --p-disc: rgba(255, 255, 255, .045);
@@ -187,11 +193,11 @@ body.panel-body, body.panel-body #root { background: transparent !important; hei
 :root:not(.dark) .panel-root {
   --p-fg: #18181b;
   --p-muted: rgba(24, 24, 27, .6);
-  --p-line: rgba(0, 0, 0, .08);
+  --p-line: color-mix(in srgb, var(--accent) 24%, transparent);
   --p-card: rgba(255, 255, 255, .62);
   --p-card-hover: rgba(255, 255, 255, .85);
   --p-track: rgba(0, 0, 0, .06);
-  --p-edge: rgba(0, 0, 0, .11);
+  --p-edge: color-mix(in srgb, var(--accent) 38%, transparent);
   --p-soft: rgba(24, 24, 27, .78);
   --p-link: color-mix(in srgb, var(--accent) 75%, #000000);
   --p-disc: rgba(0, 0, 0, .035);
@@ -226,6 +232,9 @@ body.panel-body, body.panel-body #root { background: transparent !important; hei
 /* entrada do painel: desliza da direita para a esquerda com fade */
 @keyframes panel-in { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: none; } }
 .anim-panel-in { animation: panel-in .42s cubic-bezier(.16,1,.3,1) both; }
+/* no widget, cada cartão também entra deslizando da direita para a esquerda, com fade, depois do painel */
+@keyframes rise-left { from { opacity: 0; transform: translateX(22px); } to { opacity: 1; transform: none; } }
+.panel-body .anim-rise { animation-name: rise-left; animation-duration: .5s; }
 /* detalhe do painel: sai de trás do painel principal para a esquerda, com fade */
 @keyframes detail-in { from { opacity: 0; transform: translateX(72px) scale(.97); } to { opacity: 1; transform: none; } }
 .anim-detail-in { animation: detail-in .55s cubic-bezier(.22,1,.36,1) both; }

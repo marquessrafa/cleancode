@@ -292,7 +292,7 @@ function Banner({ tone, icon, title, text }: { tone: 'warn' | 'danger'; icon: Re
 }
 
 // ---------- estado de cada ventoinha (texto e cor) ----------
-function fanStatus(fan: FanControlInfo, mode: Mode): { tone: 'ok' | 'warn' | 'danger' | 'idle'; short: string; long: string } {
+export function fanStatus(fan: FanControlInfo, mode: Mode): { tone: 'ok' | 'warn' | 'danger' | 'idle'; short: string; long: string } {
   const st = fan.status;
   if (fan.locked) return { tone: 'ok', short: tr("Em breve"), long: tr("Por enquanto, o CleanCode só mostra a velocidade desta ventoinha.") };
   if (mode === 'auto') return { tone: 'idle', short: tr("Automático"), long: tr("A placa decide a velocidade desta ventoinha, pelo perfil do BIOS.") };
@@ -306,15 +306,15 @@ function fanStatus(fan: FanControlInfo, mode: Mode): { tone: 'ok' | 'warn' | 'da
   const long = typeof st.read === 'number' ? tr("O CleanCode está aplicando {0}%, e a placa informa {1}%.", fmt(st.pct), fmt(st.read)) : tr("O CleanCode está aplicando {0}%.", fmt(st.pct));
   return { tone: 'ok', short: `${fmt(st.pct)}%`, long };
 }
-const TONE: Record<string, string> = { ok: 'var(--accent)', warn: 'var(--warn)', danger: 'var(--danger)', idle: 'var(--faint)' };
-const MODE_LABEL: Record<Mode, string> = { auto: tr("Automático"), fixed: tr("Velocidade fixa"), curve: tr("Curva") };
+export const TONE: Record<string, string> = { ok: 'var(--accent)', warn: 'var(--warn)', danger: 'var(--danger)', idle: 'var(--faint)' };
+export const MODE_LABEL: Record<Mode, string> = { auto: tr("Automático"), fixed: tr("Velocidade fixa"), curve: tr("Curva") };
 
 // ---------- desenho do modo no canto do cartão ----------
 // Robô para o modo automático, uma linha reta para a velocidade fixa e uma linha ondulada para a curva. Os desenhos se
 // movem devagar: na linha reta, as bolinhas andam sobre a linha; na curva, a onda anda para o lado com as bolinhas nos
 // picos e nos vales. A onda só desliza, sem mudar de forma, e as duas linhas têm a mesma espessura. As pontas somem num
 // degradê, para as bolinhas entrarem e saírem da linha sem cortes. O nome do modo aparece ao passar o mouse.
-function ModeIcon({ mode, color }: { mode: Mode; color: string }) {
+export function ModeIcon({ mode, color }: { mode: Mode; color: string }) {
   const id = useId().replace(/:/g, '');
   const label = MODE_LABEL[mode];
   if (mode === 'auto') return <span title={label} aria-label={label} className="flex h-4 items-center" style={{ color }}><Bot size={16} strokeWidth={1.9} /></span>;

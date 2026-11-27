@@ -10,13 +10,13 @@
 // vê, cada quadro mistura várias posições do giro daquele instante (borrão de movimento).
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { buildFan3DScene, drawFan3D, loadFanProfiles, type Fan3DScene } from './GpuFan3D';
+import { buildFan3DScene, cachedFan3DScene, drawFan3D, loadFanProfiles, type Fan3DScene } from './GpuFan3D';
 
 export interface GpuCard { name: string; file: string; w: number; h: number; box: { x0: number; y0: number; x1: number; y1: number }; fans: { cx: number; cy: number; r: number }[] }
 
 const BASE = './gpus/';
-let catalog: Promise<GpuCard[]> | null = null;
-const loadCatalog = () => (catalog ??= fetch(BASE + 'gpus.json').then((r) => r.json()).then((j) => j.cards as GpuCard[]).catch(() => []));
+let catalog: Promise<GpuCard[]> | null = null, catalogReady: GpuCard[] | null = null;
+const loadCatalog = () => (catalog ??= fetch(BASE + 'gpus.json').then((r) => r.json()).then((j) => (catalogReady = j.cards as GpuCard[])).catch(() => []));
 
 // nome do sensor (por exemplo, "AMD Radeon RX 6800 XT") para a foto: vale o modelo mais comprido cujas palavras
 // aparecem todas no nome. A quantidade de memória no fim do nome da foto ("12 GB") é opcional.
@@ -32,8 +32,10 @@ export function matchGpu(hw: string, cards: GpuCard[]): GpuCard | null {
   return best;
 }
 /** Todas as placas com foto (usado pela galeria da prévia das ventoinhas). */
+export const preloadGpuCatalog = () => loadCatalog();
 export function useGpuCatalog(): GpuCard[] | null {
-  const [list, setList] = useState<GpuCard[] | null>(null);
+  // com o catálogo já carregado, a placa aparece no primeiro desenho, sem esperar
+  const [list, setList] = useState<GpuCard[] | null>(catalogReady);
   useEffect(() => { let alive = true; loadCatalog().then((cs) => alive && setList(cs)); return () => { alive = false; }; }, []);
   return list;
 }
@@ -103,7 +105,8 @@ export function accentRgb(el: HTMLElement) {
 // ---------- cabeçalho do painel: a placa de frente ----------
 /** Largura da janela a partir da qual a placa grande fica à esquerda, com o nome ao lado (igual ao min-[1500px] das classes). */
 export const WIDE = 1500;
-export function GpuHero({ card, rpm, height = 190 }: { card: GpuCard; rpm?: number; height?: number }) {
+/** whole: a placa inteira no centro, sem o fundo e sem sumir nas bordas (usado no widget). */
+export function GpuHero({ card, rpm, height = 190, whole = false, align = 'center' }: { card: GpuCard; rpm?: number; height?: number; whole?: boolean; align?: 'center' | 'left' }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const rpmRef = useRef(rpm || 0); rpmRef.current = rpm || 0;
   useEffect(() => {
@@ -119,8 +122,9 @@ export function GpuHero({ card, rpm, height = 190 }: { card: GpuCard; rpm?: numb
     loadImage(card.file).then(async (img) => {
       if (!alive) return;
       const prof = (await loadFanProfiles())[card.file];
-      if (prof && alive) { try { v3d = await buildFan3DScene(card, prof, img); } catch (err) { console.warn('ventoinha 3D', err); } }
-      if (!alive) { v3d?.dispose(); return; }
+      // no widget, a cena fica guardada: ao abrir de novo, a placa aparece na hora
+      if (prof && alive) { try { v3d = whole ? await cachedFan3DScene(card, prof, img, `w${height}`) : await buildFan3DScene(card, prof, img); } catch (err) { console.warn('ventoinha 3D', err); } }
+      if (!alive) { if (!whole) v3d?.dispose(); return; }
       // cada ventoinha vira um recorte redondo da foto, no tamanho original
       const sprites = card.fans.map((f) => {
         const s = document.createElement('canvas'); s.width = s.height = Math.ceil(f.r * 2);
@@ -139,10 +143,10 @@ export function GpuHero({ card, rpm, height = 190 }: { card: GpuCard; rpm?: numb
         g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
         // tela larga: a placa inteira, alinhada à esquerda com o resto da página, sumindo para a direita.
         // tela estreita: a placa no centro, sumindo para baixo (a máscara do bloco troca junto, pela classe gpu-hero)
-        const b = card.box, bw = b.x1 - b.x0, bh = b.y1 - b.y0, side = window.innerWidth >= WIDE;
-        const s = side ? Math.min((H * 0.84) / bh, (W * 0.55) / bw) : Math.min((H * 0.86) / bh, (W * 0.62) / bw);
-        const ox = side ? -b.x0 * s : W / 2 - (b.x0 + bw / 2) * s, oy = H / 2 - (b.y0 + bh / 2) * s;
-        techBackground(g, W, H, (now - t0) / 1000, rgb, W / 2, H * 0.75);
+        const b = card.box, bw = b.x1 - b.x0, bh = b.y1 - b.y0, side = !whole && window.innerWidth >= WIDE;
+        const s = whole ? Math.min((H * 0.96) / bh, (W * 0.96) / bw) : side ? Math.min((H * 0.84) / bh, (W * 0.55) / bw) : Math.min((H * 0.86) / bh, (W * 0.62) / bw);
+        const ox = whole && align === 'left' ? W * 0.02 - b.x0 * s : side ? -b.x0 * s : W / 2 - (b.x0 + bw / 2) * s, oy = H / 2 - (b.y0 + bh / 2) * s;
+        if (!whole) techBackground(g, W, H, (now - t0) / 1000, rgb, W / 2, H * 0.75);
         g.imageSmoothingQuality = 'high';
         if (v3d) {
           // câmera de frente, sem perspectiva, com a placa no mesmo lugar e tamanho da foto (1 unidade = 1 pixel da foto)
@@ -166,12 +170,12 @@ export function GpuHero({ card, rpm, height = 190 }: { card: GpuCard; rpm?: numb
       };
       raf = requestAnimationFrame(frame);
     });
-    return () => { alive = false; cancelAnimationFrame(raf); io.disconnect(); v3d?.dispose(); };
-  }, [card]);
+    return () => { alive = false; cancelAnimationFrame(raf); io.disconnect(); if (!whole) v3d?.dispose(); };
+  }, [card, whole, height]);
   return (
     <div className="pointer-events-none relative w-full" style={{ height }}>
       {/* a placa some para baixo (tela estreita) ou para a direita (tela larga), onde ficam o nome e o RPM */}
-      <div className="gpu-hero absolute inset-0 overflow-hidden">
+      <div className={whole ? 'absolute inset-0' : 'gpu-hero absolute inset-0 overflow-hidden'}>
         <canvas ref={ref} className="absolute inset-0 h-full w-full" />
       </div>
     </div>

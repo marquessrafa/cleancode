@@ -57,6 +57,19 @@ export async function buildFan3DScene(card: GpuCard, prof: FanProfile, photo: HT
   };
 }
 
+// cenas guardadas por placa e por lugar (o widget abre e fecha muitas vezes; montar a cena e preparar os shaders,
+// que são os programas da placa de vídeo, levava segundos). Os shaders já ficam prontos na primeira montagem.
+const kept = new Map<string, Promise<Fan3DScene>>();
+export function cachedFan3DScene(card: GpuCard, prof: FanProfile, photo: HTMLImageElement, slot: string) {
+  const key = `${card.file}|${slot}`;
+  let p = kept.get(key);
+  if (!p) {
+    p = buildFan3DScene(card, prof, photo).then((v) => { try { shared().r.compile(v.scene, new THREE.PerspectiveCamera()); } catch { /* compila no primeiro desenho */ } return v; });
+    p.catch(() => kept.delete(key)); kept.set(key, p);
+  }
+  return p;
+}
+
 const depthOnly = new THREE.MeshBasicMaterial({ colorWrite: false, side: THREE.DoubleSide });
 const _a = new THREE.Vector3(), _b = new THREE.Vector3();
 /**

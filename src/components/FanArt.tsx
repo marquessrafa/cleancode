@@ -115,18 +115,19 @@ export function FanSpinner({ rpm, size = 54 }: { rpm?: number; size?: number }) 
   return <canvas ref={ref} className="shrink-0" style={{ width: size, height: size }} />;
 }
 
-export function FanTrioHero({ rpm, height = 300 }: { rpm?: number; height?: number }) {
+/** plain: sem o fundo de partículas e sem sumir nas bordas, com as três ventoinhas no centro (usado no widget). */
+export function FanTrioHero({ rpm, height = 300, plain = false }: { rpm?: number; height?: number; plain?: boolean }) {
   const ref = useFanCanvas(rpm, (g, W, H, angle, spread, on, rgb, t) => {
     // tela larga: as três alinhadas à esquerda, sumindo para a direita; tela estreita: no centro, sumindo para baixo
-    const side = window.innerWidth >= WIDE;
+    const side = !plain && window.innerWidth >= WIDE;
     const S = side ? Math.min(H * 0.78, (W * 0.44) / 3) : Math.min(H * 0.82, (W * 0.62) / 3);
     const x0 = side ? 2 : (W - S * 3) / 2, y0 = (H - S) / 2;
-    techBackground(g, W, H, t, rgb, side ? S * 1.5 : W / 2, H * 0.75);
+    if (!plain) techBackground(g, W, H, t, rgb, side ? S * 1.5 : W / 2, H * 0.75);
     for (let i = 0; i < 3; i++) drawFan(g, x0 + i * S, y0, S, angle + i * 0.7, spread, on, rgb, t, 'topBottom');
   });
   return (
     <div className="pointer-events-none relative w-full" style={{ height }}>
-      <div className="gpu-hero absolute inset-0 overflow-hidden"><canvas ref={ref} className="absolute inset-0 h-full w-full" /></div>
+      <div className={plain ? 'absolute inset-0' : 'gpu-hero absolute inset-0 overflow-hidden'}><canvas ref={ref} className="absolute inset-0 h-full w-full" /></div>
     </div>
   );
 }

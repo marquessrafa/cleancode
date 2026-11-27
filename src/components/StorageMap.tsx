@@ -14,15 +14,15 @@ import { t } from '../lib/i18n';
 
 interface Seg { id: string; label: string; size: number; color: string; icon: React.ReactNode; hint: string; done: boolean; action?: () => void; actionLabel?: string; tree?: string }
 
-const COLORS: Record<string, string> = {
+export const COLORS: Record<string, string> = {
   apps: '#6366f1', games: '#22c55e', docs: '#3b82f6', downloads: '#06b6d4', media: '#ec4899', dev: '#f59e0b',
   caches: '#f97316', appdata: '#8b5cf6', mail: '#14b8a6', trash: '#ef4444', system: '#64748b',
 };
-const ICONS: Record<string, React.ReactNode> = {
+export const ICONS: Record<string, React.ReactNode> = {
   apps: <AppWindow size={15} />, games: <Gamepad2 size={15} />, docs: <FileText size={15} />, downloads: <Download size={15} />, media: <Image size={15} />, dev: <Code2 size={15} />,
   caches: <Archive size={15} />, appdata: <FolderCog size={15} />, mail: <Mail size={15} />, trash: <Trash2 size={15} />, system: <Cpu size={15} />,
 };
-const HINTS: Record<string, string> = {
+export const HINTS: Record<string, string> = {
   apps: t("Programas instalados"), games: t("Jogos das lojas, como Steam, Epic e GOG, e jogos encontrados em qualquer pasta, como ports, recomps e jogos sem instalador"), docs: t("Documentos e Mesa"), downloads: t("Arquivos baixados"), media: t("Imagens, filmes e músicas da sua pasta pessoal"),
   dev: t("Ferramentas de programação, como SDKs, simuladores, caches de pacotes (npm, Gradle e Cargo) e Docker"), caches: t("O sistema e os apps criam esses arquivos de novo quando precisam"),
   appdata: t("Configurações e dados que os apps guardam no seu perfil"), mail: t("Mensagens e anexos guardados no Mac"), trash: t("Itens apagados que ainda ocupam espaço"),

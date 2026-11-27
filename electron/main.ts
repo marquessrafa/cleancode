@@ -152,6 +152,18 @@ let panelWidth = 916;
 let panelWin: BrowserWindow | null = null;
 let panelHiddenAt = 0;
 let panelRevealTimer: ReturnType<typeof setTimeout> | undefined;
+let panelHideTimer: ReturnType<typeof setTimeout> | undefined;
+// esconder o widget: a janela escondida guarda o último quadro e mostra esse quadro por um instante na próxima
+// abertura (a piscada). Por isso, o renderer apaga o conteúdo primeiro, desenha um quadro vazio e avisa (panel:blanked);
+// só então a janela some. Se o aviso não chegar em 150 ms, a janela some assim mesmo.
+function hidePanel() {
+  const w = panelWin;
+  if (!w || w.isDestroyed() || !w.isVisible()) return;
+  panelHiddenAt = Date.now();
+  clearTimeout(panelHideTimer);
+  w.webContents.send('panel:hiding');
+  panelHideTimer = setTimeout(() => { if (!w.isDestroyed()) w.hide(); }, 150);
+}
 function placePanel() {
   if (!panelWin || panelWin.isDestroyed()) return;
   const b = tray?.getBounds();
@@ -169,7 +181,7 @@ function createPanel() {
   });
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   // fecha ao clicar fora, como os painéis da barra de menus
-  win.on('blur', () => { if (!win.webContents.isDevToolsOpened()) { win.hide(); panelHiddenAt = Date.now(); } });
+  win.on('blur', () => { if (!win.webContents.isDevToolsOpened()) hidePanel(); });
   if (isDev) win.loadURL('http://localhost:5173/#panel');
   else win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'), { hash: 'panel' });
   windows.add(win);
@@ -177,7 +189,7 @@ function createPanel() {
   return win;
 }
 function togglePanel() {
-  if (panelWin && !panelWin.isDestroyed() && panelWin.isVisible()) { panelWin.hide(); return; }
+  if (panelWin && !panelWin.isDestroyed() && panelWin.isVisible()) { hidePanel(); return; }
   checkUpdatesSoon(1500);
   // o clique no ícone tira o foco do painel antes de chegar aqui: não reabrir no mesmo clique
   if (Date.now() - panelHiddenAt < 250) return;
@@ -193,7 +205,7 @@ function togglePanel() {
     if (isMac) app.focus({ steal: true });
     panelWin.show(); panelWin.focus();
     panelWin.webContents.send('panel:shown');
-    clearTimeout(panelRevealTimer);
+    clearTimeout(panelRevealTimer); clearTimeout(panelHideTimer);
     panelRevealTimer = setTimeout(() => { if (panelWin && !panelWin.isDestroyed()) panelWin.setOpacity(1); }, 350);
     metricsDetails('network').catch(() => null); // pré-aquece: o detalhe de rede abre já preenchido
   };
@@ -432,10 +444,11 @@ ipcMain.handle('panel:resize', (_e, _h: number, w?: number) => {
   return true;
 });
 ipcMain.handle('panel:mouse', (_e, ignore: boolean) => { if (panelWin && !panelWin.isDestroyed()) panelWin.setIgnoreMouseEvents(!!ignore, { forward: true }); return true; });
-ipcMain.handle('panel:hide', () => { panelWin?.hide(); return true; });
+ipcMain.handle('panel:hide', () => { hidePanel(); return true; });
+ipcMain.handle('panel:blanked', () => { clearTimeout(panelHideTimer); if (panelWin && !panelWin.isDestroyed()) panelWin.hide(); return true; });
 ipcMain.handle('panel:toggle', () => { togglePanel(); return true; });
 ipcMain.handle('panel:openMain', (_e, page?: string) => {
-  panelWin?.hide();
+  hidePanel();
   showMain();
   if (page && mainWin) {
     const w = mainWin;
@@ -846,6 +859,8 @@ app.whenReady().then(() => {
   startHidden = startHidden || (app.isPackaged && system.loginItem.launchedAtLogin());
   mainWin = createWindow(pathFromArgv(process.argv));
   createTray();
+  // o widget é montado escondido alguns segundos depois da abertura; assim, o primeiro clique no ícone já mostra tudo carregado
+  setTimeout(() => { if (!panelWin || panelWin.isDestroyed()) panelWin = createPanel(); }, 4000);
   // macOS: clicar no ícone do Dock reabre a janela escondida
   app.on('activate', showMain);
   applyLoginItem();

@@ -5,6 +5,18 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.31', date: '2026-11-27', headline: 'Widget redesenhado, com ventoinhas',
+    groups: [
+      { title: 'Widget', icon: 'chip', items: [
+        'O widget da bandeja ficou mais largo e mais baixo. Os cartões das métricas aparecem em três colunas, com todas as informações numa linha só, e os textos que não cabem deslizam devagar para o lado.',
+        'O widget agora mostra as ventoinhas ligadas. A placa de vídeo aparece grande, em 3D, com o RPM, o modo e a força ao lado, e cada outra ventoinha ganha um cartão próprio com o desenho girando.',
+        'Cada ventoinha abre o próprio detalhe, com o RPM, a temperatura que guia a ventoinha, o histórico da velocidade e a curva com a temperatura de agora.',
+        'Os detalhes do disco, da memória, da rede, do processador e da placa de vídeo foram redesenhados. O disco mostra um tanque de partículas que enche até o espaço usado e o mapa do armazenamento, a memória mostra um pente de RAM aceso, e a rede tem um velocímetro para o teste de velocidade.',
+        'O widget abre mais rápido e sem piscar. Ele já fica pronto quando o app inicia, e os detalhes de todos os cartões são carregados antes do clique.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.30', date: '2026-11-27', headline: 'Ventoinhas 3D nas placas de vídeo',
     groups: [
       { title: 'Ventoinhas', icon: 'chip', items: [

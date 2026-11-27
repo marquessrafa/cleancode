@@ -6,7 +6,8 @@ const [port, out, js] = process.argv.slice(2);
 http.get(`http://127.0.0.1:${port}/json`, (res) => {
   let b = ''; res.on('data', (d) => (b += d)); res.on('end', async () => {
     const pages = JSON.parse(b).filter((x) => x.type === 'page' && !x.url.startsWith('devtools'));
-    const t = pages.find((x) => x.url.includes('index.html') || x.url.includes('localhost:5173')) || pages[0];
+    const want = process.env.CDP_URL;
+    const t = (want && pages.find((x) => x.url.includes(want))) || pages.find((x) => x.url.includes('index.html') || x.url.includes('localhost:5173')) || pages[0];
     const ws = new WebSocket(t.webSocketDebuggerUrl);
     let id = 0; const pend = new Map();
     const send = (method, params = {}) => new Promise((r) => { const i = ++id; pend.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
