@@ -2424,5 +2424,9 @@
  "A prévia mostra as {0} placas com foto. O controle de RPM vale para todas as placas ao mesmo tempo.": "The preview shows the {0} cards with a photo. The RPM control applies to all cards at the same time.",
  "Buscar placa": "Search card",
  "Rotação das ventoinhas": "Fan speed",
- "{0} ventoinha(s)": "{0} fan(s)"
+ "{0} ventoinha(s)": "{0} fan(s)",
+ "Ventoinhas 3D nas placas de vídeo": "3D fans on graphics cards",
+ "As ventoinhas das placas de vídeo agora são modelos 3D, com as pás, o miolo, o dissipador e os canos de calor de cada modelo. Só as pás giram, e o dissipador fica parado atrás delas.": "The graphics card fans are now 3D models, with the blades, hub, heatsink and heat pipes of each model. Only the blades spin, and the heatsink stays still behind them.",
+ "Em rotação alta, as pás viram um borrão de movimento, como numa ventoinha de verdade. Nas ventoinhas com muitas pás, o giro continua visível.": "At high speed, the blades become a motion blur, like a real fan. On fans with many blades, the spin stays visible.",
+ "A RX 570 e a RX 580 2048SP mostram a segunda ventoinha girando.": "The RX 570 and the RX 580 2048SP show the second fan spinning."
 }

@@ -5,6 +5,16 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.30', date: '2026-11-27', headline: 'Ventoinhas 3D nas placas de vídeo',
+    groups: [
+      { title: 'Ventoinhas', icon: 'chip', items: [
+        'As ventoinhas das placas de vídeo agora são modelos 3D, com as pás, o miolo, o dissipador e os canos de calor de cada modelo. Só as pás giram, e o dissipador fica parado atrás delas.',
+        'Em rotação alta, as pás viram um borrão de movimento, como numa ventoinha de verdade. Nas ventoinhas com muitas pás, o giro continua visível.',
+        'A RX 570 e a RX 580 2048SP mostram a segunda ventoinha girando.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.29', date: '2026-11-26', headline: 'Cartões das ventoinhas sem piscar',
     groups: [
       { title: 'Ventoinhas', icon: 'chip', items: [

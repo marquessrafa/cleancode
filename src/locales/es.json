@@ -2230,5 +2230,9 @@
  "A prévia mostra as {0} placas com foto. O controle de RPM vale para todas as placas ao mesmo tempo.": "La vista previa muestra las {0} tarjetas con foto. El control de RPM vale para todas las tarjetas al mismo tiempo.",
  "Buscar placa": "Buscar tarjeta",
  "Rotação das ventoinhas": "Velocidad de los ventiladores",
- "{0} ventoinha(s)": "{0} ventilador(es)"
+ "{0} ventoinha(s)": "{0} ventilador(es)",
+ "Ventoinhas 3D nas placas de vídeo": "Ventiladores 3D en las tarjetas gráficas",
+ "As ventoinhas das placas de vídeo agora são modelos 3D, com as pás, o miolo, o dissipador e os canos de calor de cada modelo. Só as pás giram, e o dissipador fica parado atrás delas.": "Los ventiladores de las tarjetas gráficas ahora son modelos 3D, con las aspas, el centro, el disipador y los tubos de calor de cada modelo. Solo giran las aspas, y el disipador queda quieto detrás de ellas.",
+ "Em rotação alta, as pás viram um borrão de movimento, como numa ventoinha de verdade. Nas ventoinhas com muitas pás, o giro continua visível.": "A alta velocidad, las aspas se vuelven un desenfoque de movimiento, como en un ventilador de verdad. En los ventiladores con muchas aspas, el giro sigue visible.",
+ "A RX 570 e a RX 580 2048SP mostram a segunda ventoinha girando.": "La RX 570 y la RX 580 2048SP muestran el segundo ventilador girando."
 }

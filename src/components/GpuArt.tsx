@@ -10,6 +10,7 @@
 // vê, cada quadro mistura várias posições do giro daquele instante (borrão de movimento).
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { buildFan3DScene, drawFan3D, loadFanProfiles, type Fan3DScene } from './GpuFan3D';
 
 export interface GpuCard { name: string; file: string; w: number; h: number; box: { x0: number; y0: number; x1: number; y1: number }; fans: { cx: number; cy: number; r: number }[] }
 
@@ -112,8 +113,14 @@ export function GpuHero({ card, rpm, height = 190 }: { card: GpuCard; rpm?: numb
     const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; });
     io.observe(cv);
     const rgb = accentRgb(cv), t0 = performance.now();
-    loadImage(card.file).then((img) => {
+    // placas com medidas do modelador: as ventoinhas são 3D (GpuFan3D); as outras giram o recorte da foto
+    let v3d: Fan3DScene | null = null;
+    const cam3d = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 1e5);
+    loadImage(card.file).then(async (img) => {
       if (!alive) return;
+      const prof = (await loadFanProfiles())[card.file];
+      if (prof && alive) { try { v3d = await buildFan3DScene(card, prof, img); } catch (err) { console.warn('ventoinha 3D', err); } }
+      if (!alive) { v3d?.dispose(); return; }
       // cada ventoinha vira um recorte redondo da foto, no tamanho original
       const sprites = card.fans.map((f) => {
         const s = document.createElement('canvas'); s.width = s.height = Math.ceil(f.r * 2);
@@ -137,6 +144,15 @@ export function GpuHero({ card, rpm, height = 190 }: { card: GpuCard; rpm?: numb
         const ox = side ? -b.x0 * s : W / 2 - (b.x0 + bw / 2) * s, oy = H / 2 - (b.y0 + bh / 2) * s;
         techBackground(g, W, H, (now - t0) / 1000, rgb, W / 2, H * 0.75);
         g.imageSmoothingQuality = 'high';
+        if (v3d) {
+          // câmera de frente, sem perspectiva, com a placa no mesmo lugar e tamanho da foto (1 unidade = 1 pixel da foto)
+          cam3d.left = -ox / s - card.w / 2; cam3d.right = (W - ox) / s - card.w / 2;
+          cam3d.top = card.h / 2 + oy / s; cam3d.bottom = card.h / 2 - (H - oy) / s;
+          cam3d.position.set(0, 0, card.w * 3); cam3d.near = 1; cam3d.far = card.w * 8; cam3d.updateProjectionMatrix();
+          g.setTransform(1, 0, 0, 1, 0, 0);
+          drawFan3D(v3d, cam3d, g, cv.width, cv.height, rpmRef.current, dt);
+          return;
+        }
         g.drawImage(img, ox, oy, card.w * s, card.h * s);
         card.fans.forEach((f, i) => {
           g.save(); g.translate(ox + f.cx * s, oy + f.cy * s);
@@ -150,7 +166,7 @@ export function GpuHero({ card, rpm, height = 190 }: { card: GpuCard; rpm?: numb
       };
       raf = requestAnimationFrame(frame);
     });
-    return () => { alive = false; cancelAnimationFrame(raf); io.disconnect(); };
+    return () => { alive = false; cancelAnimationFrame(raf); io.disconnect(); v3d?.dispose(); };
   }, [card]);
   return (
     <div className="pointer-events-none relative w-full" style={{ height }}>
@@ -163,7 +179,7 @@ export function GpuHero({ card, rpm, height = 190 }: { card: GpuCard; rpm?: numb
 }
 
 // ---------- cartão pequeno: a placa em 3D, com um desenhista só para todos ----------
-interface TileEntry { cv: HTMLCanvasElement; rpm: () => number; visible: boolean; view?: { scene: THREE.Scene; camera: THREE.PerspectiveCamera; fans: THREE.Group[]; target: THREE.Vector3; r: number; seed: number }; spin: ReturnType<typeof spinner> }
+interface TileEntry { cv: HTMLCanvasElement; rpm: () => number; visible: boolean; view?: { scene: THREE.Scene; camera: THREE.PerspectiveCamera; fans: THREE.Group[]; target: THREE.Vector3; r: number; seed: number; f3d?: Fan3DScene }; spin: ReturnType<typeof spinner> }
 const tiles = new Set<TileEntry>();
 let renderer: THREE.WebGLRenderer | null = null, loopOn = false, lastT = 0;
 const texCache = new Map<string, Promise<THREE.Texture>>();
@@ -174,6 +190,18 @@ function texture(file: string) {
 }
 
 async function buildView(card: GpuCard) {
+  // placa com medidas do modelador: a cena das ventoinhas 3D, com o corpo da placa atrás
+  const prof = (await loadFanProfiles())[card.file];
+  if (prof) {
+    try {
+      const img = await loadImage(card.file), f3d = await buildFan3DScene(card, prof, img);
+      const b = card.box, bw = b.x1 - b.x0, bh = b.y1 - b.y0, depth = bh * 0.3;
+      const body = new THREE.Mesh(new THREE.BoxGeometry(bw * 0.96, bh * 0.9, depth), new THREE.MeshStandardMaterial({ color: 0x24272b, metalness: 0.6, roughness: 0.45 }));
+      body.position.set((b.x0 + b.x1) / 2 - card.w / 2, card.h / 2 - (b.y0 + b.y1) / 2, -depth / 2 - bh * 0.12); f3d.scene.add(body);
+      const focus = (prof.ventoinhas?.length ? prof.ventoinhas : card.fans)[0];
+      return { scene: f3d.scene, camera: new THREE.PerspectiveCamera(30, 1, 10, 8000), fans: [], target: new THREE.Vector3(focus.cx - card.w / 2, card.h / 2 - focus.cy, -depth * 0.2), r: focus.r, seed: Math.random() * 6, f3d };
+    } catch (err) { console.warn('ventoinha 3D', err); }
+  }
   const tex = await texture(card.file);
   const scene = new THREE.Scene();
   scene.add(new THREE.HemisphereLight(0xffffff, 0x223030, 1.1));
@@ -227,9 +255,11 @@ function loop(now: number) {
     cam.lookAt(v.target);
     cam.setViewOffset(W, H, W * 0.35, 0, W, H);
     cam.updateProjectionMatrix();
-    renderer.render(v.scene, cam);
     if (e.cv.width !== Math.round(W * dpr)) { e.cv.width = Math.round(W * dpr); e.cv.height = Math.round(H * dpr); }
-    const g = e.cv.getContext('2d')!; g.clearRect(0, 0, e.cv.width, e.cv.height); g.drawImage(renderer.domElement, 0, 0, e.cv.width, e.cv.height);
+    const g = e.cv.getContext('2d')!; g.clearRect(0, 0, e.cv.width, e.cv.height);
+    if (v.f3d) { drawFan3D(v.f3d, cam, g, e.cv.width, e.cv.height, e.rpm(), dt); continue; }
+    renderer.render(v.scene, cam);
+    g.drawImage(renderer.domElement, 0, 0, e.cv.width, e.cv.height);
   }
 }
 
