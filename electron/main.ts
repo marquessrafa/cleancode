@@ -156,10 +156,15 @@ let panelHideTimer: ReturnType<typeof setTimeout> | undefined;
 // esconder o widget: a janela escondida guarda o último quadro e mostra esse quadro por um instante na próxima
 // abertura (a piscada). Por isso, o renderer apaga o conteúdo primeiro, desenha um quadro vazio e avisa (panel:blanked);
 // só então a janela some. Se o aviso não chegar em 150 ms, a janela some assim mesmo.
+/** Pausa as animações da janela principal enquanto o widget está aberto por cima dela (ver src/lib/pause.ts). */
+function pauseMain(on: boolean) {
+  if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.executeJavaScript(`document.documentElement.dataset.paused = '${on ? 1 : 0}'`).catch(() => { /* janela recarregando */ });
+}
 function hidePanel() {
   const w = panelWin;
   if (!w || w.isDestroyed() || !w.isVisible()) return;
   panelHiddenAt = Date.now();
+  pauseMain(false);
   clearTimeout(panelHideTimer);
   w.webContents.send('panel:hiding');
   panelHideTimer = setTimeout(() => { if (!w.isDestroyed()) w.hide(); }, 150);
@@ -200,6 +205,7 @@ function togglePanel() {
   const reveal = () => {
     if (!panelWin || panelWin.isDestroyed()) return;
     placePanel();
+    pauseMain(true);
     panelWin.setOpacity(0);
     panelWin.setIgnoreMouseEvents(false);
     if (isMac) app.focus({ steal: true });
@@ -460,7 +466,7 @@ ipcMain.handle('panel:resize', (_e, _h: number, w?: number) => {
 });
 ipcMain.handle('panel:mouse', (_e, ignore: boolean) => { if (panelWin && !panelWin.isDestroyed()) panelWin.setIgnoreMouseEvents(!!ignore, { forward: true }); return true; });
 ipcMain.handle('panel:hide', () => { hidePanel(); return true; });
-ipcMain.handle('panel:blanked', () => { clearTimeout(panelHideTimer); if (panelWin && !panelWin.isDestroyed()) panelWin.hide(); return true; });
+ipcMain.handle('panel:blanked', () => { clearTimeout(panelHideTimer); pauseMain(false); if (panelWin && !panelWin.isDestroyed()) panelWin.hide(); return true; });
 ipcMain.handle('panel:toggle', () => { togglePanel(); return true; });
 ipcMain.handle('panel:openMain', (_e, page?: string) => {
   hidePanel();

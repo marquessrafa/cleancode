@@ -285,7 +285,17 @@ const BigValue = ({ num, unit, sub }: { num: string; unit?: string; sub?: string
 type DetailKind = Exclude<Detail, 'fans'>;
 const detailCache: Partial<Record<DetailKind, any>> = {};
 const DETAIL_KINDS: DetailKind[] = ['storage', 'memory', 'cpu', 'gpu', 'power', 'network', 'devices', 'battery'];
-const preloadDetails = () => DETAIL_KINDS.forEach((k) => { cc.metricsDetails(k).then((r) => { detailCache[k] = r; }).catch(() => { /* lê de novo ao abrir */ }); });
+// uma leitura de cada vez, com uma pausa entre elas: no Windows, cada leitura pode abrir o PowerShell, e pedir as oito
+// juntas travava o computador por um instante
+let preloading = false;
+const preloadDetails = async () => {
+  if (preloading) return; preloading = true;
+  for (const k of DETAIL_KINDS) {
+    try { detailCache[k] = await cc.metricsDetails(k); } catch { /* lê de novo ao abrir */ }
+    await new Promise((ok) => setTimeout(ok, 400));
+  }
+  preloading = false;
+};
 function useDetails(kind: DetailKind, every: number) {
   const [d, setD] = useState<any>(detailCache[kind] ?? null);
   useEffect(() => {
@@ -1162,6 +1172,9 @@ const activeFans = (fans: FanState, cfg?: Record<string, FanConfig>) => fans.con
  *  um cartão para cada uma das outras ventoinhas ligadas. Cada cartão abre o detalhe da própria ventoinha. */
 function FansCard({ fans, cfg, delay, onOpen, activeId }: { fans: FanState; cfg?: Record<string, FanConfig>; delay: number; onOpen: (id: string) => void; activeId: string | null }) {
   const list = activeFans(fans, cfg);
+  // os desenhos (placa 3D, ventoinhas e bomba) entram depois da animação de entrada, para ela não engasgar
+  const [art, setArt] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setArt(true), 650); return () => clearTimeout(t); }, []);
   const g = list.find((f) => f.kind === 'gpu'), card = useGpuCard(g?.hw);
   const rest = list.filter((f) => !(card && f === g));
   const row = useRef<HTMLDivElement>(null);
@@ -1188,7 +1201,7 @@ function FansCard({ fans, cfg, delay, onOpen, activeId }: { fans: FanState; cfg?
       </div>
       {card && g && (
         <div onClick={() => onOpen(g.id)} className={cx('anim-rise flex cursor-pointer items-center gap-3 rounded-xl border py-1.5 pl-0 pr-3 backdrop-blur-xl transition-colors', tone(g.id))} style={dl(delay + 20)}>
-          <div className="w-[60%] shrink-0"><GpuHero card={card} rpm={g.rpm} height={168} whole align="left" /></div>
+          <div className="w-[60%] shrink-0" style={{ height: 168 }}>{art && <div className="anim-fade-in"><GpuHero card={card} rpm={g.rpm} height={168} whole align="left" /></div>}</div>
           <div className="min-w-0 flex-1 whitespace-nowrap">
             <Slide className="text-[13.5px] font-semibold">{cfg?.[g.id]?.label || g.hw}</Slide>
             <div className="text-[11px] text-[var(--p-muted)]">{tr("Placa de vídeo")}</div>
@@ -1209,7 +1222,7 @@ function FansCard({ fans, cfg, delay, onOpen, activeId }: { fans: FanState; cfg?
             const c = cfg?.[f.id];
             return (
               <div key={f.id} onClick={() => onOpen(f.id)} className={cx('anim-rise relative flex w-[184px] shrink-0 snap-start cursor-pointer items-center gap-2 rounded-xl border px-2 py-1.5 backdrop-blur-xl transition-colors', tone(f.id))} style={dl(delay + 40 + i * 25)}>
-                {c?.pump ? <PumpArt compact rpm={f.rpm} size={40} /> : <FanSpinner rpm={f.rpm} size={40} />}
+                <span className="block h-10 w-10 shrink-0">{art && (c?.pump ? <PumpArt compact rpm={f.rpm} size={40} /> : <FanSpinner rpm={f.rpm} size={40} />)}</span>
                 <div className="min-w-0 flex-1 whitespace-nowrap leading-tight">
                   <Slide className="text-[11.5px] font-semibold">{c?.label || f.name}</Slide>
                   <div className="text-[13px] font-semibold tabular-nums">{fanRpm(f.rpm)} <span className="text-[10px] font-normal text-[var(--p-muted)]">RPM</span></div>
@@ -1357,7 +1370,9 @@ export default function Panel() {
 
   useEffect(() => { cc.settingsGet().then(setSettings); return cc.on.settingsChanged(setSettings); }, []);
   // tudo o que os detalhes e as ventoinhas mostram é carregado logo que o widget é montado
-  useEffect(() => { preloadDetails(); preloadGpuCatalog(); loadFanProfiles(); return cc.on.panelShown(preloadDetails); }, []);
+  // os detalhes são lidos uma vez, logo depois de o widget ser montado; ao abrir, cada detalhe mostra a última leitura e
+  // se atualiza sozinho enquanto fica aberto. Abrir o widget não dispara mais nenhuma leitura pesada
+  useEffect(() => { const t = setTimeout(preloadDetails, 1500); preloadGpuCatalog(); loadFanProfiles(); return () => clearTimeout(t); }, []);
   const [sysDark, setSysDark] = useState(window.matchMedia('(prefers-color-scheme: dark)').matches);
   useEffect(() => { const mq = window.matchMedia('(prefers-color-scheme: dark)'); const h = (e: MediaQueryListEvent) => setSysDark(e.matches); mq.addEventListener('change', h); return () => mq.removeEventListener('change', h); }, []);
   const dark = settings ? settings.theme === 'dark' || (settings.theme === 'system' && sysDark) : sysDark;

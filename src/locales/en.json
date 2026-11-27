@@ -2526,5 +2526,9 @@
  "Bordas neutras no widget": "Neutral borders in the widget",
  "As bordas do widget, dos detalhes e dos cartões agora são de um cinza claro bem fraco, igual em todos os lados, sem o verde da cor de destaque. O cartão selecionado também perdeu a borda colorida.": "The borders of the widget, the details and the cards are now a very faint light gray, the same on every side, without the green accent color. The selected card also lost its colored border.",
  "Sem brilho verde embaixo do widget": "No green glow at the bottom of the widget",
- "O widget não tem mais o brilho da cor de destaque na parte de baixo. Assim, nenhuma borda fica verde.": "The widget no longer has the accent color glow at the bottom. This way, no border looks green."
+ "O widget não tem mais o brilho da cor de destaque na parte de baixo. Assim, nenhuma borda fica verde.": "The widget no longer has the accent color glow at the bottom. This way, no border looks green.",
+ "Tela Ventoinhas e widget sem travar": "Fans screen and widget without stuttering",
+ "A tela Ventoinhas rola sem travar. A bomba 3D não redesenha mais as pás a cada quadro, e as placas e as ventoinhas animadas desenham no máximo 60 quadros por segundo, então sobra tempo para a rolagem em monitores de 144 Hz ou mais.": "The Fans screen scrolls without stuttering. The 3D pump no longer redraws its blades every frame, and the animated cards and fans draw at most 60 frames per second, so scrolling has room to run on 144 Hz monitors or faster.",
+ "O widget abre sem travar, mesmo com a tela Ventoinhas aberta. Enquanto o widget fica aberto, a janela principal pausa as animações que ficam atrás dele.": "The widget opens without stuttering, even with the Fans screen open. While the widget is open, the main window pauses the animations behind it.",
+ "Abrir o widget não lê mais todos os detalhes de uma vez. Eles são lidos um de cada vez, logo depois que o app abre, e cada detalhe se atualiza enquanto está aberto.": "Opening the widget no longer reads every detail at once. They are read one at a time, right after the app opens, and each detail updates while it is open."
 }

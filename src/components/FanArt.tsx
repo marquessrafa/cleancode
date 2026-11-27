@@ -6,6 +6,7 @@
 // - FanTrioHero: três ventoinhas unidas lado a lado, de frente, com o mesmo layout da placa grande.
 import React, { useEffect, useRef } from 'react';
 import { accentRgb, spinner, techBackground, WIDE } from './GpuArt';
+import { due, paused } from '../lib/pause';
 
 const BLADES = 9, SAMPLES = 12;
 const lit = (on: number, off: string, rgb: string, a = 1) => `rgba(${rgb},${(a * on).toFixed(3)})`;
@@ -93,12 +94,13 @@ function useFanCanvas(rpm: number | undefined, draw: (g: CanvasRenderingContext2
     const spin = spinner(rpmRef.current, 0.26, 2.3, 0.6), rgb = accentRgb(cv), t0 = performance.now();
     let raf = 0, last = t0, visible = true, on = rpmRef.current > 50 ? 1 : 0;
     const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; }); io.observe(cv);
+    const gate = { t: 0 };
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
       const dt = Math.min(0.1, (now - last) / 1000); last = now;
       const { angle, spread } = spin(rpmRef.current, dt);
       on += ((rpmRef.current > 50 ? 1 : 0) - on) * Math.min(1, dt * 3);
-      if (!visible || document.hidden) return;
+      if (!visible || paused() || !due(gate, now)) return;
       const dpr = Math.min(2, devicePixelRatio), W = cv.clientWidth, H = cv.clientHeight; if (!W || !H) return;
       if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
       g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);

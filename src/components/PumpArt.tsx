@@ -8,6 +8,7 @@ import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { accentRgb, spinner, techBackground, WIDE } from './GpuArt';
+import { due, paused } from '../lib/pause';
 
 const SAMPLES = 12;
 const white = () => new THREE.MeshPhysicalMaterial({ color: 0xf1f2f4, roughness: 0.42, metalness: 0, clearcoat: 0.35, clearcoatRoughness: 0.4 });
@@ -61,11 +62,18 @@ function buildPump() {
     fg.quadraticCurveTo(a1 * 0.6 * Math.cos(0.7), a1 * 0.6 * Math.sin(0.7), a0 * Math.cos(0.42), a0 * Math.sin(0.42));
     fg.arc(0, 0, a0, 0.42, 0, true); fg.closePath();
   };
+  // o giro roda o disco inteiro; a imagem das pás (com o borrão) só é redesenhada quando o borrão muda de verdade.
+  // Antes, as 9 pás eram pintadas 12 vezes numa imagem de 512 pixels e enviadas à placa de vídeo a cada quadro, e só
+  // isso dobrava o tempo de cada quadro da tela Ventoinhas
+  let drawnSpread = NaN;
   const drawBlades = (angle: number, spread: number) => {
+    disc.rotation.z = -angle;
+    if (Math.abs(spread - drawnSpread) < 0.03) return;
+    drawnSpread = spread;
     fg.setTransform(1, 0, 0, 1, 0, 0); fg.fillStyle = '#050506'; fg.fillRect(0, 0, TEX, TEX);
     fg.translate(TEX / 2, TEX / 2);
     for (let i = 1; i <= SAMPLES; i++) {
-      fg.save(); fg.globalAlpha = 1 / i; fg.rotate(angle + (spread * (i - 1)) / SAMPLES);
+      fg.save(); fg.globalAlpha = 1 / i; fg.rotate((spread * (i - 1)) / SAMPLES);
       for (let b = 0; b < 9; b++) {
         fg.save(); fg.rotate((b / 9) * Math.PI * 2); bladePath();
         // cada pá clara na borda de ataque e mais escura na de saída, para as divisões aparecerem
@@ -141,11 +149,12 @@ export function PumpArt({ rpm, compact, height = 300, size = 56 }: { rpm?: numbe
     let on = rpmRef.current > 50 ? 1 : 0;
     let raf = 0, last = t0, visible = true;
     const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; }); io.observe(el);
+    const gate = { t: 0 };
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
       const dt = Math.min(0.1, (now - last) / 1000); last = now;
       const { angle, spread } = spin(rpmRef.current, dt);
-      if (!visible || document.hidden) return;
+      if (!visible || paused() || !due(gate, now)) return;
       const W = el.clientWidth, H = el.clientHeight; if (!W || !H) return;
       const sz = renderer.getSize(new THREE.Vector2());
       if (sz.x !== W || sz.y !== H) renderer.setSize(W, H, false);
@@ -180,7 +189,7 @@ export function PumpArt({ rpm, compact, height = 300, size = 56 }: { rpm?: numbe
       renderer.render(scene, camera);
     };
     raf = requestAnimationFrame(frame);
-    return () => { cancelAnimationFrame(raf); io.disconnect(); pmrem.dispose(); renderer.dispose(); cv.remove(); back?.remove(); };
+    return () => { cancelAnimationFrame(raf); io.disconnect(); pmrem.dispose(); renderer.dispose(); renderer.forceContextLoss(); cv.remove(); back?.remove(); };
   }, [compact]);
   if (compact) return <div ref={host} className="relative shrink-0 overflow-hidden rounded-md" style={{ width: size, height: size }} />;
   return (

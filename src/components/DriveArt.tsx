@@ -7,6 +7,7 @@ import React, { useEffect, useRef } from 'react';
 import { THREE } from '../hw3d/core';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { ssdModel } from '../hw3d/models';
+import { due, paused } from '../lib/pause';
 
 export type DriveKind = 'nvme' | 'sata' | 'hdd' | 'usb';
 export function driveKind(hw?: { bus?: string; media?: string }): DriveKind {
@@ -50,9 +51,10 @@ export function DriveArt({ kind, label, area = { w: 0.45, top: 40, bottom: 24 } 
     let raf = 0, visible = true; const t0 = performance.now(); let last = t0;
     const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; }); io.observe(el);
     const live = { accent: accentColor(), disk: 0.25 } as any;
+    const gate = { t: 0 };
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
-      if (!visible || document.hidden) return;
+      if (!visible || paused() || !due(gate, now)) return;
       const W = el.clientWidth, H = el.clientHeight; if (!W || !H) return;
       const size = renderer.getSize(new THREE.Vector2());
       if (size.x !== W || size.y !== H) renderer.setSize(W, H, false);
@@ -88,9 +90,10 @@ export function CardParticles({ className }: { className?: string }) {
     const dots = Array.from({ length: 46 }, (_, i) => ({ x: (i * 0.6180339) % 1, y: (i * 0.38196 + 0.11) % 1, v: 5 + ((i * 37) % 13), p: i * 1.9, r: 0.7 + ((i * 13) % 10) / 9 }));
     let raf = 0, visible = true; const t0 = performance.now();
     const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; }); io.observe(cv);
+    const gate = { t: 0 };
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
-      if (!visible || document.hidden) return;
+      if (!visible || paused() || !due(gate, now)) return;
       const dpr = Math.min(2, devicePixelRatio), W = cv.clientWidth, H = cv.clientHeight;
       if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
       g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);

@@ -5,6 +5,16 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.35', date: '2026-11-27', headline: 'Tela Ventoinhas e widget sem travar',
+    groups: [
+      { title: 'Desempenho', icon: 'chip', items: [
+        'A tela Ventoinhas rola sem travar. A bomba 3D não redesenha mais as pás a cada quadro, e as placas e as ventoinhas animadas desenham no máximo 60 quadros por segundo, então sobra tempo para a rolagem em monitores de 144 Hz ou mais.',
+        'O widget abre sem travar, mesmo com a tela Ventoinhas aberta. Enquanto o widget fica aberto, a janela principal pausa as animações que ficam atrás dele.',
+        'Abrir o widget não lê mais todos os detalhes de uma vez. Eles são lidos um de cada vez, logo depois que o app abre, e cada detalhe se atualiza enquanto está aberto.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.34', date: '2026-11-27', headline: 'Sem brilho verde embaixo do widget',
     groups: [
       { title: 'Widget', icon: 'chip', items: [

@@ -11,6 +11,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { buildFan3DScene, cachedFan3DScene, drawFan3D, loadFanProfiles, type Fan3DScene } from './GpuFan3D';
+import { due, paused } from '../lib/pause';
 
 export interface GpuCard { name: string; file: string; w: number; h: number; box: { x0: number; y0: number; x1: number; y1: number }; fans: { cx: number; cy: number; r: number }[] }
 
@@ -132,12 +133,14 @@ export function GpuHero({ card, rpm, height = 190, whole = false, align = 'cente
         sg.globalCompositeOperation = 'destination-in'; sg.beginPath(); sg.arc(f.r, f.r, f.r, 0, Math.PI * 2); sg.fill();
         return s;
       });
+      const gate = { t: 0 };
       const frame = (now: number) => {
         if (!alive) return;
         raf = requestAnimationFrame(frame);
         const dt = Math.min(0.1, (now - last) / 1000); last = now;
         const { angle, spread } = spin(rpmRef.current, dt);
-        if (!visible || document.hidden) return;
+        const dd = visible && !paused() ? due(gate, now) : 0;
+        if (!dd) return;
         const dpr = Math.min(2, devicePixelRatio), W = cv.clientWidth, H = cv.clientHeight;
         if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
         g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
@@ -163,7 +166,7 @@ export function GpuHero({ card, rpm, height = 190, whole = false, align = 'cente
           cam3d.top = card.h / 2 + oy / s; cam3d.bottom = card.h / 2 - (H - oy) / s;
           cam3d.position.set(0, 0, card.w * 3); cam3d.near = 1; cam3d.far = card.w * 8; cam3d.updateProjectionMatrix();
           g.setTransform(1, 0, 0, 1, 0, 0);
-          drawFan3D(v3d, cam3d, g, cv.width, cv.height, rpmRef.current, dt);
+          drawFan3D(v3d, cam3d, g, cv.width, cv.height, rpmRef.current, dd);
           return;
         }
         g.drawImage(img, ox, oy, card.w * s, card.h * s);
@@ -245,14 +248,16 @@ async function buildView(card: GpuCard) {
   return { scene, camera: new THREE.PerspectiveCamera(30, 1, 10, 8000), fans, target: new THREE.Vector3(t.x, t.y, -depth * 0.2), r: focus.r, seed: Math.random() * 6 };
 }
 
+const tileGate = { t: 0 };
 function loop(now: number) {
   if (!tiles.size) { loopOn = false; return; }
   requestAnimationFrame(loop);
   const dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
-  if (document.hidden || !renderer) return;
+  const dd = paused() || !renderer ? 0 : due(tileGate, now);
+  if (!dd || !renderer) return;
   const dpr = Math.min(2, devicePixelRatio);
   for (const e of tiles) {
-    const { angle, spread } = e.spin(e.rpm(), dt);
+    const { angle, spread } = e.spin(e.rpm(), dd);
     if (!e.visible || !e.view) continue;
     const W = e.cv.clientWidth, H = e.cv.clientHeight; if (!W || !H) continue;
     const size = renderer.getSize(new THREE.Vector2());
@@ -270,7 +275,7 @@ function loop(now: number) {
     cam.updateProjectionMatrix();
     if (e.cv.width !== Math.round(W * dpr)) { e.cv.width = Math.round(W * dpr); e.cv.height = Math.round(H * dpr); }
     const g = e.cv.getContext('2d')!; g.clearRect(0, 0, e.cv.width, e.cv.height);
-    if (v.f3d) { drawFan3D(v.f3d, cam, g, e.cv.width, e.cv.height, e.rpm(), dt); continue; }
+    if (v.f3d) { drawFan3D(v.f3d, cam, g, e.cv.width, e.cv.height, e.rpm(), dd); continue; }
     renderer.render(v.scene, cam);
     g.drawImage(renderer.domElement, 0, 0, e.cv.width, e.cv.height);
   }
