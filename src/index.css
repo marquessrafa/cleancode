@@ -165,7 +165,8 @@ body.panel-body, body.panel-body #root { background: transparent !important; hei
   --p-card: rgba(255, 255, 255, .065);
   --p-card-hover: rgba(255, 255, 255, .11);
   --p-track: rgba(255, 255, 255, .08);
-  --p-edge: rgba(255, 255, 255, .09);
+  /* borda opaca: uma cor semitransparente deixava passar um pouco do verde que ficava atrás dela */
+  --p-edge: #24232c;
   --p-soft: rgba(245, 245, 247, .82);
   --p-link: color-mix(in srgb, var(--accent) 55%, #ffffff);
   --p-disc: rgba(255, 255, 255, .045);
@@ -186,7 +187,8 @@ body.panel-body, body.panel-body #root { background: transparent !important; hei
   border: 1px solid var(--p-edge); /* um traço só, leve e igual nos quatro lados */
   /* o brilho da cor de destaque fica por dentro: perto das bordas, o fundo escurece por igual nos quatro lados, então o
      verde (ou a cor escolhida) não encosta na borda */
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .35), inset 0 0 34px 14px #0d0c14;
+  background-clip: padding-box;
+  box-shadow: inset 0 0 34px 14px #0d0c14;
   background:
     radial-gradient(70% 45% at 30% 12%, color-mix(in srgb, var(--accent) 30%, transparent) 0%, transparent 70%),
     linear-gradient(160deg, #15141d 0%, #0f0d17 55%, #0b0a12 100%);
@@ -200,7 +202,7 @@ body.panel-body, body.panel-body #root { background: transparent !important; hei
   --p-card: rgba(255, 255, 255, .62);
   --p-card-hover: rgba(255, 255, 255, .85);
   --p-track: rgba(0, 0, 0, .06);
-  --p-edge: rgba(0, 0, 0, .09);
+  --p-edge: #dcdce3;
   --p-soft: rgba(24, 24, 27, .78);
   --p-link: color-mix(in srgb, var(--accent) 75%, #000000);
   --p-disc: rgba(0, 0, 0, .035);
@@ -213,7 +215,7 @@ body.panel-body, body.panel-body #root { background: transparent !important; hei
   background:
     radial-gradient(70% 45% at 30% 12%, color-mix(in srgb, var(--accent) 22%, transparent) 0%, transparent 70%),
     linear-gradient(160deg, #fbfbfd 0%, #f6f6f9 60%, #efeff4 100%);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .5), inset 0 0 34px 14px #f1f1f5;
+  box-shadow: inset 0 0 34px 14px #f1f1f5;
 }
 @keyframes rise { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
 @keyframes breathe { 0%, 100% { transform: scale(.85); opacity: .25; } 50% { transform: scale(1.1); opacity: .5; } }
