@@ -2522,5 +2522,7 @@
  "Tela do notebook": "Laptop screen",
  "Tela {0}": "Screen {0}",
  "Principal": "Main",
- "O detalhe da placa de vídeo mostra todas as telas conectadas, cada uma com a resolução, a taxa de atualização e qual é a principal. Antes, duas telas apareciam como uma.": "The graphics card detail shows every connected screen, each with its resolution, refresh rate and which one is the main screen. Before, two screens showed up as one."
+ "O detalhe da placa de vídeo mostra todas as telas conectadas, cada uma com a resolução, a taxa de atualização e qual é a principal. Antes, duas telas apareciam como uma.": "The graphics card detail shows every connected screen, each with its resolution, refresh rate and which one is the main screen. Before, two screens showed up as one.",
+ "Bordas neutras no widget": "Neutral borders in the widget",
+ "As bordas do widget, dos detalhes e dos cartões agora são de um cinza claro bem fraco, igual em todos os lados, sem o verde da cor de destaque. O cartão selecionado também perdeu a borda colorida.": "The borders of the widget, the details and the cards are now a very faint light gray, the same on every side, without the green accent color. The selected card also lost its colored border."
 }

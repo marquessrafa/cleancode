@@ -63,7 +63,7 @@ function Card({ children, className, delay = 0, onClick, active }: { children: R
   return (
     <div onClick={onClick} style={{ animationDelay: `calc(var(--d0, 0ms) + ${delay}ms)` }}
       className={cx('anim-rise relative rounded-xl border px-2.5 py-2 backdrop-blur-xl transition-all duration-300',
-        active ? 'border-[var(--p-accent)] bg-[var(--p-card-hover)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--p-accent)_22%,transparent)]' : 'border-[var(--p-line)] bg-[var(--p-card)]',
+        active ? 'border-[rgba(255,255,255,.16)] bg-[var(--p-card-hover)]' : 'border-[var(--p-line)] bg-[var(--p-card)]',
         onClick && 'cursor-pointer hover:bg-[var(--p-card-hover)]', className)}>
       {children}
     </div>
@@ -1177,7 +1177,7 @@ function FansCard({ fans, cfg, delay, onOpen, activeId }: { fans: FanState; cfg?
     el.addEventListener('wheel', wheel, { passive: false });
     return () => el.removeEventListener('wheel', wheel);
   }, []);
-  const tone = (id: string) => (activeId === id ? 'border-[var(--p-accent)] bg-[var(--p-card-hover)]' : 'border-[var(--p-line)] bg-[var(--p-card)] hover:bg-[var(--p-card-hover)]');
+  const tone = (id: string) => (activeId === id ? 'border-[rgba(255,255,255,.16)] bg-[var(--p-card-hover)]' : 'border-[var(--p-line)] bg-[var(--p-card)] hover:bg-[var(--p-card-hover)]');
   if (!list.length) return null;
   return (
     <>

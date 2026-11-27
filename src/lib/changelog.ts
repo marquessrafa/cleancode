@@ -5,6 +5,14 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.33', date: '2026-11-27', headline: 'Bordas neutras no widget',
+    groups: [
+      { title: 'Widget', icon: 'chip', items: [
+        'As bordas do widget, dos detalhes e dos cartões agora são de um cinza claro bem fraco, igual em todos os lados, sem o verde da cor de destaque. O cartão selecionado também perdeu a borda colorida.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.32', date: '2026-11-27', headline: 'Ajustes no widget',
     groups: [
       { title: 'Widget', icon: 'chip', items: [
