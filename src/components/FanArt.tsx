@@ -120,7 +120,8 @@ export function FanTrioHero({ rpm, height = 300, plain = false }: { rpm?: number
   const ref = useFanCanvas(rpm, (g, W, H, angle, spread, on, rgb, t) => {
     // tela larga: as três alinhadas à esquerda, sumindo para a direita; tela estreita: no centro, sumindo para baixo
     const side = !plain && window.innerWidth >= WIDE;
-    const S = side ? Math.min(H * 0.78, (W * 0.44) / 3) : Math.min(H * 0.82, (W * 0.62) / 3);
+    // no widget (plain), as três ocupam quase toda a largura
+    const S = plain ? Math.min(H * 0.96, (W * 0.96) / 3) : side ? Math.min(H * 0.78, (W * 0.44) / 3) : Math.min(H * 0.82, (W * 0.62) / 3);
     const x0 = side ? 2 : (W - S * 3) / 2, y0 = (H - S) / 2;
     if (!plain) techBackground(g, W, H, t, rgb, side ? S * 1.5 : W / 2, H * 0.75);
     for (let i = 0; i < 3; i++) drawFan(g, x0 + i * S, y0, S, angle + i * 0.7, spread, on, rgb, t, 'topBottom');

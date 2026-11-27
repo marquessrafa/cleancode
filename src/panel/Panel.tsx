@@ -1265,7 +1265,7 @@ function FanDetail({ fans, id, cfg, hist, open }: { fans: FanState | null; id: s
       <Title>{c?.label || (f.kind === 'gpu' ? f.hw : f.name)}</Title>
       <Hero>
         {card ? <div className="py-2"><GpuHero card={card} rpm={f.rpm} height={190} whole /></div>
-          : c?.pump ? <div className="flex justify-center py-4"><PumpArt compact rpm={f.rpm} size={170} /></div> : <div className="py-3"><FanTrioHero rpm={f.rpm} height={150} plain /></div>}
+          : c?.pump ? <div className="flex justify-center py-4"><PumpArt compact rpm={f.rpm} size={170} /></div> : <div className="px-1 py-2"><FanTrioHero rpm={f.rpm} height={140} plain /></div>}
         <div className="flex items-end justify-between gap-3 border-t border-[var(--p-line)] px-3 py-2.5">
           <div>
             <div className="flex items-baseline gap-1"><span className="text-[30px] font-semibold leading-none tabular-nums">{fanRpm(f.rpm)}</span><span className="text-[12px] text-[var(--p-muted)]">RPM</span></div>

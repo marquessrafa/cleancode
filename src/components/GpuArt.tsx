@@ -147,6 +147,15 @@ export function GpuHero({ card, rpm, height = 190, whole = false, align = 'cente
         const s = whole ? Math.min((H * 0.96) / bh, (W * 0.96) / bw) : side ? Math.min((H * 0.84) / bh, (W * 0.55) / bw) : Math.min((H * 0.86) / bh, (W * 0.62) / bw);
         const ox = whole && align === 'left' ? W * 0.02 - b.x0 * s : side ? -b.x0 * s : W / 2 - (b.x0 + bw / 2) * s, oy = H / 2 - (b.y0 + bh / 2) * s;
         if (!whole) techBackground(g, W, H, (now - t0) / 1000, rgb, W / 2, H * 0.75);
+        else {
+          // no widget: as mesmas partículas de ondas da tela Ventoinhas atrás da placa, sumindo nas bordas
+          const cxw = ox + (b.x0 + bw / 2) * s;
+          techBackground(g, W, H, (now - t0) / 1000, rgb, cxw, H * 0.7);
+          g.save(); g.globalCompositeOperation = 'destination-in';
+          const fade = g.createRadialGradient(cxw, H / 2, 0, cxw, H / 2, Math.max(W, H) * 0.62);
+          fade.addColorStop(0, 'rgba(0,0,0,1)'); fade.addColorStop(0.6, 'rgba(0,0,0,.85)'); fade.addColorStop(1, 'rgba(0,0,0,0)');
+          g.fillStyle = fade; g.fillRect(0, 0, W, H); g.restore();
+        }
         g.imageSmoothingQuality = 'high';
         if (v3d) {
           // câmera de frente, sem perspectiva, com a placa no mesmo lugar e tamanho da foto (1 unidade = 1 pixel da foto)

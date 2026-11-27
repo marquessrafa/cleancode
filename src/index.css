@@ -188,7 +188,8 @@ body.panel-body, body.panel-body #root { background: transparent !important; hei
     radial-gradient(120% 70% at 0% 0%, color-mix(in srgb, var(--accent) 42%, transparent) 0%, transparent 60%),
     radial-gradient(90% 60% at 100% 100%, color-mix(in srgb, var(--accent) 26%, transparent) 0%, transparent 65%),
     linear-gradient(160deg, color-mix(in srgb, var(--accent) 28%, #14111f) 0%, #0f0d17 55%, #0b0a12 100%);
-  overflow: hidden;
+  /* só o lado: a rolagem vertical fica com cada coluna (overflow-y-auto), e os detalhes longos rolam por dentro */
+  overflow-x: hidden;
 }
 :root:not(.dark) .panel-root {
   --p-fg: #18181b;

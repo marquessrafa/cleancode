@@ -5,6 +5,16 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.32', date: '2026-11-27', headline: 'Ajustes no widget',
+    groups: [
+      { title: 'Widget', icon: 'chip', items: [
+        'Os detalhes longos do widget, como o da placa de vídeo, agora rolam por dentro. Antes, o fim do detalhe ficava cortado.',
+        'A placa de vídeo do widget aparece com as mesmas partículas de ondas da tela Ventoinhas atrás dela.',
+        'No detalhe de cada ventoinha, as três ventoinhas ficaram maiores e ocupam quase toda a largura.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.31', date: '2026-11-27', headline: 'Widget redesenhado, com ventoinhas',
     groups: [
       { title: 'Widget', icon: 'chip', items: [
