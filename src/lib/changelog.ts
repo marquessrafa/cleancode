@@ -5,6 +5,14 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.34', date: '2026-11-27', headline: 'Sem brilho verde embaixo do widget',
+    groups: [
+      { title: 'Widget', icon: 'chip', items: [
+        'O widget não tem mais o brilho da cor de destaque na parte de baixo. Assim, nenhuma borda fica verde.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.33', date: '2026-11-27', headline: 'Bordas neutras no widget',
     groups: [
       { title: 'Widget', icon: 'chip', items: [

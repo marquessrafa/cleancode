@@ -2328,5 +2328,7 @@
  "Principal": "Principal",
  "O detalhe da placa de vídeo mostra todas as telas conectadas, cada uma com a resolução, a taxa de atualização e qual é a principal. Antes, duas telas apareciam como uma.": "El detalle de la tarjeta gráfica muestra todas las pantallas conectadas, cada una con su resolución, su frecuencia de actualización y cuál es la principal. Antes, dos pantallas aparecían como una.",
  "Bordas neutras no widget": "Bordes neutros en el widget",
- "As bordas do widget, dos detalhes e dos cartões agora são de um cinza claro bem fraco, igual em todos os lados, sem o verde da cor de destaque. O cartão selecionado também perdeu a borda colorida.": "Los bordes del widget, de los detalles y de las tarjetas ahora son de un gris claro muy suave, igual en todos los lados, sin el verde del color de acento. La tarjeta seleccionada también perdió el borde de color."
+ "As bordas do widget, dos detalhes e dos cartões agora são de um cinza claro bem fraco, igual em todos os lados, sem o verde da cor de destaque. O cartão selecionado também perdeu a borda colorida.": "Los bordes del widget, de los detalles y de las tarjetas ahora son de un gris claro muy suave, igual en todos los lados, sin el verde del color de acento. La tarjeta seleccionada también perdió el borde de color.",
+ "Sem brilho verde embaixo do widget": "Sin brillo verde abajo del widget",
+ "O widget não tem mais o brilho da cor de destaque na parte de baixo. Assim, nenhuma borda fica verde.": "El widget ya no tiene el brillo del color de acento en la parte de abajo. Así, ningún borde se ve verde."
 }
