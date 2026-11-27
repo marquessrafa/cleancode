@@ -2322,5 +2322,9 @@
  "Ajustes no widget": "Ajustes en el widget",
  "Os detalhes longos do widget, como o da placa de vídeo, agora rolam por dentro. Antes, o fim do detalhe ficava cortado.": "Los detalles largos del widget, como el de la tarjeta gráfica, ahora se desplazan por dentro. Antes, el final del detalle quedaba cortado.",
  "A placa de vídeo do widget aparece com as mesmas partículas de ondas da tela Ventoinhas atrás dela.": "La tarjeta gráfica del widget aparece con las mismas partículas de ondas de la pantalla Ventiladores detrás de ella.",
- "No detalhe de cada ventoinha, as três ventoinhas ficaram maiores e ocupam quase toda a largura.": "En el detalle de cada ventilador, los tres ventiladores son más grandes y ocupan casi todo el ancho."
+ "No detalhe de cada ventoinha, as três ventoinhas ficaram maiores e ocupam quase toda a largura.": "En el detalle de cada ventilador, los tres ventiladores son más grandes y ocupan casi todo el ancho.",
+ "Tela do notebook": "Pantalla del portátil",
+ "Tela {0}": "Pantalla {0}",
+ "Principal": "Principal",
+ "O detalhe da placa de vídeo mostra todas as telas conectadas, cada uma com a resolução, a taxa de atualização e qual é a principal. Antes, duas telas apareciam como uma.": "El detalle de la tarjeta gráfica muestra todas las pantallas conectadas, cada una con su resolución, su frecuencia de actualización y cuál es la principal. Antes, dos pantallas aparecían como una."
 }

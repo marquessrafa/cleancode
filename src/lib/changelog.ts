@@ -11,6 +11,7 @@ export const CHANGELOG: Release[] = [
         'Os detalhes longos do widget, como o da placa de vídeo, agora rolam por dentro. Antes, o fim do detalhe ficava cortado.',
         'A placa de vídeo do widget aparece com as mesmas partículas de ondas da tela Ventoinhas atrás dela.',
         'No detalhe de cada ventoinha, as três ventoinhas ficaram maiores e ocupam quase toda a largura.',
+        'O detalhe da placa de vídeo mostra todas as telas conectadas, cada uma com a resolução, a taxa de atualização e qual é a principal. Antes, duas telas apareciam como uma.',
       ] },
     ],
   },

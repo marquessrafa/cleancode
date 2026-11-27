@@ -978,12 +978,13 @@ function GpuDetail({ hist, open, fans }: { hist: number[]; open: Open; fans: Fan
           <Section title={tr("Telas conectadas")} right={String(displays.length)} delay={280} />
           <div className="grid grid-cols-2 gap-2">
             {displays.map((x, i) => {
-              const res = x.resolution ? String(x.resolution).replace(/ @.*/, '') : '';
+              const res = x.resolution ? String(x.resolution).replace(/ @.*/, '') : '', hz = /@ ?(\d+)/.exec(String(x.resolution || ''))?.[1];
               return (
                 <div key={`${x.name}${i}`} className="anim-rise flex flex-col items-center rounded-xl border border-[var(--p-line)] bg-[var(--p-card)] px-2 pb-2 pt-2.5" style={dl(300 + i * 40)}>
                   <div className="relative flex h-[54px] w-[92px] items-center justify-center rounded-md border-2 border-[var(--p-soft)]/40 text-[11px] font-semibold tabular-nums" style={{ background: 'radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--p-accent) 35%, transparent), transparent 70%), #07090a' }}>{res || '—'}</div>
                   <div className="h-2 w-3 bg-[var(--p-soft)]/40" /><div className="h-1 w-10 rounded-full bg-[var(--p-soft)]/40" />
                   <div className="mt-1.5 w-full break-words text-center text-[11.5px] font-semibold leading-tight">{x.name}</div>
+                  <div className="text-[10.5px] tabular-nums text-[var(--p-muted)]">{[hz && `${hz} Hz`, x.primary && tr("Principal")].filter(Boolean).join(', ')}</div>
                 </div>
               );
             })}

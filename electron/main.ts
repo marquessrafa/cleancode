@@ -212,7 +212,22 @@ function togglePanel() {
   if (panelWin.webContents.isLoading()) panelWin.webContents.once('did-finish-load', reveal); else reveal();
 }
 ipcMain.handle('metrics:snapshot', () => metricsSnapshot());
-ipcMain.handle('metrics:details', (_e, kind: string) => metricsDetails(kind));
+// placa de vídeo: as telas vêm do sistema, uma por monitor conectado (a placa informa só uma resolução, então duas
+// telas apareciam como uma)
+ipcMain.handle('metrics:details', async (_e, kind: string) => {
+  const r: any = await metricsDetails(kind);
+  if (kind === 'gpu' && r) {
+    try {
+      const all = screen.getAllDisplays(), main = screen.getPrimaryDisplay().id;
+      if (all.length) r.displays = all.map((d, i) => ({
+        name: (d as any).label || (d.internal ? tr('Tela do notebook') : tr('Tela {0}', i + 1)),
+        resolution: `${Math.round(d.size.width * d.scaleFactor)} x ${Math.round(d.size.height * d.scaleFactor)}${(d as any).displayFrequency ? ` @ ${Math.round((d as any).displayFrequency)}Hz` : ''}`,
+        primary: d.id === main,
+      }));
+    } catch { /* fica a lista da placa */ }
+  }
+  return r;
+});
 ipcMain.handle('metrics:eject', (_e, root: string) => ejectDrive(root));
 ipcMain.handle('hardware:info', () => hardwareInfo());
 ipcMain.handle('hardware:live', () => hardwareLive());
