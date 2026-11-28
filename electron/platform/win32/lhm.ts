@@ -469,11 +469,13 @@ const GROUP: Record<string, { g: string; unit: string }> = {
   Load: { g: 'load', unit: '%' }, Fan: { g: 'fan', unit: 'RPM' }, Control: { g: 'control', unit: '%' }, Level: { g: 'level', unit: '%' }, Data: { g: 'data', unit: 'GB' }, SmallData: { g: 'data', unit: 'MB' },
   Throughput: { g: 'throughput', unit: 'B/s' }, Energy: { g: 'energy', unit: t("mWh") }, Frequency: { g: 'clock', unit: t("Hz") }, Factor: { g: 'factor', unit: '' }, TimeSpan: { g: 'time', unit: 's' },
 };
-export interface FlatSensor { kind: string; group: string; hw: string; hwId: string; id?: string; name: string; value: number; min?: number; max?: number; unit: string }
+/** stale: a peça está travada no helper, então o valor é antigo (a leitura volta quando a peça responder de novo) */
+export interface FlatSensor { kind: string; group: string; hw: string; hwId: string; id?: string; name: string; value: number; min?: number; max?: number; unit: string; stale?: boolean }
 export function flatten(s: LhmSnapshot | null): FlatSensor[] {
   const out: FlatSensor[] = [];
   const walk = (h: LhmHardware, parent?: LhmHardware) => {
     const kind = COMPONENT[h.type] || (parent && COMPONENT[parent.type]) || 'board';
+    const stale = !!(h.stuck || parent?.stuck);
     for (const x of h.sensors || []) {
       if (x.value === null || x.value === undefined) continue;
       const g = GROUP[x.type]; if (!g) continue;
@@ -483,7 +485,7 @@ export function flatten(s: LhmSnapshot | null): FlatSensor[] {
       if ((kind === 'cpu' || kind === 'board') && ['power', 'volt', 'clock', 'current'].includes(g.g) && x.value === 0 && !x.max) continue;
       // limites de fábrica ("Warning/Critical Temperature" dos SSDs NVMe, "Thermal Sensor High Limit"…) não são leituras
       const group = g.g === 'temp' && /warning|critical|limit|alarm|threshold/i.test(x.name) ? 'limit' : g.g;
-      out.push({ kind, group, hw: h.name, hwId: h.id, id: x.id, name: x.name, value: x.value, min: x.min ?? undefined, max: x.max ?? undefined, unit: g.unit });
+      out.push({ kind, group, hw: h.name, hwId: h.id, id: x.id, name: x.name, value: x.value, min: x.min ?? undefined, max: x.max ?? undefined, unit: g.unit, ...(stale ? { stale: true } : {}) });
     }
     (h.sub || []).forEach((c) => walk(c, h));
   };

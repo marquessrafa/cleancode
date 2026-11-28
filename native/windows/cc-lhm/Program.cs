@@ -68,8 +68,13 @@ static class Program
 
     // estado de cada etapa: "pending", "ok", "timeout", "skipped" (travou ou caiu antes) ou "error: mensagem"
     static readonly ConcurrentDictionary<string, string> Groups = new ConcurrentDictionary<string, string>();
-    // peças cuja atualização travou: deixam de ser atualizadas, para não parar as outras leituras
-    static readonly ConcurrentDictionary<string, bool> Stuck = new ConcurrentDictionary<string, bool>();
+    // peças cuja atualização travou, com a leitura que ainda não terminou. Enquanto ela não termina, a peça fica sem
+    // atualizar (para não parar as outras leituras nem empilhar leituras presas); quando termina, a peça volta a ser lida.
+    // Antes, uma única leitura lenta (por exemplo, com outro monitor lendo os mesmos sensores) congelava a peça para
+    // sempre: a temperatura da CPU ficava parada num valor antigo, e as curvas das ventoinhas usavam esse valor.
+    static readonly ConcurrentDictionary<string, Thread> Stuck = new ConcurrentDictionary<string, Thread>();
+    /// <summary>A peça deste sensor ou controle está travada agora? (o identificador começa pelo da peça)</summary>
+    internal static bool HardwareStuck(string id) => !string.IsNullOrEmpty(id) && Stuck.Keys.Any(k => id == k || id.StartsWith(k + "/", StringComparison.Ordinal));
 
     static readonly string MarkerDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CleanCode", "lhm");
     static string Marker(string group) => Path.Combine(MarkerDir, "opening-" + group);
@@ -111,17 +116,22 @@ static class Program
         sb.Append("]}");
     }
 
-    /// <summary>Atualiza uma peça com tempo limite. Se a atualização travar, a peça é marcada e não é mais atualizada.</summary>
+    /// <summary>Atualiza uma peça com tempo limite. Se a atualização travar, a peça espera essa leitura terminar.</summary>
     static void UpdateWithTimeout(IHardware h)
     {
         var id = h.Identifier.ToString();
-        if (Stuck.ContainsKey(id)) return;
+        if (Stuck.TryGetValue(id, out var pending))
+        {
+            if (pending.IsAlive) return;
+            Stuck.TryRemove(id, out _);
+            Log("a leitura de " + h.Name + " terminou; essa peça volta a ser atualizada");
+        }
         var t = new Thread(() =>
         {
             try { h.Update(); foreach (var sub in h.SubHardware) sub.Update(); } catch { /* leitura falhou nesta rodada */ }
         }) { IsBackground = true };
         t.Start();
-        if (!t.Join(4000)) { Stuck[id] = true; Log("a atualização de " + h.Name + " passou de 4 segundos; essa peça deixa de ser atualizada"); }
+        if (!t.Join(4000)) { Stuck[id] = t; Log("a atualização de " + h.Name + " passou de 4 segundos; essa peça fica sem atualizar até essa leitura terminar"); }
     }
 
     static string Snapshot(Computer c, bool pawnio, bool fanControl = false)
@@ -515,6 +525,9 @@ static class Program
         // recusou (com o pedido recusado; um pedido diferente tenta de novo)
         static readonly Dictionary<string, int> Mismatch = new Dictionary<string, int>();
         static readonly Dictionary<string, string> Refused = new Dictionary<string, string>();
+        // quando a placa recusou cada ventoinha: depois de 3 minutos, o CleanCode tenta de novo (antes, a recusa durava até
+        // a configuração mudar, e uma recusa causada por uma leitura parada deixava a ventoinha no automático de vez)
+        static readonly Dictionary<string, DateTime> RefusedAt = new Dictionary<string, DateTime>();
         // ventoinhas soltas há pouco: depois de 3 segundos, o registro anota o que a placa informa
         static readonly Dictionary<string, KeyValuePair<IControl, int>> Released = new Dictionary<string, KeyValuePair<IControl, int>>();
         const float Tolerance = 8f; const int MismatchLimit = 6;
@@ -631,8 +644,10 @@ static class Program
                     status.Add(st);
                     if (Refused.TryGetValue(w.Id, out var refusedSig))
                     {
-                        if (refusedSig == w.Sig) { st.Error = "refused"; continue; } // a placa recusou este pedido: a ventoinha fica no automático
-                        Refused.Remove(w.Id); // um pedido diferente: tenta de novo
+                        bool retry = RefusedAt.TryGetValue(w.Id, out var refusedWhen) && DateTime.UtcNow - refusedWhen > TimeSpan.FromMinutes(3);
+                        if (refusedSig == w.Sig && !retry) { st.Error = "refused"; continue; } // a placa recusou este pedido: a ventoinha fica no automático
+                        if (retry) Log("ventoinha " + w.Id + ": 3 minutos depois da recusa, o CleanCode tenta de novo");
+                        Refused.Remove(w.Id); RefusedAt.Remove(w.Id); // um pedido diferente, ou já passou o tempo: tenta de novo
                     }
                     if (!controls.TryGetValue(w.Id, out var ctl)) { st.Error = "notfound"; continue; }
                     try
@@ -643,19 +658,23 @@ static class Program
                         // conferência: a placa informa o valor que o CleanCode aplicou na leitura anterior?
                         var read = ctl.Sensor?.Value;
                         if (read.HasValue) st.Read = read.Value;
-                        if (!amd && Touched.ContainsKey(w.Id) && Applied.TryGetValue(w.Id, out var was) && read.HasValue)
+                        // com a peça travada, as leituras ficam paradas: a conferência espera, para não confundir leitura parada com recusa
+                        bool frozen = HardwareStuck(w.Id);
+                        if (!amd && !frozen && Touched.ContainsKey(w.Id) && Applied.TryGetValue(w.Id, out var was) && read.HasValue)
                         {
                             if (Math.Abs(read.Value - was) > Tolerance) Mismatch[w.Id] = (Mismatch.TryGetValue(w.Id, out var m) ? m : 0) + 1;
                             else Mismatch.Remove(w.Id);
                             if (Mismatch.TryGetValue(w.Id, out var misses) && misses >= MismatchLimit)
                             {
                                 Log("ventoinha " + w.Id + ": a placa informa " + Pct(read) + " em vez de " + Pct(was) + " há " + misses + " segundos; a placa não obedece, e a ventoinha volta ao modo automático");
-                                Mismatch.Remove(w.Id); Refused[w.Id] = w.Sig; st.Error = "refused";
+                                Mismatch.Remove(w.Id); Refused[w.Id] = w.Sig; RefusedAt[w.Id] = DateTime.UtcNow; st.Error = "refused";
                                 continue; // fica fora de keep: a ventoinha é solta logo abaixo
                             }
                         }
                         float pct;
                         if (w.Mode == "fixed") pct = w.Value;
+                        // a temperatura da curva vem de uma peça travada: o valor é antigo, então a ventoinha fica no automático
+                        else if (HardwareStuck(w.Source)) { st.Error = "nosource"; continue; }
                         else if (sensors.TryGetValue(w.Source ?? "", out var src) && src.Value.HasValue && src.Value.Value > 0) pct = Interp(w.Points, src.Value.Value);
                         else { st.Error = "nosource"; continue; } // sem a temperatura: a ventoinha fica (ou volta) no modo automático
                         if (emergency) { pct = 100; st.Mode = "emergency"; }
@@ -680,7 +699,7 @@ static class Program
                             if (!Touched.ContainsKey(w.Id)) { Touched[w.Id] = ctl; Released.Remove(w.Id); Log("ventoinha " + w.Id + ": o CleanCode assumiu o controle (" + w.Mode + "); antes, a placa informava " + Pct(read) + " e " + Rpm(fanOf, w.Id)); }
                         }
                         // conferência pelo RPM (uma vez por ventoinha, depois de uma mudança grande)
-                        if (RpmRef.TryGetValue(w.Id, out var rc) && !rc.Verified && fanOf.TryGetValue(w.Id, out var fanNow) && fanNow.Value.HasValue)
+                        if (!frozen && RpmRef.TryGetValue(w.Id, out var rc) && !rc.Verified && fanOf.TryGetValue(w.Id, out var fanNow) && fanNow.Value.HasValue)
                         {
                             rc.Since = changed ? 0 : rc.Since + 1;
                             float rpmNow = fanNow.Value.Value, delta = pct - rc.Pct;
@@ -690,7 +709,7 @@ static class Program
                                 if (!followed)
                                 {
                                     Log("ventoinha " + w.Id + ": o pedido foi de " + Pct(rc.Pct) + " para " + Pct(pct) + ", mas o RPM foi de " + rc.Rpm.ToString("0", CultureInfo.InvariantCulture) + " para " + rpmNow.ToString("0", CultureInfo.InvariantCulture) + "; a ventoinha não segue o controle da placa e volta ao modo automático");
-                                    Refused[w.Id] = w.Sig; st.Error = "norpm"; RpmRef.Remove(w.Id);
+                                    Refused[w.Id] = w.Sig; RefusedAt[w.Id] = DateTime.UtcNow; st.Error = "norpm"; RpmRef.Remove(w.Id);
                                     continue; // fica fora de keep: a ventoinha é solta logo abaixo
                                 }
                                 rc.Verified = true;

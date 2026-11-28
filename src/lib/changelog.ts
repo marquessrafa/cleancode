@@ -5,6 +5,16 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.36', date: '2026-11-28', headline: 'Sensores e ventoinhas mais estáveis',
+    groups: [
+      { title: 'Ventoinhas', icon: 'chip', items: [
+        'A temperatura do processador não fica mais parada num valor antigo. Quando uma leitura demora, por exemplo com outro monitor de hardware aberto, a peça volta a ser lida assim que a leitura termina, e o app não mostra o valor velho nesse meio-tempo.',
+        'As ventoinhas não são mais recusadas por causa de uma leitura parada, e uma curva não fica presa num valor alto por causa de uma temperatura antiga. Depois de uma recusa, o CleanCode tenta controlar a ventoinha de novo em 3 minutos.',
+        'A tela Ventoinhas avisa quando o Armoury Crate da ASUS ou o L-Connect da Lian Li estão abertos, porque eles também controlam as ventoinhas, e explica o que ajustar neles.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.35', date: '2026-11-27', headline: 'Tela Ventoinhas e widget sem travar',
     groups: [
       { title: 'Desempenho', icon: 'chip', items: [

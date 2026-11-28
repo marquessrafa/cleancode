@@ -157,6 +157,10 @@ export default function FansPage() {
               text={tr("Nenhuma mudança chega às ventoinhas de verdade.")} />}
             {state.emergency && <Banner tone="danger" icon={<AlertTriangle size={18} />} title={tr("A proteção de temperatura está ativa")}
               text={tr("Uma peça chegou a 90 °C, então as ventoinhas ficam em 100% até a temperatura cair para 85 °C.")} />}
+            {state.conflicts?.includes('asus') && <Banner tone="warn" icon={<AlertTriangle size={18} />} title={tr("O Armoury Crate da ASUS também controla as ventoinhas")}
+              text={tr("Quando os dois programas mudam a mesma ventoinha, a placa fica com o valor de um deles, e o CleanCode mostra \"A placa recusou\". Para o CleanCode controlar sozinho, desligue o controle das ventoinhas (Fan Xpert) no Armoury Crate.")} />}
+            {state.conflicts?.includes('lianli') && <Banner tone="warn" icon={<AlertTriangle size={18} />} title={tr("O L-Connect da Lian Li está aberto")}
+              text={tr("As ventoinhas ligadas ao controlador da Lian Li seguem o L-Connect, e não a placa-mãe. Para elas seguirem o CleanCode, ligue a sincronização com a placa-mãe (MB Sync) no L-Connect.")} />}
 
             {candidates.length > 0 && generic && <IdentifyCard onClick={() => setWizard(true)} />}
             <FanWizard open={wizard} onClose={() => setWizard(false)} candidates={candidates} live={ref} nameOf={(f) => fanName(f, draftRef.current[f.id])}
@@ -176,7 +180,6 @@ export default function FansPage() {
             <HowItWorks />
             <FanHelp general />
             <GpuCredit hw={controls.find((f) => f.kind === 'gpu')?.hw} />
-            {/* só na prévia simulada: todas as placas com foto, girando, com um controle de RPM */}
           </>
         )}
       </div>

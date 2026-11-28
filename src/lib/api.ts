@@ -48,7 +48,8 @@ export interface Settings {
 export interface FanConfig { mode: 'auto' | 'fixed' | 'curve'; value?: number; source?: string; points?: [number, number][]; label?: string; pump?: boolean }
 export interface FanControlInfo { id: string; name: string; hw: string; kind: 'board' | 'gpu' | 'cooler' | 'other'; pct?: number; rpm?: number; locked?: boolean; status?: { mode: 'fixed' | 'curve' | 'emergency'; pct: number | null; read?: number | null; error: string | null } }
 export interface FanTempSource { id: string; name: string; hw: string; kind: string; value: number }
-export interface FanState { available: boolean; active: boolean; helperReady: boolean; controls: FanControlInfo[]; temps: FanTempSource[]; emergency: boolean; preview?: boolean }
+/** conflicts: outros programas abertos que também controlam as ventoinhas (asus: Armoury Crate ou AI Suite; lianli: L-Connect) */
+export interface FanState { available: boolean; active: boolean; helperReady: boolean; controls: FanControlInfo[]; temps: FanTempSource[]; emergency: boolean; preview?: boolean; conflicts?: ('asus' | 'lianli')[] }
 export interface UpdateNote { version: string; date: string; headline: string; groups: { title: string; icon: string; items: string[] }[] }
 export interface UpdateState {
   status: 'idle' | 'checking' | 'available' | 'none' | 'downloading' | 'ready' | 'installing' | 'restarting' | 'error';

@@ -263,7 +263,8 @@ export interface FanControlInfo {
 }
 export interface FanTempSource { id: string; name: string; hw: string; kind: string; value: number }
 /** helperReady: a tarefa de administrador está rodando uma versão do helper que controla as ventoinhas */
-export interface FanState { available: boolean; active: boolean; helperReady: boolean; controls: FanControlInfo[]; temps: FanTempSource[]; emergency: boolean; preview?: boolean }
+/** conflicts: outros programas abertos que também controlam as ventoinhas (asus: Armoury Crate ou AI Suite; lianli: L-Connect) */
+export interface FanState { available: boolean; active: boolean; helperReady: boolean; controls: FanControlInfo[]; temps: FanTempSource[]; emergency: boolean; preview?: boolean; conflicts?: ('asus' | 'lianli')[] }
 
 export interface DiskDetail {
   id: string; name: string; model?: string; firmware?: string; serialHidden?: boolean; bus?: string; media?: string; size?: number;

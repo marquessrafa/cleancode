@@ -58,7 +58,7 @@ async function temperatures(): Promise<Temperatures> {
   if (tempCache && Date.now() - tempCache.at < 3000) return tempCache.value;
   const flat = Lhm.flatten(await Lhm.snapshot().catch(() => null));
   const find = (kind: string, res: RegExp[]) => {
-    for (const re of res) { const x = flat.find((s) => s.kind === kind && s.group === 'temp' && re.test(s.name) && s.value > 5 && s.value < 125); if (x) return Math.round(x.value * 10) / 10; }
+    for (const re of res) { const x = flat.find((s) => s.kind === kind && s.group === 'temp' && !s.stale && re.test(s.name) && s.value > 5 && s.value < 125); if (x) return Math.round(x.value * 10) / 10; }
     return undefined;
   };
   const value: Temperatures = {};
