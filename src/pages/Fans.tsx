@@ -6,7 +6,7 @@
 // Layout: topo com degradê e resumo; cartões pequenos (um por ventoinha, com o anel de velocidade); painel de edição
 // da ventoinha escolhida (modo, velocidade fixa, curva, bomba e teste).
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { ShieldCheck, AlertTriangle, Loader2, FlaskConical, Pencil, Check, Info, Thermometer, Cpu, Gpu, Droplets, Plus, Minus, ChevronDown, Sparkles, Wand2, Bot } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, Loader2, FlaskConical, Pencil, Check, Info, Thermometer, Cpu, Gpu, Droplets, Plus, Minus, ChevronDown, Sparkles, Wand2, Bot, Fan } from 'lucide-react';
 import { FanWizard } from './FanWizard';
 import { FanHelp } from './FanHelp';
 import { cc, FanConfig, FanControlInfo, FanRival, FanState, FanTempSource } from '../lib/api';
@@ -136,7 +136,7 @@ export default function FansPage() {
 
   return (
     <PageBody>
-      <Hero state={state} draft={draft} ready={ready} onIdentify={candidates.length > 0 && !generic ? () => setWizard(true) : undefined} />
+      <Hero state={state} draft={draft} ready={ready} onIdentify={candidates.length > 0 && generic ? () => setWizard(true) : undefined} />
       <div className="mt-4 space-y-4">
         {!state ? (
           <div className="flex items-center gap-2 text-[13px] text-muted"><Loader2 size={15} className="animate-spin" />{tr("O CleanCode está lendo as ventoinhas.")}</div>
@@ -159,7 +159,6 @@ export default function FansPage() {
               text={tr("Uma peça chegou a 90 °C, então as ventoinhas ficam em 100% até a temperatura cair para 85 °C.")} />}
             {!!state.rivals?.length && <RivalStrip rivals={state.rivals} />}
 
-            {candidates.length > 0 && generic && <IdentifyCard onClick={() => setWizard(true)} />}
             <FanWizard open={wizard} onClose={() => setWizard(false)} candidates={candidates} live={ref} nameOf={(f) => fanName(f, draftRef.current[f.id])}
               onName={(id, patch) => change(id, patch)} />
             {/* as saídas sem ventoinha ligada ficam escondidas; o botão fica no canto direito, em cima dos cartões */}
@@ -184,31 +183,6 @@ export default function FansPage() {
   );
 }
 
-// ---------- chamada do assistente "Identificar as ventoinhas" ----------
-/** Cartão em destaque, quando alguma ventoinha ainda está com o nome genérico ("Fan #2"). */
-// convite discreto para o assistente: uma linha, no mesmo estilo da linha dos outros programas
-function IdentifyCard({ onClick }: { onClick: () => void }) {
-  return (
-    <div className="flex items-center gap-2.5 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-[12px]">
-      <Wand2 size={14} className="shrink-0 text-[var(--accent)]" />
-      <span className="min-w-0 flex-1 text-muted">{tr("Descubra qual ventoinha é cada uma. O assistente acelera uma ventoinha por vez e pergunta onde ela fica.")}</span>
-      <Button size="sm" variant="outline" onClick={onClick}>{tr("Identificar as ventoinhas")}</Button>
-    </div>
-  );
-}
-/** Botão em destaque no topo, quando todas as ventoinhas já têm nome (para identificar de novo). */
-function IdentifyButton({ onClick }: { onClick: () => void }) {
-  const gid = useId().replace(/:/g, '');
-  return (
-    <button onClick={onClick} className="group relative flex items-center gap-2.5 overflow-hidden rounded-xl py-2 pl-2 pr-4 text-[13.5px] font-semibold text-[var(--on-accent)] transition-all hover:-translate-y-px hover:scale-[1.02]"
-      style={{ background: `linear-gradient(135deg, var(--accent), ${ACC2})`, boxShadow: '0 8px 24px -6px color-mix(in srgb, var(--accent) 55%, transparent)' }}>
-      <span className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-white/25 to-transparent transition-all duration-700 group-hover:left-full" />
-      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--surface)] shadow-inner"><FanGlyph size={24} spin={1.6} gid={gid} /></span>
-      {tr("Identificar as ventoinhas")}
-    </button>
-  );
-}
-
 // ---------- topo: degradê, ícone grande e resumo ----------
 function Hero({ state, draft, ready, onIdentify }: { state: FanState | null; draft: Record<string, FanConfig>; ready: boolean; onIdentify?: () => void }) {
   const cpu = state?.temps.find((t) => t.kind === 'cpu' && /package|tctl/i.test(t.name)) || state?.temps.find((t) => t.kind === 'cpu');
@@ -230,7 +204,6 @@ function Hero({ state, draft, ready, onIdentify }: { state: FanState | null; dra
           <p className="mt-0.5 max-w-[620px] text-[13px] text-muted">{tr("Escolha a velocidade de cada ventoinha.")}</p>
           {ready && (
             <div className="mt-3 flex flex-wrap items-center gap-3">
-              {onIdentify && <IdentifyButton onClick={onIdentify} />}
               <div className="inline-flex items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--accent)_35%,transparent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] px-2.5 py-1 text-[11.5px] font-medium text-[var(--accent)]">
                 <ShieldCheck size={13} />{tr("A proteção de 90 °C está ligada")}
               </div>
@@ -245,6 +218,14 @@ function Hero({ state, draft, ready, onIdentify }: { state: FanState | null; dra
           </div>
         )}
       </div>
+      {/* convite discreto para o assistente, só enquanto há ventoinhas sem nome */}
+      {ready && onIdentify && (
+        <div className="mt-4 flex items-center gap-2.5 border-t border-[var(--line)] pt-3 text-[12px]">
+          <Fan size={15} className="shrink-0 animate-[spin_2.4s_linear_infinite] text-[var(--accent)]" />
+          <span className="min-w-0 flex-1 text-muted">{tr("Descubra qual ventoinha é cada uma. O assistente acelera uma ventoinha por vez e pergunta onde ela fica.")}</span>
+          <Button size="sm" variant="outline" onClick={onIdentify}>{tr("Identificar as ventoinhas")}</Button>
+        </div>
+      )}
     </div>
   );
 }
