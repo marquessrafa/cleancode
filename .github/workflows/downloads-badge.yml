@@ -1,0 +1,54 @@
+# Atualiza o selo de downloads dos READMEs.
+#
+# O selo padrão do GitHub soma todos os anexos dos Releases. Só que o app procura atualização a cada
+# 3 minutos e, em cada procura, baixa o latest.yml ou o latest-mac.yml. Por isso, o total padrão conta
+# quase só essas procuras automáticas, e não pessoas.
+#
+# Este workflow soma apenas os arquivos do app (.exe, .dmg e .zip) e deixa de fora os feeds (.yml),
+# os blockmaps e o cleancode-feed.json. Depois, ele grava o resultado em downloads.json no branch
+# "badges", que o shields.io lê para desenhar o selo. O branch tem sempre um único commit, então ele
+# não enche o histórico do main.
+name: Selo de downloads
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  badge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Somar os downloads do app
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          total=$(gh api "repos/${{ github.repository }}/releases?per_page=100" --paginate \
+            -q '.[].assets[] | select(.name | (endswith(".exe") or endswith(".dmg") or endswith(".zip"))) | .download_count' \
+            | awk '{s+=$1} END{print s+0}')
+          echo "Downloads do app: $total"
+          if [ "$total" -ge 1000 ]; then
+            msg=$(awk -v n="$total" 'BEGIN{printf "%.1fk", n/1000}' | sed 's/\.0k$/k/')
+          else
+            msg="$total"
+          fi
+          mkdir out
+          printf '{"schemaVersion":1,"label":"downloads","message":"%s","color":"3b82f6"}\n' "$msg" > out/downloads.json
+          cat out/downloads.json
+
+      - name: Publicar no branch badges
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd out
+          git init -q -b badges
+          git add downloads.json
+          git -c user.name='github-actions[bot]' -c user.email='41898283+github-actions[bot]@users.noreply.github.com' \
+            commit -q -m 'Selo de downloads'
+          git push -q -f "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" badges

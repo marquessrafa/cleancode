@@ -12,7 +12,7 @@
 
 <p>
   <a href="https://github.com/marquessrafa/cleancode/releases/latest"><img src="https://img.shields.io/github/v/release/marquessrafa/cleancode?style=flat-square&label=versi%C3%B3n&color=22c55e" alt="Versión" /></a>
-  <a href="https://github.com/marquessrafa/cleancode/releases"><img src="https://img.shields.io/github/downloads/marquessrafa/cleancode/total?style=flat-square&label=descargas&color=3b82f6" alt="Descargas" /></a>
+  <a href="https://github.com/marquessrafa/cleancode/releases"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fmarquessrafa%2Fcleancode%2Fbadges%2Fdownloads.json&style=flat-square&label=descargas&color=3b82f6" alt="Descargas" /></a>
   <a href="../../LICENSE"><img src="https://img.shields.io/badge/licencia-MIT-52525b?style=flat-square" alt="Licencia MIT" /></a>
   <img src="https://img.shields.io/badge/macOS-12%2B-111111?style=flat-square&logo=apple&logoColor=white" alt="macOS 12 o más reciente" />
   <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows 10 y 11" />
