@@ -9,6 +9,7 @@ import { Button, Checkbox, cx } from '../components/ui';
 import { Float3D } from './maint';
 import { PageBody } from './common';
 import { t as tr } from '../lib/i18n';
+import { setAlert } from '../lib/alerts';
 
 type Phase = 'intro' | 'scanning' | 'results' | 'running' | 'done';
 type Mod = 'cleanup' | 'protection' | 'performance' | 'apps';
@@ -41,6 +42,10 @@ export default function SmartCare() {
   const units = settings?.units || 'auto';
   const [phase, setPhase] = useState<Phase>('intro');
   const [status, setStatus] = useState<Record<Mod, 'idle' | 'busy' | 'done'>>({ cleanup: 'idle', protection: 'idle', performance: 'idle', apps: 'idle' });
+  useEffect(() => {
+    if (phase === 'done') setAlert('smartcare', null);
+    else if (phase === 'results') setAlert('smartcare', safe.size > 100 * 1048576 ? tr("Há {0} de lixo seguro para limpar.", fmtSize(safe.size, 'auto', 1)) : null);
+  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
   useRunning('smartcare', phase === 'scanning' ? 'Cuidados Inteligentes: analisando' : phase === 'running' ? 'Cuidados Inteligentes: aplicando' : null);
   const [cats, setCats] = useState<JunkCategoryInfo[]>([]);
   const [junk, setJunk] = useState<JunkResult[]>([]);

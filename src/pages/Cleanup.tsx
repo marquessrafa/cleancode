@@ -9,6 +9,7 @@ import { Badge, Button, Checkbox, Toggle, cx } from '../components/ui';
 import { Float3D } from './maint';
 import { PageBody } from './common';
 import { t as tr } from '../lib/i18n';
+import { setAlert } from '../lib/alerts';
 
 type Phase = 'intro' | 'scanning' | 'results' | 'cleaning' | 'done';
 
@@ -44,6 +45,13 @@ export default function Cleanup() {
   const [current, setCurrent] = useState<string | null>(null);
   const [selCats, setSelCats] = useState<Set<string>>(new Set());
   const [deselected, setDeselected] = useState<Set<string>>(new Set());
+  // alerta no menu: a análise achou lixo (mais de 100 MB) e a limpeza ainda não foi feita
+  useEffect(() => {
+    if (phase === 'done') { setAlert('cleanup', null); return; }
+    if (phase !== 'results') return;
+    const total = Object.values(results).reduce((s, r) => s + (r.size || 0), 0);
+    setAlert('cleanup', total > 100 * 1048576 ? tr("Há {0} para limpar.", fmtSize(total, 'auto', 1)) : null);
+  }, [phase, results]);
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [cleanProg, setCleanProg] = useState({ done: 0, total: 0, freed: 0, current: '' });
   const [summary, setSummary] = useState<{ freed: number; removed: number; failed: { path: string; error: string }[] } | null>(null);

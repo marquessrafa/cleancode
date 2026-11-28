@@ -186,27 +186,14 @@ export default function FansPage() {
 
 // ---------- chamada do assistente "Identificar as ventoinhas" ----------
 /** Cartão em destaque, quando alguma ventoinha ainda está com o nome genérico ("Fan #2"). */
+// convite discreto para o assistente: uma linha, no mesmo estilo da linha dos outros programas
 function IdentifyCard({ onClick }: { onClick: () => void }) {
-  const gid = useId().replace(/:/g, '');
   return (
-    <button onClick={onClick} className="group relative flex w-full items-center gap-4 overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--accent)_40%,var(--line))] p-4 text-left transition-all hover:border-[var(--accent)] hover:shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_14%,transparent)]"
-      style={{ background: `linear-gradient(110deg, color-mix(in srgb, var(--accent) 16%, var(--surface)) 0%, var(--surface) 55%, color-mix(in srgb, ${ACC2} 14%, var(--surface)) 100%)` }}>
-      {/* brilho que atravessa o cartão quando o mouse passa por cima */}
-      <span className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 transition-all duration-700 group-hover:left-full group-hover:opacity-100" />
-      <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full" style={{ background: `conic-gradient(from 0deg, var(--accent), ${ACC2}, var(--accent))` }}>
-        <div className="flex h-[50px] w-[50px] items-center justify-center rounded-full bg-[var(--surface)]">
-          <FanGlyph size={34} spin={1.6} gid={gid} />
-        </div>
-        <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-[var(--on-accent)] shadow" style={{ background: `linear-gradient(135deg, var(--accent), ${ACC2})` }}><Wand2 size={11} /></span>
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-[14px] font-semibold">{tr("Descubra qual ventoinha é cada uma")}</div>
-        <div className="mt-0.5 text-[12.5px] text-muted">{tr("O assistente acelera uma ventoinha por vez e pergunta onde ela fica.")}</div>
-      </div>
-      <span className="flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-semibold text-[var(--on-accent)] shadow-sm transition-transform group-hover:scale-[1.03]" style={{ background: `linear-gradient(135deg, var(--accent), ${ACC2})` }}>
-        <Wand2 size={14} />{tr("Identificar as ventoinhas")}
-      </span>
-    </button>
+    <div className="flex items-center gap-2.5 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-[12px]">
+      <Wand2 size={14} className="shrink-0 text-[var(--accent)]" />
+      <span className="min-w-0 flex-1 text-muted">{tr("Descubra qual ventoinha é cada uma. O assistente acelera uma ventoinha por vez e pergunta onde ela fica.")}</span>
+      <Button size="sm" variant="outline" onClick={onClick}>{tr("Identificar as ventoinhas")}</Button>
+    </div>
   );
 }
 /** Botão em destaque no topo, quando todas as ventoinhas já têm nome (para identificar de novo). */

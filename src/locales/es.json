@@ -2354,5 +2354,17 @@
  "Assumir o controle das ventoinhas": "Tomar el control de los ventiladores",
  "A tela Ventoinhas só aponta outro programa quando ele de fato mudou uma ventoinha. Antes, o aviso aparecia só porque o programa estava aberto.": "La pantalla Ventiladores solo señala otro programa cuando de verdad cambió un ventilador. Antes, el aviso aparecía solo porque el programa estaba abierto.",
  "O aviso virou uma linha pequena, com o nome do programa e o que fazer. O CleanCode reconhece programas de várias marcas, como ASUS, MSI, Gigabyte, Corsair, NZXT, Lian Li e Fan Control.": "El aviso ahora es una línea pequeña, con el nombre del programa y qué hacer. CleanCode reconoce programas de varias marcas, como ASUS, MSI, Gigabyte, Corsair, NZXT, Lian Li y Fan Control.",
- "Com o Armoury Crate da ASUS, o botão Assumir o controle para só o serviço de ventoinhas dele, com a sua permissão. O RGB e o resto do Armoury Crate continuam funcionando, e o botão Devolver desfaz a mudança.": "Con Armoury Crate de ASUS, el botón Tomar el control detiene solo su servicio de ventiladores, con tu permiso. El RGB y el resto de Armoury Crate siguen funcionando, y el botón Devolver deshace el cambio."
+ "Com o Armoury Crate da ASUS, o botão Assumir o controle para só o serviço de ventoinhas dele, com a sua permissão. O RGB e o resto do Armoury Crate continuam funcionando, e o botão Devolver desfaz a mudança.": "Con Armoury Crate de ASUS, el botón Tomar el control detiene solo su servicio de ventiladores, con tu permiso. El RGB y el resto de Armoury Crate siguen funcionando, y el botón Devolver deshace el cambio.",
+ "Descubra qual ventoinha é cada uma. O assistente acelera uma ventoinha por vez e pergunta onde ela fica.": "Descubre qué ventilador es cada uno. El asistente acelera un ventilador a la vez y pregunta dónde está.",
+ "O {0} está brigando pelas ventoinhas.": "{0} está peleando por los ventiladores.",
+ "{0} ventoinhas não estão obedecendo.": "{0} ventiladores no están obedeciendo.",
+ "A tarefa de administrador das ventoinhas não está respondendo.": "La tarea de administrador de los ventiladores no responde.",
+ "A varredura do hardware terminou com erros. Faça a varredura de novo.": "El escaneo del hardware terminó con errores. Haz el escaneo de nuevo.",
+ "Faça a varredura do hardware para ver todos os sensores.": "Haz el escaneo del hardware para ver todos los sensores.",
+ "{0} itens precisam de reparo.": "{0} elementos necesitan reparación.",
+ "{0} grupos de arquivos repetidos para revisar.": "{0} grupos de archivos repetidos para revisar.",
+ "Há {0} para limpar.": "Hay {0} para limpiar.",
+ "Há {0} de lixo seguro para limpar.": "Hay {0} de basura segura para limpiar.",
+ "O menu mostra um triângulo vermelho com exclamação ao lado das telas que pedem uma ação, como ventoinhas brigando com outro programa, uma varredura do hardware para refazer, itens do registro para reparar ou lixo encontrado para limpar. O motivo aparece quando você para o mouse em cima.": "El menú muestra un triángulo rojo con una exclamación junto a las pantallas que piden una acción, como ventiladores peleando con otro programa, un escaneo del hardware para rehacer, elementos del registro para reparar o basura encontrada para limpiar. El motivo aparece al pasar el mouse por encima.",
+ "O convite para identificar as ventoinhas virou uma linha discreta na tela Ventoinhas.": "La invitación para identificar los ventiladores ahora es una línea discreta en la pantalla Ventiladores."
 }

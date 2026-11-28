@@ -9,6 +9,7 @@ import { Badge, Button, Checkbox, cx, Empty } from '../components/ui';
 import { Float3D } from './maint';
 import { PageBody } from './common';
 import { t as tr } from '../lib/i18n';
+import { setAlert } from '../lib/alerts';
 
 type Tab = 'duplicates' | 'similar' | 'large' | 'downloads';
 
@@ -38,6 +39,12 @@ export default function Clutter() {
   const [rep, setRep] = useState<ClutterReport | null>(null);
   const [tab, setTab] = useState<Tab>('duplicates');
   const [sel, setSel] = useState<Set<string>>(new Set());
+  // alerta no menu: a análise achou duplicados ou fotos parecidas
+  useEffect(() => {
+    if (phase !== 'results' || !rep) return;
+    const n = rep.duplicates.length + rep.similar.length;
+    setAlert('clutter', n ? tr("{0} grupos de arquivos repetidos para revisar.", n) : null);
+  }, [phase, rep]);
   const [busy, setBusy] = useState(false);
   useRunning('clutter', phase === 'scanning' ? tr("Acúmulos: analisando") : busy ? tr("Acúmulos: movendo para a Lixeira") : null);
   useEffect(() => cc.on.clutterProgress(setProg), []);

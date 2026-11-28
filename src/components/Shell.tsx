@@ -10,6 +10,18 @@ import { cc, isMac } from '../lib/api';
 import { fmtSize, baseName } from '../lib/format';
 import { Button, Checkbox, cx, Dropdown, Modal, ProgressBar } from './ui';
 import { t as tr, LOCALE } from '../lib/i18n';
+import { useAlerts, useBackgroundAlerts } from '../lib/alerts';
+
+/** Triângulo vermelho com exclamação e um brilho que pulsa: a tela tem uma ação para você fazer. */
+const AlertMark = ({ title, small }: { title: string; small?: boolean }) => (
+  <span title={title} aria-label={title} className={cx('nav-alert shrink-0', small ? 'absolute -right-1.5 -top-1.5' : 'ml-auto')}>
+    <svg width={small ? 11 : 15} height={small ? 11 : 15} viewBox="0 0 24 24" aria-hidden>
+      <path d="M12 2.6 22.6 21H1.4L12 2.6Z" fill="#ef4444" stroke="#ef4444" strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M12 9v5.2" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" />
+      <circle cx="12" cy="17.6" r="1.35" fill="#fff" />
+    </svg>
+  </span>
+);
 
 const NAV: { group: string; items: { page: Page; label: string; icon: React.ReactNode; needsScan?: boolean }[] }[] = [
   { group: '', items: [
@@ -120,6 +132,8 @@ export function Sidebar() {
 
   // páginas com trabalho em andamento ganham um indicador no menu
   const busyPages = new Set<string>(tasks.filter((t) => t.status === 'running').map((t) => t.page));
+  const alerts = useAlerts();
+  useBackgroundAlerts();
   Object.keys(running).forEach((p) => busyPages.add(p));
   if (scans.some((s) => !s.done)) busyPages.add('explorer');
   const width = open ? 232 : 60;
@@ -159,8 +173,10 @@ export function Sidebar() {
                   <span className="side-icon relative shrink-0 transition-[color,filter] duration-200">
                     {it.icon}
                     {busyPages.has(it.page) && !open && <span className="absolute -right-1 -top-1 h-2 w-2 animate-pulse rounded-full bg-accent ring-2 ring-surface" />}
+                    {alerts.has(it.page) && !open && !busyPages.has(it.page) && <AlertMark small title={alerts.get(it.page)!} />}
                   </span>
                   <span className={cx('side-label truncate whitespace-nowrap', !open && 'opacity-0')}>{it.label}</span>
+                  {alerts.has(it.page) && open && !busyPages.has(it.page) && <AlertMark title={alerts.get(it.page)!} />}
                   {busyPages.has(it.page) && open
                     ? <span className="ml-auto flex shrink-0 items-center" title={running[it.page]?.label || tr("Em andamento")}><span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent" /></span></span>
                     : it.needsScan && !active && open && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-line-strong" title={tr("Requer uma varredura")} />}

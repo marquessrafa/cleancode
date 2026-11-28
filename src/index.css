@@ -109,6 +109,10 @@ input, textarea, select { user-select: text; }
 .tank-wave { animation: tank-wave 5s linear infinite; }
 @keyframes cpu-scan { from { transform: translateY(0); } to { transform: translateY(170px); } }
 .cpu-scan { animation: cpu-scan 2s linear infinite; }
+/* alerta do menu: o triângulo vermelho brilha devagar */
+@keyframes nav-alert-glow { 0%, 100% { filter: drop-shadow(0 0 1px rgb(239 68 68 / .5)); } 50% { filter: drop-shadow(0 0 6px rgb(239 68 68 / .95)); } }
+.nav-alert { display: inline-flex; animation: nav-alert-glow 1.8s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .nav-alert { animation: none; } }
 @keyframes panel-slide { 0%, 12% { transform: translateX(0); } 88%, 100% { transform: translateX(var(--slide)); } }
 @media (prefers-reduced-motion: reduce) { .mode-icon g { animation: none !important; } }
 /* entrada em cascata: cada filho sobe e aparece, um pouco depois do anterior (painel das ventoinhas) */

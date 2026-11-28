@@ -1,7 +1,7 @@
 // Reparos: no Windows, entradas do registro que apontam para programas e arquivos que não existem mais
 // (inicialização, desinstalação, "Abrir com", menu de contexto, atalhos, serviços); no macOS,
 // preferências corrompidas e agentes de inicialização órfãos. Backup automático antes de corrigir.
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Wrench, ShieldCheck, Archive, AlertTriangle, RotateCcw, CheckCircle2, Info, Loader2, Bug } from 'lucide-react';
 import { useApp, useRunning } from '../lib/store';
 import { cc, isMac, RepairItem } from '../lib/api';
@@ -10,6 +10,7 @@ import { Badge, Button, Checkbox, cx } from '../components/ui';
 import { PageBody } from './common';
 import { Hero } from './maint';
 import { t } from '../lib/i18n';
+import { setAlert } from '../lib/alerts';
 
 const CAT: Record<string, { label: string; text: string }> = isMac ? {
   prefs: { label: t("Preferências corrompidas"), text: t("São preferências (.plist) que o app não consegue ler. O app cria um arquivo novo ao abrir.") },
@@ -36,6 +37,12 @@ export default function Repairs() {
   const [done, setDone] = useState<Record<string, { ok: boolean; message: string }>>({});
   const [errors, setErrors] = useState<{ app: string; message: string; at: number }[]>([]);
   const [backups, setBackups] = useState<{ id: string; files: number; at: number }[]>([]);
+  // alerta no menu: itens encontrados que ainda não foram reparados
+  useEffect(() => {
+    if (!items) return;
+    const left = items.filter((i) => i.fixable && !i.optional && !done[i.id]?.ok).length;
+    setAlert('repairs', left ? t("{0} itens precisam de reparo.", left) : null);
+  }, [items, done]);
 
   const scan = async () => {
     setBusy('scan'); setDone({});

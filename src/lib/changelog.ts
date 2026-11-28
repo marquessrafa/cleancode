@@ -11,6 +11,8 @@ export const CHANGELOG: Release[] = [
         'A tela Ventoinhas só aponta outro programa quando ele de fato mudou uma ventoinha. Antes, o aviso aparecia só porque o programa estava aberto.',
         'O aviso virou uma linha pequena, com o nome do programa e o que fazer. O CleanCode reconhece programas de várias marcas, como ASUS, MSI, Gigabyte, Corsair, NZXT, Lian Li e Fan Control.',
         'Com o Armoury Crate da ASUS, o botão Assumir o controle para só o serviço de ventoinhas dele, com a sua permissão. O RGB e o resto do Armoury Crate continuam funcionando, e o botão Devolver desfaz a mudança.',
+        'O menu mostra um triângulo vermelho com exclamação ao lado das telas que pedem uma ação, como ventoinhas brigando com outro programa, uma varredura do hardware para refazer, itens do registro para reparar ou lixo encontrado para limpar. O motivo aparece quando você para o mouse em cima.',
+        'O convite para identificar as ventoinhas virou uma linha discreta na tela Ventoinhas.',
       ] },
     ],
   },
