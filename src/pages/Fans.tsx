@@ -223,7 +223,7 @@ function Hero({ state, draft, ready, onIdentify }: { state: FanState | null; dra
         <div className="mt-4 flex items-center gap-2.5 border-t border-[var(--line)] pt-3 text-[12px]">
           <Fan size={15} className="shrink-0 animate-[spin_2.4s_linear_infinite] text-[var(--accent)]" />
           <span className="min-w-0 flex-1 text-muted">{tr("Descubra qual ventoinha é cada uma. O assistente acelera uma ventoinha por vez e pergunta onde ela fica.")}</span>
-          <Button size="sm" variant="outline" onClick={onIdentify}>{tr("Identificar as ventoinhas")}</Button>
+          <Button size="sm" variant="primary" onClick={onIdentify}>{tr("Identificar as ventoinhas")}</Button>
         </div>
       )}
     </div>
