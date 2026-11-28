@@ -28,7 +28,7 @@
 </div>
 
 <p align="center">
-  <img src="docs/screenshots/hero.webp" alt="The CleanCode hardware monitor shows a 3D desktop PC with a glass case while the camera moves around the model" width="100%" />
+  <img src="docs/screenshots/hero.webp" alt="The CleanCode Fans screen shows an AMD Radeon RX 9070 XT in 3D, the case fans and the water cooler pump, while the speed curve of each one is edited" width="100%" />
 </p>
 
 ---
@@ -36,6 +36,7 @@
 ## Contents
 
 - [What CleanCode is](#what-cleancode-is)
+- [Graphics cards in 3D](#graphics-cards-in-3d)
 - [Features in pictures](#features-in-pictures)
 - [Everything CleanCode does](#everything-cleancode-does)
 - [Safety and privacy](#safety-and-privacy)
@@ -63,6 +64,22 @@ CleanCode was built to be **safe from the start**:
 - CleanCode does not remove anything without showing you the list first.
 
 > The app interface is in Brazilian Portuguese.
+
+## Graphics cards in 3D
+
+<p align="center">
+  <img src="docs/screenshots/gpus.webp" alt="The gallery shows the 85 graphics cards with their 3D fans spinning" width="100%" />
+</p>
+
+CleanCode shows 85 graphics cards from AMD, NVIDIA and Intel with a photo of each card. The fans in each photo are 3D models, and they spin at the real speed of your card, with motion blur.
+
+These fans do not come from a generic model. Every fan was modeled by hand, blade by blade, one card at a time, based on the reference design of each card (on NVIDIA, the Founders Edition). For each card, the number of blades, the curve, the width, the tip and the ring around the blades were adjusted until the 3D fan matched the photo. In total, there are 80 fan models, because some cards share the same cooler.
+
+<p align="center">
+  <img src="docs/screenshots/modeler.webp" alt="The fan modeler edits the AMD Radeon RX 9070 XT at 50 RPM, with the blade panel open next to the card" width="100%" />
+</p>
+
+The fan modeler is the tool that created these models, and it is not part of the app. In the animation above, the modeler edits the AMD Radeon RX 9070 XT with the fans at 50 RPM. The panel on the side shows the measurements of the blades, and the card turns so that you can see the depth of each blade.
 
 ## Features in pictures
 
@@ -134,7 +151,7 @@ CleanCode was built to be **safe from the start**:
 
 <table>
   <tr>
-    <td width="33%" valign="top"><img src="docs/screenshots/panel.webp" alt="Menu bar panel" width="100%" /><br /><strong>Computer health</strong><br />Shows the disk, memory, battery, processor, graphics card, power, network and connected devices.</td>
+    <td width="33%" valign="top"><img src="docs/screenshots/panel.webp" alt="Menu bar panel" width="100%" /><br /><strong>Computer health</strong><br />Shows the disk, memory, battery, processor, graphics card, power, network and connected devices. On Windows, it also shows the graphics card in 3D and the fans.</td>
     <td width="33%" valign="top"><img src="docs/screenshots/panel-cpu.webp" alt="Processor details" width="100%" /><br /><strong>Processor</strong><br />Shows how much of the processor is in use by apps and by the system. It also shows the temperature, the uptime and the apps that use the processor the most.</td>
     <td width="33%" valign="top"><img src="docs/screenshots/panel-memory.webp" alt="Memory details" width="100%" /><br /><strong>Memory</strong><br />Shows how the memory is divided, the memory pressure, the use of swap and the apps that use the most memory.</td>
   </tr>
@@ -146,7 +163,7 @@ CleanCode was built to be **safe from the start**:
   <tr>
     <td width="33%" valign="top"><img src="docs/screenshots/panel-storage.webp" alt="Storage details" width="100%" /><br /><strong>Storage</strong><br />Shows what takes up the disk, the health of the SSD and the size of the Trash.</td>
     <td width="33%" valign="top"><img src="docs/screenshots/panel-network.webp" alt="Network details" width="100%" /><br /><strong>Network</strong><br />Shows whether your Wi-Fi is secure and how much data you downloaded and uploaded. In addition, it runs an internet speed test.</td>
-    <td width="33%" valign="top"></td>
+    <td width="33%" valign="top"><img src="docs/screenshots/panel-fans.webp" alt="Fan details" width="100%" /><br /><strong>Fans</strong><br />Shows the speed of each fan, the temperature that guides it and the speed curve. From here, you can open the Fans screen.</td>
   </tr>
 </table>
 

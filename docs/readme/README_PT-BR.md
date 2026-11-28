@@ -28,7 +28,7 @@
 </div>
 
 <p align="center">
-  <img src="../screenshots/hero.webp" alt="O Monitor de hardware do CleanCode mostra um PC com gabinete de vidro em 3D enquanto a câmera passeia ao redor do modelo" width="100%" />
+  <img src="../screenshots/hero.webp" alt="A tela Ventoinhas do CleanCode mostra uma AMD Radeon RX 9070 XT em 3D, as ventoinhas do gabinete e a bomba do water cooler, enquanto a curva de velocidade de cada uma é editada" width="100%" />
 </p>
 
 ---
@@ -36,6 +36,7 @@
 ## Sumário
 
 - [O que é o CleanCode](#o-que-é-o-cleancode)
+- [Placas de vídeo em 3D](#placas-de-vídeo-em-3d)
 - [Funcionalidades em imagens](#funcionalidades-em-imagens)
 - [Tudo o que o CleanCode faz](#tudo-o-que-o-cleancode-faz)
 - [Segurança e privacidade](#segurança-e-privacidade)
@@ -63,6 +64,22 @@ O CleanCode foi feito para ser **seguro desde o início**:
 - O CleanCode não remove nada sem mostrar a lista para você antes.
 
 > A interface do app está em português do Brasil.
+
+## Placas de vídeo em 3D
+
+<p align="center">
+  <img src="../screenshots/gpus.webp" alt="A galeria mostra as 85 placas de vídeo com as ventoinhas 3D girando" width="100%" />
+</p>
+
+O CleanCode mostra 85 placas de vídeo da AMD, da NVIDIA e da Intel com a foto de cada placa. As ventoinhas de cada foto são modelos 3D, e elas giram na velocidade real da sua placa, com o borrão do movimento.
+
+Essas ventoinhas não vêm de um modelo genérico. Cada ventoinha foi modelada à mão, pá por pá, uma placa por vez, a partir do modelo de referência de cada placa (na NVIDIA, a Founders Edition). Em cada placa, o número de pás, a curva, a largura, a ponta e o anel em volta das pás foram ajustados até a ventoinha 3D ficar igual à foto. No total, são 80 modelos de ventoinha, porque algumas placas usam o mesmo cooler.
+
+<p align="center">
+  <img src="../screenshots/modeler.webp" alt="O modelador edita a AMD Radeon RX 9070 XT a 50 RPM, com o painel das pás aberto ao lado da placa" width="100%" />
+</p>
+
+O modelador de ventoinhas é a ferramenta que criou esses modelos, e ele não faz parte do app. Na animação acima, o modelador edita a AMD Radeon RX 9070 XT com as ventoinhas a 50 RPM. O painel ao lado mostra as medidas das pás, e a placa gira para você ver a profundidade de cada pá.
 
 ## Funcionalidades em imagens
 
@@ -134,7 +151,7 @@ O CleanCode foi feito para ser **seguro desde o início**:
 
 <table>
   <tr>
-    <td width="33%" valign="top"><img src="../screenshots/panel.webp" alt="Painel da barra de menus" width="100%" /><br /><strong>Saúde do computador</strong><br />Mostra o disco, a memória, a bateria, o processador, a placa de vídeo, a energia, a rede e os dispositivos conectados.</td>
+    <td width="33%" valign="top"><img src="../screenshots/panel.webp" alt="Painel da barra de menus" width="100%" /><br /><strong>Saúde do computador</strong><br />Mostra o disco, a memória, a bateria, o processador, a placa de vídeo, a energia, a rede e os dispositivos conectados. No Windows, ele também mostra a placa de vídeo em 3D e as ventoinhas.</td>
     <td width="33%" valign="top"><img src="../screenshots/panel-cpu.webp" alt="Detalhe do processador" width="100%" /><br /><strong>Processador</strong><br />Mostra quanto do processador está em uso pelos apps e pelo sistema. Também mostra a temperatura, o tempo ligado e os apps que mais usam o processador.</td>
     <td width="33%" valign="top"><img src="../screenshots/panel-memory.webp" alt="Detalhe da memória" width="100%" /><br /><strong>Memória</strong><br />Mostra como a memória está dividida, a pressão de memória, o uso do swap e os apps que mais usam memória.</td>
   </tr>
@@ -146,7 +163,7 @@ O CleanCode foi feito para ser **seguro desde o início**:
   <tr>
     <td width="33%" valign="top"><img src="../screenshots/panel-storage.webp" alt="Detalhe do armazenamento" width="100%" /><br /><strong>Armazenamento</strong><br />Mostra o que ocupa o disco, a saúde do SSD e o tamanho da Lixeira.</td>
     <td width="33%" valign="top"><img src="../screenshots/panel-network.webp" alt="Detalhe da rede" width="100%" /><br /><strong>Rede</strong><br />Mostra se o Wi-Fi é seguro e quanto você baixou e enviou. Além disso, faz um teste de velocidade da internet.</td>
-    <td width="33%" valign="top"></td>
+    <td width="33%" valign="top"><img src="../screenshots/panel-fans.webp" alt="Detalhe das ventoinhas" width="100%" /><br /><strong>Ventoinhas</strong><br />Mostra a velocidade de cada ventoinha, a temperatura que guia essa ventoinha e a curva de velocidade. Daqui, você também abre a tela Ventoinhas.</td>
   </tr>
 </table>
 

@@ -28,7 +28,7 @@
 </div>
 
 <p align="center">
-  <img src="../screenshots/hero.webp" alt="El monitor de hardware de CleanCode muestra un PC de escritorio con caja de cristal en 3D mientras la cámara se mueve alrededor del modelo" width="100%" />
+  <img src="../screenshots/hero.webp" alt="La pantalla Ventiladores de CleanCode muestra una AMD Radeon RX 9070 XT en 3D, los ventiladores de la caja y la bomba de la refrigeración líquida, mientras se edita la curva de velocidad de cada uno" width="100%" />
 </p>
 
 ---
@@ -36,6 +36,7 @@
 ## Índice
 
 - [Qué es CleanCode](#qué-es-cleancode)
+- [Tarjetas gráficas en 3D](#tarjetas-gráficas-en-3d)
 - [Funciones en imágenes](#funciones-en-imágenes)
 - [Todo lo que hace CleanCode](#todo-lo-que-hace-cleancode)
 - [Seguridad y privacidad](#seguridad-y-privacidad)
@@ -63,6 +64,22 @@ CleanCode fue hecho para ser **seguro desde el principio**:
 - CleanCode no elimina nada sin mostrarte la lista antes.
 
 > La interfaz de la app está en portugués de Brasil.
+
+## Tarjetas gráficas en 3D
+
+<p align="center">
+  <img src="../screenshots/gpus.webp" alt="La galería muestra las 85 tarjetas gráficas con sus ventiladores 3D girando" width="100%" />
+</p>
+
+CleanCode muestra 85 tarjetas gráficas de AMD, NVIDIA e Intel con la foto de cada tarjeta. Los ventiladores de cada foto son modelos 3D, y giran a la velocidad real de tu tarjeta, con el desenfoque del movimiento.
+
+Estos ventiladores no vienen de un modelo genérico. Cada ventilador se modeló a mano, aspa por aspa, una tarjeta a la vez, a partir del modelo de referencia de cada tarjeta (en NVIDIA, la Founders Edition). En cada tarjeta, se ajustaron el número de aspas, la curva, el ancho, la punta y el anillo alrededor de las aspas hasta que el ventilador 3D quedó igual a la foto. En total, hay 80 modelos de ventilador, porque algunas tarjetas usan el mismo disipador.
+
+<p align="center">
+  <img src="../screenshots/modeler.webp" alt="El modelador edita la AMD Radeon RX 9070 XT a 50 RPM, con el panel de las aspas abierto al lado de la tarjeta" width="100%" />
+</p>
+
+El modelador de ventiladores es la herramienta que creó estos modelos, y no forma parte de la app. En la animación de arriba, el modelador edita la AMD Radeon RX 9070 XT con los ventiladores a 50 RPM. El panel del lado muestra las medidas de las aspas, y la tarjeta gira para que veas la profundidad de cada aspa.
 
 ## Funciones en imágenes
 
@@ -134,7 +151,7 @@ CleanCode fue hecho para ser **seguro desde el principio**:
 
 <table>
   <tr>
-    <td width="33%" valign="top"><img src="../screenshots/panel.webp" alt="Panel de la barra de menús" width="100%" /><br /><strong>Salud del ordenador</strong><br />Muestra el disco, la memoria, la batería, el procesador, la tarjeta gráfica, la energía, la red y los dispositivos conectados.</td>
+    <td width="33%" valign="top"><img src="../screenshots/panel.webp" alt="Panel de la barra de menús" width="100%" /><br /><strong>Salud del ordenador</strong><br />Muestra el disco, la memoria, la batería, el procesador, la tarjeta gráfica, la energía, la red y los dispositivos conectados. En Windows, también muestra la tarjeta gráfica en 3D y los ventiladores.</td>
     <td width="33%" valign="top"><img src="../screenshots/panel-cpu.webp" alt="Detalle del procesador" width="100%" /><br /><strong>Procesador</strong><br />Muestra cuánto del procesador usan las apps y el sistema. También muestra la temperatura, el tiempo encendido y las apps que más usan el procesador.</td>
     <td width="33%" valign="top"><img src="../screenshots/panel-memory.webp" alt="Detalle de la memoria" width="100%" /><br /><strong>Memoria</strong><br />Muestra cómo se divide la memoria, la presión de memoria, el uso del swap y las apps que más memoria usan.</td>
   </tr>
@@ -146,7 +163,7 @@ CleanCode fue hecho para ser **seguro desde el principio**:
   <tr>
     <td width="33%" valign="top"><img src="../screenshots/panel-storage.webp" alt="Detalle del almacenamiento" width="100%" /><br /><strong>Almacenamiento</strong><br />Muestra lo que ocupa el disco, la salud del SSD y el tamaño de la Papelera.</td>
     <td width="33%" valign="top"><img src="../screenshots/panel-network.webp" alt="Detalle de la red" width="100%" /><br /><strong>Red</strong><br />Muestra si tu Wi-Fi es seguro y cuántos datos descargaste y enviaste. Además, hace una prueba de velocidad de internet.</td>
-    <td width="33%" valign="top"></td>
+    <td width="33%" valign="top"><img src="../screenshots/panel-fans.webp" alt="Detalle de los ventiladores" width="100%" /><br /><strong>Ventiladores</strong><br />Muestra la velocidad de cada ventilador, la temperatura que lo guía y la curva de velocidad. Desde aquí, también puedes abrir la pantalla Ventiladores.</td>
   </tr>
 </table>
 

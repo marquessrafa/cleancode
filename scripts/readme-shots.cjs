@@ -3,8 +3,14 @@
 // Como usar (Windows, PowerShell, na pasta do projeto):
 //   npm run build
 //   $env:CLEANCODE_PROFILE='readme'; $env:CLEANCODE_LANG='pt'; $env:CLEANCODE_PREVIEW_FANS='1'
+//   $env:CLEANCODE_PREVIEW_GPU='AMD Radeon RX 9070 XT'   (a placa da capa; para o widget, use o nome da sua placa)
 //   node_modules\electron\dist\electron.exe . --remote-debugging-port=9333 "C:\Windows"
 //   node scripts/readme-shots.cjs 9333 docs/screenshots [cena1,cena2...]
+//
+// - Deixe a janela do app visível na tela durante a gravação. Com a janela escondida, o Chromium desenha um quadro a
+//   cada poucos segundos, e cada cena leva vários minutos.
+// - A cena "modeler" grava o modelador de ventoinhas, que fica fora do git (veja modelerTour), e a cena "gpus" precisa
+//   da galeria de placas, que saiu do app (veja galleryTour). Por isso, as duas só rodam quando você pede pelo nome.
 //
 // - O caminho no fim do comando do Electron faz o app analisar essa pasta (as telas de Análise de disco precisam de uma
 //   análise). Use uma pasta sem dados pessoais e sem a lista dos seus programas, como "C:\Windows".
@@ -55,7 +61,23 @@ const SCRUB = `(() => {
     for (const mac of macs) { s = s.split(mac).join('00:11:22:33:44:55'); s = s.split(mac.toUpperCase()).join('00:11:22:33:44:55'); s = s.split(mac.replace(/:/g, '-').toUpperCase()).join('00-11-22-33-44-55'); }
     return s;
   };
+  // listas de programas (processador, memória e placa de vídeo): só ficam os programas comuns; as outras linhas somem
+  const SAFE = /^(chrome|msedge|firefox|Code|explorer|dwm|Memory Compression|System|steam|steamwebhelper|Discord|Spotify|CleanCode|electron|svchost|MsMpEng|csrss|Registry|WmiPrvSE|SearchHost|Taskmgr)(\.exe)?$/i;
+  const hideRows = () => {
+    const rows = [
+      // "Maiores consumidores" (processador e memória): cada linha tem o botão "Encerrar"
+      ...[...document.querySelectorAll('div.anim-rise.relative')].filter((r) => [...r.children].some((c) => c.tagName === 'BUTTON' && /^(Encerrar|Confirmar)$/.test(c.textContent.trim()))).map((r) => [r, r.querySelector('.truncate')]),
+      // "Apps que mais usam a placa de vídeo"
+      ...[...document.querySelectorAll('.space-y-2 > div.flex')].filter((r) => /Apps que mais usam/.test(r.parentElement.previousElementSibling?.textContent || '')).map((r) => [r, r.querySelector('span.truncate')]),
+    ];
+    for (const [row, el] of rows) {
+      if (!el) continue;
+      if (el.textContent === 'electron') el.textContent = 'CleanCode';
+      row.style.display = SAFE.test(el.textContent.trim()) ? '' : 'none';
+    }
+  };
   const walk = (root) => {
+    hideRows();
     const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     for (let n = w.nextNode(); n; n = w.nextNode()) { const v = fix(n.nodeValue); if (v !== n.nodeValue) n.nodeValue = v; }
     root.querySelectorAll && root.querySelectorAll('input,textarea').forEach((i) => { const v = fix(i.value); if (v !== i.value) i.value = v; });
@@ -107,9 +129,133 @@ function animatedWebp(frames) {
 
 // ---------- cenas ----------
 // nav: item da barra lateral. tab: aba da tela. run: ações antes e durante a gravação. frames e every (ms) definem a duração.
+// play: roteiro quadro a quadro (um gerador que avança um passo antes de cada quadro); a cena acaba quando o roteiro acaba.
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const ease = (k) => (k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2);
+
+// Capa do README: a tela Ventoinhas passa pela placa de vídeo, pelas ventoinhas do gabinete e pela bomba do water cooler,
+// e edita a curva de cada uma. Precisa da prévia das ventoinhas (CLEANCODE_PREVIEW_FANS=1 e
+// CLEANCODE_PREVIEW_GPU='AMD Radeon RX 9070 XT'). O próprio roteiro dá nomes às saídas simuladas e marca a bomba.
+const FAN_LABEL = 'Ventoinhas da frente', PUMP_LABEL = 'Bomba do water cooler';
+const FANS_CFG = {
+  '/lpc/exemplo/0/control/1': { mode: 'curve', source: '/intelcpu/0/temperature/0', points: [[30, 30], [50, 45], [70, 75], [85, 100]], label: FAN_LABEL },
+  '/lpc/exemplo/0/control/4': { mode: 'curve', source: '/intelcpu/0/temperature/0', points: [[30, 62], [55, 68], [75, 80], [90, 100]], label: PUMP_LABEL, pump: true },
+};
+async function* fansTour(api) {
+  const { ev, mouse, scroll } = api;
+  const tileJs = (label) => `[...document.querySelectorAll('main button')].find((b) => b.textContent.includes(${JSON.stringify(label)}) && b.getBoundingClientRect().height < 140)`;
+  const rect = (js) => ev(`(() => { const e = ${js}; if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, top: r.top }; })()`);
+  const point = (k) => rect(`document.querySelectorAll('svg[aria-label="Curva de velocidade pela temperatura"] circle.cursor-grab')[${k}]`);
+  const scrollTop = () => ev(`${api.scroller}.scrollTop`);
+  let cur = { x: 700, y: 520 };
+  // o cursor desliza até o alvo com aceleração suave
+  async function* glide(to, frames, buttons = 0) {
+    const from = { ...cur };
+    for (let i = 1; i <= frames; i++) { const k = ease(i / frames); cur = { x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k }; await mouse('mouseMoved', cur, buttons); yield; }
+  }
+  // a tela rola até que o alvo fique na altura pedida
+  async function* scrollTo(target, frames) {
+    const from = await scrollTop();
+    for (let i = 1; i <= frames; i++) { await scroll(from + (target - from) * ease(i / frames)); yield; }
+  }
+  const click = async () => { await mouse('mousePressed', cur, 1); await mouse('mouseReleased', cur, 0); };
+  async function* wait(frames) { for (let i = 0; i < frames; i++) yield; }
+  // posição da rolagem em que a fileira de cartões fica perto do topo
+  const tilesAt = async () => (await scrollTop()) + (await rect(tileJs('GPU Fan'))).top - 70;
+  // arrasta um ponto da curva por uma lista de alvos (em pixels relativos ao ponto)
+  async function* drag(k, moves) {
+    const p = await point(k);
+    yield* glide(p, 10);
+    await mouse('mousePressed', cur, 1);
+    for (const [dx, dy, n] of moves) yield* glide({ x: p.x + dx, y: p.y + dy }, n, 1);
+    await mouse('mouseReleased', cur, 0);
+    yield* wait(6);
+  }
+  // editar uma saída: escolhe o cartão, mostra a arte, desce até a curva e mexe em dois pontos
+  async function* edit(label, moves) {
+    yield* scrollTo(await tilesAt(), 10);
+    yield* glide(await rect(tileJs(label)), 12);
+    await click();
+    yield* wait(14);
+    const svgTop = (await rect(`document.querySelector('svg[aria-label="Curva de velocidade pela temperatura"]')`)).top;
+    yield* scrollTo((await scrollTop()) + svgTop - 250, 12);
+    for (const [k, m] of moves) yield* drag(k, m);
+  }
+
+  // começo: a placa de vídeo escolhida, com a foto e as ventoinhas girando
+  await scroll(await tilesAt());
+  await ev(`${tileJs('GPU Fan')}?.click(); true`);
+  await sleep(1500);
+  cur = await rect(tileJs('GPU Fan'));
+  await mouse('mouseMoved', cur, 0);
+  yield* wait(14);
+  yield* edit(FAN_LABEL, [[2, [[0, -40, 10], [0, 30, 12], [0, -14, 8]]], [1, [[0, -30, 10], [0, 0, 4]]]]);
+  yield* edit(PUMP_LABEL, [[2, [[-20, -36, 12], [0, -18, 8]]]]);
+  // volta para a placa de vídeo, que é o primeiro quadro da animação
+  yield* scrollTo(await tilesAt(), 12);
+  yield* glide(await rect(tileJs('GPU Fan')), 12);
+  await click();
+  yield* wait(6);
+}
+
+// Galeria das placas de vídeo: todas as placas com foto, com as ventoinhas 3D girando. A galeria saiu do app na 1.4.35;
+// para gravar esta cena, volte com ela por um momento (git show 9692f13^:src/components/GpuGallery.tsx) e mostre
+// <GpuGallery /> na tela Ventoinhas, só na prévia. A rotação sobe devagar e a tela desce até a última placa.
+async function* galleryTour(api) {
+  const { ev, scroll } = api;
+  const sec = `[...document.querySelectorAll('section')].find((s) => s.textContent.includes('Galeria das placas de vídeo'))`;
+  const top = await ev(`(() => { const s = ${sec}; s.querySelector('.text-muted').textContent = 'Cada uma das ' + s.querySelectorAll('.grid > button').length + ' placas tem as ventoinhas modeladas à mão, girando em 3D.'; return ${api.scroller}.scrollTop + s.getBoundingClientRect().top - 56; })()`);
+  await scroll(top);
+  const r = await ev(`(() => { const r = (${sec}).getBoundingClientRect(); return { x: r.left - 8, width: r.width + 16, height: r.height }; })()`);
+  api.clip = { x: Math.round(r.x), y: 48, width: Math.round(r.width), height: api.H - 48 };
+  const setRpm = (v) => ev(`(() => { const i = (${sec}).querySelector('input[type=range]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, ${Math.round(v)}); i.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+  await setRpm(0);
+  await sleep(2500); // as fotos e as ventoinhas 3D de todas as placas carregam
+  yield;
+  for (let i = 1; i <= 16; i++) { await setRpm(1800 * ease(i / 16)); yield; }
+  const end = top + Math.max(0, r.height + 70 - api.H);
+  for (let i = 1; i <= 56; i++) { await scroll(top + (end - top) * ease(i / 56)); yield; }
+  for (let i = 0; i < 6; i++) yield;
+}
+
+// Modelador das ventoinhas (ferramenta local, fora do git, em .capturas/modelador/fan3d.html): a 9070 XT a 50 RPM,
+// com o painel das pás aberto ao lado, enquanto a placa gira devagar. Abra o modelador num navegador com a porta de
+// depuração ligada e passe essa porta ao script (por exemplo, chrome --remote-debugging-port=9444).
+async function* modelerTour(api) {
+  const { ev, mouse } = api;
+  const set = (id, v) => ev(`(() => { const i = document.getElementById(${JSON.stringify(id)}); i.value = ${v}; i.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+  await sleep(1500);
+  await set('p_rpm', 50); await set('rotY', 0); await set('rotX', 0);
+  await ev(`document.getElementById('front').click(); true`);
+  await sleep(800);
+  // o painel das pás abre com o botão direito numa pá; o script procura uma pá na ventoinha da direita
+  const st = await ev(`(() => { const r = document.querySelector('canvas:not(#ref)').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; })()`);
+  let opened = false;
+  for (let gx = 0.62; gx < 0.8 && !opened; gx += 0.015) for (let gy = 0.36; gy < 0.6 && !opened; gy += 0.03) {
+    const p = { x: st.x + st.w * gx, y: st.y + st.h * gy };
+    await api.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: p.x, y: p.y, button: 'right', buttons: 2, clickCount: 1 });
+    await api.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: p.x, y: p.y, button: 'right', buttons: 0, clickCount: 1 });
+    opened = await ev(`document.getElementById('float').style.display === 'block' && document.getElementById('floatTitle').textContent === 'Pás'`);
+  }
+  if (!opened) throw new Error('o painel das pás não abriu');
+  await mouse('mouseMoved', { x: st.x + st.w - 20, y: st.y + 20 }, 0); // longe da placa, sem contorno de peça
+  await ev(`document.getElementById('cc-cursor')?.remove(); true`);
+  await sleep(600);
+  yield;
+  const n = 90;
+  for (let i = 1; i <= n; i++) {
+    const k = i / n;
+    await set('rotY', Math.round(24 * Math.sin(k * Math.PI * 2)));
+    await set('rotX', Math.round(10 * Math.sin(k * Math.PI)));
+    yield;
+  }
+}
+
 const SCENES = [
-  { file: 'hero', nav: 'Monitor de hardware', tab: 'Visão geral', frames: 48, every: 110, wait: 4000, w: 1600, h: 900, scale: 0.75 },
+  { file: 'modeler', page: 'fan3d.html', play: modelerTour, every: 85, w: 2560, h: 1317, scale: 0.5, quality: 50 },
+  { file: 'gpus', nav: 'Ventoinhas', play: galleryTour, every: 85, wait: 2500, w: 1920, h: 1080, scale: 0.62, quality: 45, setup: { fans: FANS_CFG } },
+  // a capa corta a barra lateral e a barra de cima, para a placa e a curva aparecerem maiores
+  { file: 'hero', nav: 'Ventoinhas', play: fansTour, every: 85, wait: 2500, w: 1440, h: 900, scale: 0.85, clip: { x: 262, y: 44, width: 1168, height: 740 }, quality: 55, setup: { fans: FANS_CFG } },
   { file: 'overview', nav: 'Visão geral', frames: 24, every: 140, scroll: 260 },
   { file: 'visual', nav: 'Visualizações', frames: 24, every: 140, wait: 2500, hover: true },
   { file: 'types', nav: 'Tipos de arquivo', frames: 20, every: 150, scroll: 300 },
@@ -130,19 +276,23 @@ const SCENES = [
   { file: 'hw-storage', nav: 'Monitor de hardware', tab: 'Armazenamento', frames: 36, every: 110, wait: 3000 },
   { file: 'fans', nav: 'Ventoinhas', frames: 36, every: 110, wait: 2500, fans: true },
   { file: 'uninstall', nav: 'Desinstalador', frames: 20, every: 150, wait: 4000, scroll: 300 },
-  // o painel tem duas colunas (detalhe à esquerda e principal à direita, 436 + 12 + 448 px, com 10 px de margem)
-  { file: 'panel', panel: null, frames: 24, every: 140, w: 916, h: 800, scale: 0.8, clip: { x: 458, y: 0, width: 448, height: 800 } },
-  { file: 'panel-cpu', panel: 'cpu', frames: 24, every: 140, w: 916, h: 800, scale: 0.7 },
-  { file: 'panel-memory', panel: 'memory', frames: 24, every: 140, w: 916, h: 800, scale: 0.7 },
-  { file: 'panel-gpu', panel: 'gpu', frames: 24, every: 140, w: 916, h: 800, scale: 0.7 },
-  { file: 'panel-power', panel: 'power', frames: 24, every: 140, w: 916, h: 800, scale: 0.7 },
-  { file: 'panel-storage', panel: 'storage', frames: 24, every: 140, w: 916, h: 800, scale: 0.7 },
-  { file: 'panel-network', panel: 'network', frames: 24, every: 140, w: 916, h: 800, scale: 0.7 },
+  // o painel tem duas colunas (detalhe à esquerda e principal à direita, 436 + 12 + 640 px, com 10 px de margem)
+  { file: 'panel', panel: null, frames: 24, every: 140, w: 1098, h: 800, scale: 0.7, clip: { x: 448, y: 0, width: 640, height: 800 } },
+  { file: 'panel-cpu', panel: 'cpu', frames: 24, every: 140, w: 1098, h: 800, scale: 0.62 },
+  { file: 'panel-memory', panel: 'memory', frames: 24, every: 140, w: 1098, h: 800, scale: 0.62 },
+  { file: 'panel-gpu', panel: 'gpu', frames: 24, every: 140, w: 1098, h: 800, scale: 0.62 },
+  // o detalhe da energia só abre num PC com leitura de energia ou com bateria (a captura atual veio de um Mac)
+  { file: 'panel-power', panel: 'power', frames: 24, every: 140, w: 1098, h: 800, scale: 0.62 },
+  { file: 'panel-fans', panel: 'fans', frames: 24, every: 140, w: 1098, h: 800, scale: 0.62 },
+  { file: 'panel-storage', panel: 'storage', frames: 24, every: 140, w: 1098, h: 800, scale: 0.62 },
+  { file: 'panel-network', panel: 'network', frames: 24, every: 140, w: 1098, h: 800, scale: 0.62 },
 ];
 
 http.get(`http://127.0.0.1:${port}/json`, (res) => {
   let b = ''; res.on('data', (d) => (b += d)); res.on('end', () => {
-    const t = JSON.parse(b).find((x) => x.type === 'page' && !x.url.startsWith('devtools'));
+    // as cenas com "page" gravam outra página (o modelador); as outras gravam a janela principal do app
+    const want = SCENES.find((s) => s.page && only && only.split(',').includes(s.file))?.page;
+    const t = JSON.parse(b).find((x) => x.type === 'page' && !x.url.startsWith('devtools') && (want ? x.url.includes(want) : !x.url.startsWith('chrome')));
     const ws = new WebSocket(t.webSocketDebuggerUrl);
     let id = 0; const pend = new Map();
     const send = (method, params = {}) => new Promise((r) => { const i = ++id; pend.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
@@ -151,31 +301,37 @@ http.get(`http://127.0.0.1:${port}/json`, (res) => {
     const clickNav = (label) => ev(`(() => { const el = [...document.querySelectorAll('aside button, aside a, aside [role=button], aside div')].find((e) => e.children.length < 3 && e.textContent.trim() === ${JSON.stringify(label)}); el && el.click(); return !!el; })()`);
     const clickTab = (label) => ev(`(() => { const el = [...document.querySelectorAll('main button, button')].find((e) => e.textContent.trim() === ${JSON.stringify(label)} && !e.closest('aside')); el && el.click(); return !!el; })()`);
     const scroller = `(document.querySelectorAll('.overflow-y-auto')[1] || document.querySelector('.overflow-y-auto') || document.scrollingElement)`;
-    ws.onopen = async () => {
+    ws.onopen = () => run().catch((e) => { console.error(e); process.exit(1); });
+    const run = async () => {
       await send('Runtime.enable');
       // o painel só lê os dados com a janela visível: a janela de captura conta como visível mesmo atrás de outras janelas
       const visible = `Object.defineProperty(document, 'hidden', { get: () => false, configurable: true }); Object.defineProperty(document, 'visibilityState', { get: () => 'visible', configurable: true });`;
       await send('Page.enable');
+      // com a janela escondida, o Chromium desenha um quadro a cada poucos segundos; a emulação de foco faz a página desenhar normalmente
+      await send('Emulation.setFocusEmulationEnabled', { enabled: true });
       await send('Page.addScriptToEvaluateOnNewDocument', { source: visible });
       await ev(visible + ' true');
       // rótulos do treemap ficam desligados (o canvas não passa pela troca de dados pessoais)
-      await ev(`(async () => { const s = await window.cc.settingsGet(); await window.cc.settingsSet({ treemap: { ...s.treemap, labels: false } }); return true; })()`);
-      const list = only ? SCENES.filter((s) => only.split(',').includes(s.file)) : SCENES;
+      if (!want) await ev(`(async () => { const s = await window.cc.settingsGet(); await window.cc.settingsSet({ treemap: { ...s.treemap, labels: false } }); return true; })()`);
+      const list = only ? SCENES.filter((s) => only.split(',').includes(s.file)) : SCENES.filter((s) => !s.page && s.file !== 'gpus');
       for (const sc of list) {
         const W = sc.w || 1440, H = sc.h || 900, S = sc.scale || 0.7;
         await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: false });
-        if (sc.panel !== undefined) {
+        if (sc.page) {
+          await sleep(sc.wait || 1000);
+        } else if (sc.panel !== undefined) {
           if (!(await ev('location.hash')).includes('panel')) { await ev(`location.hash = '#panel'; location.reload(); true`); await sleep(5000); }
           await ev(`(() => { document.querySelector('[data-cc-close]')?.click(); return true; })()`);
           if (sc.panel) {
             // abre o detalhe pelo cartão do painel (o texto de cada cartão começa pelo nome da peça)
             // cada cartão é achado pelo começo do texto; o de energia é o que mostra watts (o outro "Energia" é o da bateria)
-            const match = { cpu: '^CPU', memory: '^Memória', gpu: '^GPU', power: '^Energia.*(W agora|Sem leitura)', storage: '^[A-Z]:\\\\', network: '^Rede' }[sc.panel];
-            await ev(`(() => { const re = new RegExp(${JSON.stringify(match)}, 's'); const els = [...document.querySelectorAll('div, button')].filter((e) => re.test((e.innerText || '').trim()) && getComputedStyle(e).cursor === 'pointer'); els.sort((a, b) => a.innerText.length - b.innerText.length); const el = els[0]; el && el.click(); return !!el; })()`);
+            const match = { cpu: '^CPU', memory: '^Memória', gpu: '^GPU', power: '^Energia.*W agora', fans: '^Ventoinhas da frente', storage: '^[A-Z]:\\\\', network: '^Rede' }[sc.panel];
+            await ev(`(() => { const re = new RegExp(${JSON.stringify(match)}, 's'); const all = [...document.querySelectorAll('div, button')].filter((e) => re.test((e.innerText || '').trim())); const ptr = all.filter((e) => getComputedStyle(e).cursor === 'pointer'); const els = ptr.length ? ptr : all; els.sort((a, b) => a.innerText.length - b.innerText.length); const el = els[0]; el && el.click(); return !!el; })()`);
           }
           await sleep(2500);
         } else {
           if ((await ev('location.hash')).includes('panel')) { await ev(`location.hash = ''; location.reload(); true`); await sleep(6000); }
+          if (sc.setup) { await ev(`(async () => { await window.cc.settingsSet(${JSON.stringify(sc.setup)}); setTimeout(() => location.reload(), 100); return true; })()`); await sleep(6000); await ev(visible + ' true'); }
           await ev(`[...document.querySelectorAll('button')].find((e) => e.textContent.trim() === 'Começar a usar')?.click(); true`);
           await clickNav(sc.nav); await sleep(1200);
           if (sc.tab) { await clickTab(sc.tab); }
@@ -184,16 +340,37 @@ http.get(`http://127.0.0.1:${port}/json`, (res) => {
         }
         await ev(SCRUB);
         const frames = [];
-        for (let i = 0; i < sc.frames; i++) {
+        let script = null, api = null;
+        if (sc.play) {
+          // o print da tela não mostra o cursor do sistema, então o roteiro desenha um cursor por cima da página
+          const CURSOR = `(() => { let c = document.getElementById('cc-cursor'); if (!c) { c = document.createElement('div'); c.id = 'cc-cursor';
+            c.style.cssText = 'position:fixed;left:0;top:0;z-index:99999;pointer-events:none;transition:transform .08s;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))';
+            c.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24"><path d="M4 2l15 11.5-6.6 1.1 3.9 7.3-2.6 1.4-3.9-7.4L4 21z" fill="#fff" stroke="#111" stroke-width="1.4" stroke-linejoin="round"/></svg>';
+            document.body.append(c); } return true; })()`;
+          await ev(CURSOR);
+          api = {
+            ev, send, scroller, W, H,
+            scroll: (y) => ev(`${scroller}?.scrollTo({ top: ${Math.round(y)}, behavior: 'instant' }); true`),
+            mouse: async (type, p, buttons) => {
+              await send('Input.dispatchMouseEvent', { type, x: Math.round(p.x), y: Math.round(p.y), button: type === 'mouseMoved' && !buttons ? 'none' : 'left', buttons, clickCount: type === 'mouseMoved' ? 0 : 1 });
+              await ev(`(() => { const c = document.getElementById('cc-cursor'); if (c) { c.style.left = '${Math.round(p.x) - 3}px'; c.style.top = '${Math.round(p.y) - 2}px'; c.style.transform = '${buttons ? 'scale(.86)' : 'scale(1)'}'; } return true; })()`);
+            },
+          };
+          script = sc.play(api);
+          await script.next(); // prepara a cena (o primeiro passo não grava quadro)
+        }
+        for (let i = 0; i < (sc.frames || Infinity); i++) {
           const t0 = Date.now();
+          if (script && (await script.next()).done) break;
           if (sc.scroll) await ev(`${scroller}?.scrollTo({ top: ${Math.round(sc.scroll * Math.sin((i / sc.frames) * Math.PI))}, behavior: 'instant' }); true`);
           if (sc.hover) await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: Math.round(W * (0.35 + 0.4 * (i / sc.frames))), y: Math.round(H * (0.45 + 0.1 * Math.sin(i / 3))) });
           if (sc.fans && i === Math.floor(sc.frames * 0.45)) await ev(`(() => { const b = [...document.querySelectorAll('button')].filter((e) => /RPM/.test(e.textContent) && e.querySelector('svg')); b[1]?.click(); return true; })()`);
           await ev(SCRUB);
-          const shot = await send('Page.captureScreenshot', { format: 'webp', quality: 62, clip: { ...(sc.clip || { x: 0, y: 0, width: W, height: H }), scale: S } });
+          const shot = await send('Page.captureScreenshot', { format: 'webp', quality: sc.quality || 62, clip: { ...((api && api.clip) || sc.clip || { x: 0, y: 0, width: W, height: H }), scale: S } });
           frames.push({ buf: Buffer.from(shot.data, 'base64'), ms: sc.every });
           const left = sc.every - (Date.now() - t0); if (left > 0) await sleep(left);
         }
+        await ev(`document.getElementById('cc-cursor')?.remove(); true`);
         const out = animatedWebp(frames);
         const file = path.join(outDir, sc.file + '.webp');
         fs.writeFileSync(file, out.buf);
