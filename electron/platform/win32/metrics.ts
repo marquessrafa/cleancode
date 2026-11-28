@@ -5,6 +5,7 @@ import { execFile } from 'child_process';
 import os from 'os';
 import * as Lhm from './lhm';
 import * as Fans from './fans';
+import * as Rivals from './fanRivals';
 import type { DiskDetail, MetricsApi, MemoryInfo, BatteryInfo, Temperatures, NetCounters, ConnectedDevice, MemoryDetail, BatteryHealth, NetworkInfo, HardwareInfo, HwLive } from '../types';
 import { t as tr, LOCALE } from '../../i18n';
 
@@ -291,4 +292,4 @@ async function disks(): Promise<DiskDetail[]> {
 
 export const metrics: MetricsApi = { machineName, memory, battery, temperatures, network, devices, memoryDetail, batteryHealth, networkInfo, eject, hardware, hwLive, disks,
   advancedActivate: (onStep) => Lhm.activate(onStep), advancedReport: (checks) => Lhm.report(checks), advancedDeactivate: () => Lhm.deactivate(), advancedAuto: () => Lhm.autoRefresh(),
-  fanState: () => Fans.state(), fanApply: (cfg) => Fans.apply(cfg), fanTest: (id, pct) => Fans.test(id, pct) };
+  fanState: () => Fans.state(), fanApply: (cfg) => Fans.apply(cfg), fanTest: (id, pct) => Fans.test(id, pct), fanTakeover: (id, on) => Rivals.takeover(id, on) };

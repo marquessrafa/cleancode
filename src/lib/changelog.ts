@@ -5,6 +5,16 @@ export interface Release { version: string; date: string; headline: string; grou
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.37', date: '2026-11-28', headline: 'Assumir o controle das ventoinhas',
+    groups: [
+      { title: 'Ventoinhas', icon: 'chip', items: [
+        'A tela Ventoinhas só aponta outro programa quando ele de fato mudou uma ventoinha. Antes, o aviso aparecia só porque o programa estava aberto.',
+        'O aviso virou uma linha pequena, com o nome do programa e o que fazer. O CleanCode reconhece programas de várias marcas, como ASUS, MSI, Gigabyte, Corsair, NZXT, Lian Li e Fan Control.',
+        'Com o Armoury Crate da ASUS, o botão Assumir o controle para só o serviço de ventoinhas dele, com a sua permissão. O RGB e o resto do Armoury Crate continuam funcionando, e o botão Devolver desfaz a mudança.',
+      ] },
+    ],
+  },
+  {
     version: '1.4.36', date: '2026-11-28', headline: 'Sensores e ventoinhas mais estáveis',
     groups: [
       { title: 'Ventoinhas', icon: 'chip', items: [

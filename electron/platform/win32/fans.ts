@@ -9,8 +9,8 @@ import { app } from 'electron';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { execFile } from 'child_process';
 import * as Lhm from './lhm';
+import { rivals } from './fanRivals';
 import type { FanConfig, FanState, FanControlInfo, FanTempSource } from '../types';
 
 const FILE = path.join(process.env.LOCALAPPDATA || os.tmpdir(), 'CleanCode', 'fans.txt');
@@ -90,24 +90,6 @@ const KIND: Record<string, FanControlInfo['kind']> = { GpuAmd: 'gpu', GpuNvidia:
 const TEMP_KIND: Record<string, string> = { Cpu: 'cpu', GpuAmd: 'gpu', GpuNvidia: 'gpu', GpuIntel: 'gpu', Motherboard: 'board', SuperIO: 'board', Storage: 'disk', Memory: 'ram' };
 
 /** Ventoinhas que aceitam controle, temperaturas que podem guiar uma curva e o que a tarefa aplicou em cada uma. */
-// outros programas que também controlam as ventoinhas: quando dois programas mudam a mesma ventoinha, a placa fica com o
-// valor de um deles, e o CleanCode vê que ela "não obedece". A lista dos processos abertos é lida a cada 30 segundos.
-const CONFLICTS: [('asus' | 'lianli'), RegExp][] = [
-  ['asus', /^(asus_framework|ArmouryCrate\.Service|AsusFanControlService|AISuite3)\.exe$/i],
-  ['lianli', /^(L-Connect-Service|L-Connect 3)\.exe$/i],
-];
-let conflictCache: { at: number; list: ('asus' | 'lianli')[] } = { at: 0, list: [] };
-function conflicts(): ('asus' | 'lianli')[] {
-  if (Date.now() - conflictCache.at > 30000) {
-    conflictCache.at = Date.now();
-    execFile('tasklist.exe', ['/fo', 'csv', '/nh'], { encoding: 'utf8', timeout: 8000, windowsHide: true, maxBuffer: 4 * 1024 * 1024 }, (_e, out) => {
-      const names = String(out || '').split(/\r?\n/).map((l) => (/^"([^"]+)"/.exec(l) || [])[1]).filter(Boolean) as string[];
-      conflictCache.list = CONFLICTS.filter(([, re]) => names.some((n) => re.test(n))).map(([k]) => k);
-    });
-  }
-  return conflictCache.list;
-}
-
 export async function state(): Promise<FanState> {
   const s = await Lhm.snapshot().catch(() => null);
   if (s) adlxOk = !!s.adlx;
@@ -134,6 +116,11 @@ export async function state(): Promise<FanState> {
   return {
     available: !!Lhm.helperPath(), active, helperReady: !!s?.fanControl, controls, temps,
     emergency: (s?.fans || []).some((f) => f.mode === 'emergency'),
-    conflicts: conflicts(),
+    // outro programa só é apontado com prova: uma ventoinha que mudou sozinha ou não seguiu o pedido
+    rivals: rivals({
+      board: controls.some((c) => c.kind !== 'gpu' && c.status?.error === 'refused'),
+      usb: controls.some((c) => c.kind !== 'gpu' && c.status?.error === 'norpm'),
+      gpu: controls.some((c) => c.kind === 'gpu' && (c.status?.error === 'refused' || c.status?.error === 'norpm')),
+    }),
   };
 }

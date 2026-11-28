@@ -48,8 +48,9 @@ export interface Settings {
 export interface FanConfig { mode: 'auto' | 'fixed' | 'curve'; value?: number; source?: string; points?: [number, number][]; label?: string; pump?: boolean }
 export interface FanControlInfo { id: string; name: string; hw: string; kind: 'board' | 'gpu' | 'cooler' | 'other'; pct?: number; rpm?: number; locked?: boolean; status?: { mode: 'fixed' | 'curve' | 'emergency'; pct: number | null; read?: number | null; error: string | null } }
 export interface FanTempSource { id: string; name: string; hw: string; kind: string; value: number }
-/** conflicts: outros programas abertos que também controlam as ventoinhas (asus: Armoury Crate ou AI Suite; lianli: L-Connect) */
-export interface FanState { available: boolean; active: boolean; helperReady: boolean; controls: FanControlInfo[]; temps: FanTempSource[]; emergency: boolean; preview?: boolean; conflicts?: ('asus' | 'lianli')[] }
+/** Outro programa que briga pelas ventoinhas (ver electron/platform/win32/fanRivals.ts). */
+export interface FanRival { id: string; name: string; kind: 'board' | 'usb' | 'gpu'; canTakeOver: boolean; takenOver?: boolean }
+export interface FanState { available: boolean; active: boolean; helperReady: boolean; controls: FanControlInfo[]; temps: FanTempSource[]; emergency: boolean; preview?: boolean; rivals?: FanRival[] }
 export interface UpdateNote { version: string; date: string; headline: string; groups: { title: string; icon: string; items: string[] }[] }
 export interface UpdateState {
   status: 'idle' | 'checking' | 'available' | 'none' | 'downloading' | 'ready' | 'installing' | 'restarting' | 'error';
@@ -200,6 +201,7 @@ interface CC {
   hardwareReport(checks?: HwCheck[]): Promise<{ ok: boolean; truncated: boolean }>;
   fanState(): Promise<FanState | null>;
   fanTest(id: string, pct: number | null): Promise<boolean>;
+  fanTakeover(id: string, on: boolean): Promise<{ ok: boolean }>;
   whatsNewSeen(): Promise<boolean>;
   clutterScan(): Promise<ClutterReport>;
   clutterCancel(): Promise<boolean>;

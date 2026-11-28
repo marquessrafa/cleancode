@@ -63,6 +63,7 @@ contextBridge.exposeInMainWorld('cc', {
   hardwareReport: (checks?: any[]) => inv('hardware:report', checks),
   fanState: () => inv('fans:state'),
   fanTest: (id: string, pct: number | null) => inv('fans:test', id, pct),
+  fanTakeover: (id: string, on: boolean) => inv('fans:takeover', id, on),
   whatsNewSeen: () => inv('app:whatsNewSeen'),
   clutterScan: () => inv('clutter:scan'),
   clutterCancel: () => inv('clutter:cancel'),

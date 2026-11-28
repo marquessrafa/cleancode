@@ -250,6 +250,7 @@ export interface MetricsApi {
   fanState?(): Promise<FanState>;
   fanApply?(cfg: Record<string, FanConfig>): void;
   fanTest?(id: string, pct: number | null): void;
+  fanTakeover?(id: string, on: boolean): Promise<{ ok: boolean }>;
   /** discos físicos com detalhes (modelo, firmware, saúde, SMART) */
   disks(): Promise<DiskDetail[]>;
 }
@@ -263,8 +264,9 @@ export interface FanControlInfo {
 }
 export interface FanTempSource { id: string; name: string; hw: string; kind: string; value: number }
 /** helperReady: a tarefa de administrador está rodando uma versão do helper que controla as ventoinhas */
-/** conflicts: outros programas abertos que também controlam as ventoinhas (asus: Armoury Crate ou AI Suite; lianli: L-Connect) */
-export interface FanState { available: boolean; active: boolean; helperReady: boolean; controls: FanControlInfo[]; temps: FanTempSource[]; emergency: boolean; preview?: boolean; conflicts?: ('asus' | 'lianli')[] }
+/** Outro programa que briga pelas ventoinhas (ver electron/platform/win32/fanRivals.ts). */
+export interface FanRival { id: string; name: string; kind: 'board' | 'usb' | 'gpu'; canTakeOver: boolean; takenOver?: boolean }
+export interface FanState { available: boolean; active: boolean; helperReady: boolean; controls: FanControlInfo[]; temps: FanTempSource[]; emergency: boolean; preview?: boolean; rivals?: FanRival[] }
 
 export interface DiskDetail {
   id: string; name: string; model?: string; firmware?: string; serialHidden?: boolean; bus?: string; media?: string; size?: number;

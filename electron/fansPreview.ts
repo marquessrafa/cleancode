@@ -44,5 +44,7 @@ export function previewState(cfg: Record<string, FanConfig>): FanState {
     if (f.name === 'Fan #5' && status && !status.error && Math.abs((status.pct ?? f.auto) - f.auto) >= 25) { status = { ...status, pct: null, error: 'norpm' }; pct = f.auto; }
     return { id: f.id, name: f.name, hw: f.hw, kind: f.kind, pct, rpm: Math.round((f.max * pct) / 100), status, locked: f.kind === 'gpu' || undefined };
   });
-  return { available: true, active: true, helperReady: true, controls, temps, emergency: false, preview: true };
+  // exemplos da faixa de outros programas, para ver como ela fica
+  const rivals = [{ id: 'asus', name: 'Armoury Crate (ASUS)', kind: 'board' as const, canTakeOver: true }, { id: 'lianli', name: 'L-Connect (Lian Li)', kind: 'usb' as const, canTakeOver: false }];
+  return { available: true, active: true, helperReady: true, controls, temps, emergency: false, preview: true, rivals };
 }

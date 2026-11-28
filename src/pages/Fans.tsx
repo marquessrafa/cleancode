@@ -9,7 +9,7 @@ import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { ShieldCheck, AlertTriangle, Loader2, FlaskConical, Pencil, Check, Info, Thermometer, Cpu, Gpu, Droplets, Plus, Minus, ChevronDown, Sparkles, Wand2, Bot } from 'lucide-react';
 import { FanWizard } from './FanWizard';
 import { FanHelp } from './FanHelp';
-import { cc, FanConfig, FanControlInfo, FanState, FanTempSource } from '../lib/api';
+import { cc, FanConfig, FanControlInfo, FanRival, FanState, FanTempSource } from '../lib/api';
 import { useApp } from '../lib/store';
 import { PageBody } from './common';
 import { Button, Select, cx } from '../components/ui';
@@ -157,10 +157,7 @@ export default function FansPage() {
               text={tr("Nenhuma mudança chega às ventoinhas de verdade.")} />}
             {state.emergency && <Banner tone="danger" icon={<AlertTriangle size={18} />} title={tr("A proteção de temperatura está ativa")}
               text={tr("Uma peça chegou a 90 °C, então as ventoinhas ficam em 100% até a temperatura cair para 85 °C.")} />}
-            {state.conflicts?.includes('asus') && <Banner tone="warn" icon={<AlertTriangle size={18} />} title={tr("O Armoury Crate da ASUS também controla as ventoinhas")}
-              text={tr("Quando os dois programas mudam a mesma ventoinha, a placa fica com o valor de um deles, e o CleanCode mostra \"A placa recusou\". Para o CleanCode controlar sozinho, desligue o controle das ventoinhas (Fan Xpert) no Armoury Crate.")} />}
-            {state.conflicts?.includes('lianli') && <Banner tone="warn" icon={<AlertTriangle size={18} />} title={tr("O L-Connect da Lian Li está aberto")}
-              text={tr("As ventoinhas ligadas ao controlador da Lian Li seguem o L-Connect, e não a placa-mãe. Para elas seguirem o CleanCode, ligue a sincronização com a placa-mãe (MB Sync) no L-Connect.")} />}
+            {!!state.rivals?.length && <RivalStrip rivals={state.rivals} />}
 
             {candidates.length > 0 && generic && <IdentifyCard onClick={() => setWizard(true)} />}
             <FanWizard open={wizard} onClose={() => setWizard(false)} candidates={candidates} live={ref} nameOf={(f) => fanName(f, draftRef.current[f.id])}
@@ -269,6 +266,39 @@ function HeroStat({ icon, label, value }: { icon: React.ReactNode; label: string
     <div className="min-w-[118px] rounded-xl border border-[var(--line)] bg-[color-mix(in_srgb,var(--surface)_70%,transparent)] px-3 py-2 backdrop-blur-md">
       <div className="flex items-center gap-1.5 text-[11px] text-muted">{icon}{label}</div>
       <div className="mt-0.5 text-[18px] font-semibold tabular-nums">{value}</div>
+    </div>
+  );
+}
+
+// ---------- outros programas que brigam pelas ventoinhas ----------
+// Uma linha por programa, só quando o leitor viu a briga (ver fanRivals.ts). O botão para o serviço de ventoinhas do
+// programa (o Windows pede a permissão de administrador) ou devolve o controle a ele.
+function RivalStrip({ rivals }: { rivals: FanRival[] }) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  const act = async (r: FanRival, on: boolean) => {
+    setBusy(r.id); setFailed(null);
+    try { const res = await cc.fanTakeover(r.id, on); if (!res.ok) setFailed(r.id); } catch { setFailed(r.id); }
+    setBusy(null);
+  };
+  const text = (r: FanRival) =>
+    r.takenOver ? tr("O CleanCode assumiu as ventoinhas no lugar do {0}.", r.name)
+      : r.kind === 'board' ? (r.canTakeOver ? tr("O {0} está mudando as ventoinhas da placa-mãe ao mesmo tempo que o CleanCode.", r.name) : tr("O {0} está mudando as ventoinhas da placa-mãe. Desligue o controle de ventoinhas dele para o CleanCode controlar sozinho.", r.name))
+        : r.kind === 'usb' ? tr("Uma ventoinha não seguiu o pedido. Se ela estiver num hub do {0}, ligue nele a sincronização com a placa-mãe.", r.name)
+          : tr("O {0} está mudando a ventoinha da placa de vídeo. Desligue o controle de ventoinhas dele.", r.name);
+  return (
+    <div className="divide-y divide-[var(--line)] rounded-lg border border-[var(--line)] bg-[var(--surface)]">
+      {rivals.map((r) => (
+        <div key={r.id} className="flex items-center gap-2.5 px-3 py-2 text-[12px]">
+          {r.takenOver ? <ShieldCheck size={14} className="shrink-0 text-[var(--accent)]" /> : <AlertTriangle size={14} className="shrink-0 text-[var(--warn)]" />}
+          <span className="min-w-0 flex-1 text-muted">{text(r)}{failed === r.id ? ' ' + tr("O Windows não deu a permissão, então nada mudou.") : ''}</span>
+          {r.canTakeOver && (
+            <Button size="sm" variant={r.takenOver ? 'outline' : 'primary'} disabled={busy === r.id} onClick={() => act(r, !r.takenOver)}>
+              {busy === r.id ? <Loader2 size={13} className="animate-spin" /> : r.takenOver ? tr("Devolver") : tr("Assumir o controle")}
+            </Button>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

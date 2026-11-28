@@ -245,6 +245,8 @@ ipcMain.handle('fans:state', () => {
   if (PREVIEW_FANS) return previewFanState(settings.fans);
   return system.metrics.fanState ? system.metrics.fanState().catch(() => null) : null;
 });
+// assumir o controle das ventoinhas no lugar de outro programa (para o serviço dele) ou devolver
+ipcMain.handle('fans:takeover', (_e, id: string, on: boolean) => (system.metrics.fanTakeover ? system.metrics.fanTakeover(String(id), !!on) : { ok: false }));
 ipcMain.handle('fans:test', (_e, id: string, pct: number | null) => {
   const p = typeof pct === 'number' ? pct : null;
   if (PREVIEW_FANS) previewFanTest(String(id), p); else system.metrics.fanTest?.(String(id), p);
